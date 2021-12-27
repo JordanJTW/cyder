@@ -4,6 +4,13 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 
+#define RETURN_IF_ERROR(expr)             \
+  do {                                    \
+    const absl::Status status = (expr);   \
+    if (ABSL_PREDICT_FALSE(!status.ok())) \
+      return status;                      \
+  } while (0)
+
 // Executes an expression `rexpr` that returns a `absl::StatusOr<T>`. On
 // OK, extracts its value into the variable defined by `lhs`, otherwise returns
 // from the current function. By default the error status is returned
