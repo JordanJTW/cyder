@@ -11,13 +11,24 @@
 
 namespace rsrcloader {
 
+typedef uint32_t ResType;
+typedef uint16_t ResID;
+
 class Resource {
  public:
-  Resource(uint16_t id,
-           uint32_t type,
+  Resource(ResID id,
+           ResType type,
            uint8_t attributes,
+           std::string name,
            const uint8_t* const data_ptr,
            uint32_t size);
+
+  ResID GetId() const { return id_; }
+  ResType GetType() const { return type_; }
+  const std::string& GetName() const { return name_; }
+  uint8_t GetAttributes() const { return attributes_; }
+  uint32_t GetSize() const { return size_; }
+  const uint8_t* const GetData() const { return data_ptr_; }
 
   std::string GetTypeName() const;
 
@@ -29,9 +40,10 @@ class Resource {
  private:
   friend std::ostream& operator<<(std::ostream&, const Resource&);
 
-  const uint16_t id_;
-  const uint32_t type_;
+  const ResID id_;
+  const ResType type_;
   const uint8_t attributes_;
+  const std::string name_;
   const uint8_t* const data_ptr_;
   const uint32_t size_;
 };
@@ -39,6 +51,8 @@ class Resource {
 class ResourceFile {
  public:
   static absl::StatusOr<std::unique_ptr<ResourceFile>> Load(const std::string&);
+
+  absl::Status Save(const std::string&);
 
  protected:
   // Disallow copy and assign:
@@ -52,7 +66,7 @@ class ResourceFile {
   friend std::ostream& operator<<(std::ostream&, const ResourceFile&);
 
   const InMemoryMapHeader header_;
-  const std::vector<std::unique_ptr<Resource>> resources_;
+  std::vector<std::unique_ptr<Resource>> resources_;
 };
 
 const std::ostream& operator<<(const std::ostream&, const Resource&);

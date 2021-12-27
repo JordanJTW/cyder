@@ -9,6 +9,7 @@
 #include <cstring>
 #include <iomanip>
 #include <iostream>
+#include <map>
 
 #include "absl/status/status.h"
 #include "in_memory_types.h"
@@ -67,6 +68,28 @@ absl::StatusOr<std::vector<std::unique_ptr<Resource>>> parseResources(
     return absl::InternalError("Overflow reading type list");
   }
 
+  auto parse_name =
+      [&](uint16_t relative_offset) -> absl::StatusOr<std::string> {
+    if (relative_offset == 0xFFFF) {
+      return std::string{};
+    }
+
+    uint32_t offset =
+        header.header.map_offset + header.name_list_offset + relative_offset;
+    if (size < offset + 1) {
+      return absl::InternalError("Overflow reading name length");
+    }
+
+    uint8_t length = base_ptr[offset];
+    if (size < offset + 1 + length) {
+      return absl::InternalError("Overflow reading name value");
+    }
+
+    char str[length];
+    memcpy(str, base_ptr + offset + 1, length);
+    return std::string(str, length);
+  };
+
   std::vector<std::unique_ptr<Resource>> resources;
   for (size_t item = 0; item <= header.type_list_count; ++item) {
     InMemoryTypeItem type_item;
@@ -105,8 +128,11 @@ absl::StatusOr<std::vector<std::unique_ptr<Resource>>> parseResources(
       memcpy(&resource_size, data_ptr, sizeof(uint32_t));
       resource_size = be32toh(resource_size);
 
+      ASSIGN_OR_RETURN(std::string name, parse_name(entry.name_offset));
+
       resources.push_back(absl::make_unique<Resource>(
-          entry.id, type_item.type, attributes, data_ptr, resource_size));
+          entry.id, type_item.type, attributes, std::move(name),
+          data_ptr + sizeof(uint32_t), resource_size));
     }
   }
   return resources;
@@ -142,6 +168,118 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
       new ResourceFile(std::move(header), std::move(resources)));
 }
 
+absl::Status ResourceFile::Save(const std::string& path) {
+  // std::sort(resources_.begin(), resources_.end(),
+  //           [](const std::unique_ptr<Resource>& first,
+  //              const std::unique_ptr<Resource>& second) {
+  //             return first->GetType() == second->GetType()
+  //                        ? first->GetId() < second->GetId()
+  //                        : first->GetType() < second->GetType();
+  //           });
+
+  std::map<ResType, std::vector<const Resource*>> resourceMap;
+  uint32_t total_data_size = 0;
+
+  std::vector<ResType> resource_types;
+  ResType last_type = 0;
+  for (const auto& resource : resources_) {
+    if (last_type != resource->GetType()) {
+      resource_types.push_back(resource->GetType());
+      last_type = resource->GetType();
+    }
+    resourceMap[resource->GetType()].push_back(resource.get());
+    total_data_size += sizeof(uint32_t) + resource->GetSize();
+  }
+
+  std::vector<InMemoryTypeItem> type_list;
+  std::vector<InMemoryReferenceEntry> ref_list;
+
+  uint16_t reference_offset =
+      resourceMap.size() * sizeof(InMemoryTypeItem) + sizeof(uint16_t);
+  uint32_t data_offset = 0;
+  std::vector<std::string> names;
+  uint16_t name_offset = 0;
+  for (const auto& type : resource_types) {
+    const std::vector<const Resource*>& resources = resourceMap[type];
+    type_list.push_back(InMemoryTypeItem{
+        .type = htobe32(type),
+        .count = htobe16(static_cast<uint16_t>(resources.size() - 1)),
+        .offset = htobe16(reference_offset)});
+    reference_offset += resources.size() * sizeof(InMemoryReferenceEntry);
+    for (const auto* resource : resources) {
+      ref_list.push_back(InMemoryReferenceEntry{
+          .id = htobe16(resource->GetId()),
+          .name_offset = resource->GetName().empty() ? (uint16_t)0xFFFF
+                                                     : htobe16(name_offset),
+          .offset = htobe32((resource->GetAttributes() << 24) |
+                            (data_offset & 0x00FFFFFF)),
+          .handle = 0});
+      data_offset += sizeof(uint32_t) + resource->GetSize();
+      if (!resource->GetName().empty()) {
+        const auto& name = resource->GetName();
+        names.push_back(name);
+        name_offset += sizeof(uint8_t) + name.size();
+      }
+    }
+  }
+
+  uint32_t total_map_size =
+      sizeof(InMemoryMapHeader) + sizeof(InMemoryTypeItem) * type_list.size() +
+      sizeof(InMemoryReferenceEntry) * ref_list.size() + name_offset;
+
+  size_t output_length = 0x100 + total_data_size + total_map_size;
+  uint8_t output[output_length];
+
+  size_t write_offset = 0;
+  auto write = [&](const void* data, size_t length) {
+    memcpy(output + write_offset, data, length);
+    write_offset += length;
+  };
+
+  InMemoryHeader header = {.data_offset = htobe32(0x100),
+                           .map_offset = htobe32(0x100 + total_data_size),
+                           .data_length = htobe32(total_data_size),
+                           .map_length = htobe32(total_map_size)};
+  write(&header, sizeof(InMemoryHeader));
+  write_offset = 0x100;
+
+  for (const auto& type : resource_types) {
+    for (const auto* resource : resourceMap[type]) {
+      uint32_t size = htobe32(resource->GetSize());
+      write(&size, sizeof(uint32_t));
+      write(resource->GetData(), resource->GetSize());
+    }
+  }
+
+  InMemoryMapHeader map_header;
+  map_header.type_list_offset =
+      htobe16(sizeof(InMemoryMapHeader) - sizeof(uint16_t));
+  map_header.type_list_count = htobe16(type_list.size() - 1);
+  map_header.name_list_offset = htobe16(
+      sizeof(InMemoryMapHeader) + sizeof(InMemoryTypeItem) * type_list.size() +
+      sizeof(InMemoryReferenceEntry) * ref_list.size());
+  write(&map_header, sizeof(InMemoryMapHeader));
+
+  for (const auto& item : type_list) {
+    write(&item, sizeof(InMemoryTypeItem));
+  }
+  for (const auto& entry : ref_list) {
+    write(&entry, sizeof(InMemoryReferenceEntry));
+  }
+
+  for (const auto& name : names) {
+    uint8_t size = name.size();
+    write(&size, sizeof(uint8_t));
+    write(name.c_str(), size);
+  }
+
+  FILE* file = fopen(path.c_str(), "wb");
+  fwrite(output, 1, output_length, file);
+  fclose(file);
+
+  return absl::OkStatus();
+}
+
 std::string Resource::GetTypeName() const {
   char type_name[4];
   // The type value is actually a 4 byte string so we must reverse it
@@ -158,11 +296,13 @@ ResourceFile::ResourceFile(InMemoryMapHeader header,
 Resource::Resource(uint16_t id,
                    uint32_t type,
                    uint8_t attributes,
+                   std::string name,
                    const uint8_t* const data_ptr,
                    uint32_t size)
     : id_(id),
       type_(type),
       attributes_(attributes),
+      name_(std::move(name)),
       data_ptr_(data_ptr),
       size_(size) {}
 
