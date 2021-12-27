@@ -69,7 +69,7 @@ class ResourceFile {
   std::vector<std::unique_ptr<Resource>> resources_;
 };
 
-const std::ostream& operator<<(const std::ostream&, const Resource&);
-const std::ostream& operator<<(const std::ostream&, const ResourceFile&);
+std::ostream& operator<<(std::ostream&, const Resource&);
+std::ostream& operator<<(std::ostream&, const ResourceFile&);
 
 }  // namespace rsrcloader

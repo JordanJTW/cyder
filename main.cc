@@ -1,24 +1,24 @@
 #include <cstdio>
 #include <iostream>
 #include <string>
-#include <endian.h>
 
+#include "core/logging.h"
+#include "core/status_helpers.h"
 #include "rsrcloader.h"
-#include "status_macros.h"
 
 using namespace rsrcloader;
 
-absl::Status StatusMain(const std::string& filename) {    
-    ASSIGN_OR_RETURN(auto file, ResourceFile::Load(filename));
-    RETURN_IF_ERROR(file->Save("/tmp/output.rsrc"));
-    return absl::OkStatus();
+absl::Status StatusMain(const std::string& filename) {
+  auto file = TRY(ResourceFile::Load(filename));
+  RETURN_IF_ERROR(file->Save("/tmp/output.rsrc"));
+  return absl::OkStatus();
 }
 
 int main(int argc, const char** argv) {
-    auto status = StatusMain(argv[1]);
-    if (!status.ok()) {
-        printf("Error: %s\n", std::string(status.message()).c_str());
-        return -1;
-    }
-    return 0;
+  auto status = StatusMain(argv[1]);
+  if (!status.ok()) {
+    LOG(ERROR) << "Error: " << status.message();
+    return -1;
+  }
+  return 0;
 }

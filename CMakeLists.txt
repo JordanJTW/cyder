@@ -14,6 +14,8 @@ set(ABSL_PROPAGATE_CXX_STD ON)
 add_subdirectory(third_party/abseil-cpp)
 include_directories(third_party/abseil-cpp)
 
+add_subdirectory(core)
 add_executable(rsrcloader main.cc rsrcloader.cc)
-target_link_libraries(rsrcloader absl::base absl::statusor absl::strings)
+target_link_libraries(rsrcloader CORE_LIB)
+target_link_libraries(rsrcloader absl::base absl::statusor)
 

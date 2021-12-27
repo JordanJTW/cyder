@@ -12,8 +12,9 @@
 #include <map>
 
 #include "absl/status/status.h"
+#include "core/logging.h"
+#include "core/status_helpers.h"
 #include "in_memory_types.h"
-#include "status_macros.h"
 
 namespace rsrcloader {
 namespace {
@@ -128,7 +129,7 @@ absl::StatusOr<std::vector<std::unique_ptr<Resource>>> parseResources(
       memcpy(&resource_size, data_ptr, sizeof(uint32_t));
       resource_size = be32toh(resource_size);
 
-      ASSIGN_OR_RETURN(std::string name, parse_name(entry.name_offset));
+      std::string name = TRY(parse_name(entry.name_offset));
 
       resources.push_back(absl::make_unique<Resource>(
           entry.id, type_item.type, attributes, std::move(name),
@@ -161,8 +162,8 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
 
   const uint8_t* const data = reinterpret_cast<uint8_t*>(mmap_ptr);
 
-  ASSIGN_OR_RETURN(auto header, parseResourceHeader(data, size));
-  ASSIGN_OR_RETURN(auto resources, parseResources(header, data, size));
+  InMemoryMapHeader header = TRY(parseResourceHeader(data, size));
+  auto resources = std::move(TRY(parseResources(header, data, size)));
 
   return std::unique_ptr<ResourceFile>(
       new ResourceFile(std::move(header), std::move(resources)));
@@ -272,6 +273,8 @@ absl::Status ResourceFile::Save(const std::string& path) {
     write(&size, sizeof(uint8_t));
     write(name.c_str(), size);
   }
+
+  CHECK_EQ(write_offset, output_length);
 
   FILE* file = fopen(path.c_str(), "wb");
   fwrite(output, 1, output_length, file);
