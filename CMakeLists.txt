@@ -19,3 +19,5 @@ add_executable(rsrcloader main.cc rsrcloader.cc)
 target_link_libraries(rsrcloader CORE_LIB)
 target_link_libraries(rsrcloader absl::base absl::statusor)
 
+add_executable(updateinfo updateinfo.cc)
+target_link_libraries(updateinfo CORE_LIB)
