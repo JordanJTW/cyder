@@ -283,6 +283,15 @@ absl::Status ResourceFile::Save(const std::string& path) {
   return absl::OkStatus();
 }
 
+Resource* ResourceFile::GetByTypeAndId(ResType theType, ResID theId) {
+  for (const auto& resource : resources_) {
+    if (resource->GetType() == theType && resource->GetId() == theId) {
+      return resource.get();
+    }
+  }
+  return nullptr;
+}
+
 std::string Resource::GetTypeName() const {
   char type_name[4];
   // The type value is actually a 4 byte string so we must reverse it

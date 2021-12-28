@@ -54,6 +54,8 @@ class ResourceFile {
 
   absl::Status Save(const std::string&);
 
+  Resource* GetByTypeAndId(ResType, ResID);
+
  protected:
   // Disallow copy and assign:
   ResourceFile(const ResourceFile&) = delete;
