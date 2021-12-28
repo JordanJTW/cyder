@@ -1,6 +1,5 @@
 #include "rsrcloader.h"
 
-#include <endian.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -12,6 +11,7 @@
 #include <map>
 
 #include "absl/status/status.h"
+#include "core/endian.h"
 #include "core/logging.h"
 #include "core/status_helpers.h"
 #include "in_memory_types.h"
@@ -163,7 +163,7 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
   const uint8_t* const data = reinterpret_cast<uint8_t*>(mmap_ptr);
 
   InMemoryMapHeader header = TRY(parseResourceHeader(data, size));
-  auto resources = std::move(TRY(parseResources(header, data, size)));
+  auto resources = TRY(parseResources(header, data, size));
 
   return std::unique_ptr<ResourceFile>(
       new ResourceFile(std::move(header), std::move(resources)));
