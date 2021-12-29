@@ -2,6 +2,9 @@
 #include <ostream>
 #include <string>
 
+#include "absl/status/statusor.h"
+#include "in_memory_types.h"
+
 namespace rsrcloader {
 
 typedef uint32_t ResType;
@@ -15,6 +18,13 @@ class Resource {
            std::string name,
            const uint8_t* const data_ptr,
            uint32_t size);
+
+  static absl::StatusOr<std::unique_ptr<Resource>> Load(
+      const uint8_t* const base_ptr,
+      size_t size,
+      const InMemoryMapHeader& header,
+      const InMemoryTypeItem& type_item,
+      size_t index);
 
   ResID GetId() const { return id_; }
   ResType GetType() const { return type_; }

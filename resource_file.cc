@@ -54,41 +54,16 @@ absl::StatusOr<std::vector<std::unique_ptr<Resource>>> parseResources(
     const InMemoryMapHeader& header,
     const uint8_t* const base_ptr,
     size_t size) {
-  uint16_t absolute_type_list_offset =
-      header.header.map_offset + header.type_list_offset;
-
   auto type_item_offset = [&](size_t index) {
     // The type list begins with a uint16_t count value immediately
     // preceding the type list items so account for it here
-    return absolute_type_list_offset + sizeof(InMemoryTypeItem) * index +
-           sizeof(uint16_t);
+    return header.header.map_offset + header.type_list_offset +
+           sizeof(InMemoryTypeItem) * index + sizeof(uint16_t);
   };
 
   if (size < type_item_offset(header.type_list_count + 1)) {
     return absl::InternalError("Overflow reading type list");
   }
-
-  auto parse_name =
-      [&](uint16_t relative_offset) -> absl::StatusOr<std::string> {
-    if (relative_offset == 0xFFFF) {
-      return std::string{};
-    }
-
-    uint32_t offset =
-        header.header.map_offset + header.name_list_offset + relative_offset;
-    if (size < offset + 1) {
-      return absl::InternalError("Overflow reading name length");
-    }
-
-    uint8_t length = base_ptr[offset];
-    if (size < offset + 1 + length) {
-      return absl::InternalError("Overflow reading name value");
-    }
-
-    char str[length];
-    memcpy(str, base_ptr + offset + 1, length);
-    return std::string(str, length);
-  };
 
   std::vector<std::unique_ptr<Resource>> resources;
   for (size_t item = 0; item <= header.type_list_count; ++item) {
@@ -99,40 +74,9 @@ absl::StatusOr<std::vector<std::unique_ptr<Resource>>> parseResources(
     type_item.count = be16toh(type_item.count);
     type_item.offset = be16toh(type_item.offset);
 
-    auto reference_offset = [&](size_t index) {
-      return absolute_type_list_offset + type_item.offset +
-             sizeof(InMemoryReferenceEntry) * index;
-    };
-
-    if (size < reference_offset(type_item.count + 1)) {
-      return absl::InternalError("Overflow reading reference(s)");
-    }
-
     for (size_t index = 0; index <= type_item.count; ++index) {
-      InMemoryReferenceEntry entry;
-      memcpy(&entry, base_ptr + reference_offset(index),
-             sizeof(InMemoryReferenceEntry));
-      entry.id = be16toh(entry.id);
-      entry.name_offset = be16toh(entry.name_offset);
-
-      entry.offset = be32toh(entry.offset);
-      // The attributes (1 byte) and offset (3 bytes) are packed
-      // together so we separate both fields here
-      uint8_t attributes = (entry.offset & 0xFF000000) >> 24;
-      uint32_t offset = entry.offset & 0x00FFFFFF;
-
-      const uint8_t* const data_ptr =
-          base_ptr + header.header.data_offset + offset;
-
-      uint32_t resource_size;
-      memcpy(&resource_size, data_ptr, sizeof(uint32_t));
-      resource_size = be32toh(resource_size);
-
-      std::string name = TRY(parse_name(entry.name_offset));
-
-      resources.push_back(absl::make_unique<Resource>(
-          entry.id, type_item.type, attributes, std::move(name),
-          data_ptr + sizeof(uint32_t), resource_size));
+      resources.push_back(
+          TRY(Resource::Load(base_ptr, size, header, type_item, index)));
     }
   }
   return resources;
