@@ -3,8 +3,8 @@
 #include <string>
 
 #include "absl/status/statusor.h"
+#include "core/memory_region.h"
 #include "in_memory_types.h"
-#include "memory_region.h"
 
 namespace rsrcloader {
 

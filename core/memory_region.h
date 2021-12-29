@@ -1,12 +1,11 @@
 #pragma once
 
-#include <stddef.h>
 #include <cstdint>
 #include <string>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "core/status_helpers.h"
+#include "status_helpers.h"
 
 namespace rsrcloader {
 

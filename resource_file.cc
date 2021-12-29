@@ -12,9 +12,9 @@
 #include "absl/status/status.h"
 #include "core/endian.h"
 #include "core/logging.h"
+#include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "in_memory_types.h"
-#include "memory_region.h"
 
 namespace rsrcloader {
 namespace {

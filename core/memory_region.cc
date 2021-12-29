@@ -1,7 +1,5 @@
 #include "memory_region.h"
 
-#include "core/logging.h"
-
 namespace rsrcloader {
 
 MemoryRegion::MemoryRegion(void* data, size_t size)
@@ -30,7 +28,6 @@ absl::Status MemoryRegion::Copy(void* dest,
 MemoryRegion::MemoryRegion(std::string name,
                            const uint8_t* const data,
                            size_t size)
-    : name_(std::move(name)), data_(data), size_(size) {
-}
+    : name_(std::move(name)), data_(data), size_(size) {}
 
 }  // namespace rsrcloader

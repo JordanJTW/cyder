@@ -1,5 +1,5 @@
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
-set(CORE_SRC logging_internal.cc)
+set(CORE_SRC logging_internal.cc memory_region.cc)
 
 add_library(CORE_LIB ${CORE_SRC})

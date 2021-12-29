@@ -15,7 +15,7 @@ add_subdirectory(third_party/abseil-cpp)
 include_directories(third_party/abseil-cpp)
 
 add_subdirectory(core)
-add_executable(rsrcloader main.cc memory_region.cc resource.cc resource_file.cc)
+add_executable(rsrcloader main.cc resource.cc resource_file.cc)
 target_link_libraries(rsrcloader CORE_LIB)
 target_link_libraries(rsrcloader absl::base absl::statusor)
 
