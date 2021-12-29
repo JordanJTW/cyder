@@ -42,7 +42,8 @@ absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
     size_t index) {
   InMemoryReferenceEntry entry =
       TRY(type_list_region.Copy<InMemoryReferenceEntry>(
-          type_item.offset + sizeof(InMemoryReferenceEntry) * index));
+              type_item.offset + sizeof(InMemoryReferenceEntry) * index),
+          absl::StrCat("Failed to parse reference entry at ", index));
 
   entry.id = be16toh(entry.id);
   entry.offset = be32toh(entry.offset);
@@ -53,11 +54,13 @@ absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
   uint32_t offset = entry.offset & 0x00FFFFFF;
 
   std::string name =
-      TRY(ParseNameFromTable(name_list_region, entry.name_offset));
+      TRY(ParseNameFromTable(name_list_region, entry.name_offset),
+          "Failed to parse name from table");
 
   MemoryRegion resource_region = TRY(data_region.Create("Resource", offset));
   uint32_t resource_size =
-      be32toh(TRY(resource_region.Copy<uint32_t>(/*offset=*/0)));
+      be32toh(TRY(resource_region.Copy<uint32_t>(/*offset=*/0),
+                  "Failed to parse resource size"));
 
   return absl::make_unique<Resource>(entry.id, type_item.type, attributes, name,
                                      resource_region, resource_size);

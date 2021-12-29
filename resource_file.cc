@@ -26,14 +26,16 @@ absl::Status LoadFileError(absl::string_view file_path) {
 
 absl::StatusOr<InMemoryMapHeader> parseResourceHeader(
     const MemoryRegion& base) {
-  InMemoryHeader header = TRY(base.Copy<InMemoryHeader>(/*offset=*/0));
+  InMemoryHeader header =
+      TRY(base.Copy<InMemoryHeader>(/*offset=*/0), "Failed to parse header");
   header.data_offset = be32toh(header.data_offset);
   header.data_length = be32toh(header.data_length);
   header.map_offset = be32toh(header.map_offset);
   header.map_length = be32toh(header.map_length);
 
   InMemoryMapHeader map_header =
-      TRY(base.Copy<InMemoryMapHeader>(header.map_offset));
+      TRY(base.Copy<InMemoryMapHeader>(header.map_offset),
+          "Failed to parse map header");
   map_header.header = std::move(header);
   map_header.file_attributes = be16toh(map_header.file_attributes);
   map_header.type_list_offset = be16toh(map_header.type_list_offset);
