@@ -112,24 +112,10 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
 }
 
 absl::Status ResourceFile::Save(const std::string& path) {
-  // std::sort(resources_.begin(), resources_.end(),
-  //           [](const std::unique_ptr<Resource>& first,
-  //              const std::unique_ptr<Resource>& second) {
-  //             return first->GetType() == second->GetType()
-  //                        ? first->GetId() < second->GetId()
-  //                        : first->GetType() < second->GetType();
-  //           });
-
   std::map<ResType, std::vector<const Resource*>> resourceMap;
   uint32_t total_data_size = 0;
 
-  std::vector<ResType> resource_types;
-  ResType last_type = 0;
   for (const auto& resource : resources_) {
-    if (last_type != resource->GetType()) {
-      resource_types.push_back(resource->GetType());
-      last_type = resource->GetType();
-    }
     resourceMap[resource->GetType()].push_back(resource.get());
     total_data_size += sizeof(uint32_t) + resource->GetSize();
   }
@@ -140,10 +126,24 @@ absl::Status ResourceFile::Save(const std::string& path) {
   uint16_t reference_offset =
       resourceMap.size() * sizeof(InMemoryTypeItem) + sizeof(uint16_t);
   uint32_t data_offset = 0;
+
   std::vector<std::string> names;
   uint16_t name_offset = 0;
-  for (const auto& type : resource_types) {
-    const std::vector<const Resource*>& resources = resourceMap[type];
+  auto calculate_name_offset = [&](const std::string& name) -> uint16_t {
+    if (name.empty()) {
+      return 0xFFFF;
+    }
+
+    names.push_back(name);
+    uint16_t current_name_offset = name_offset;
+    name_offset += sizeof(uint8_t) + name.size();
+    return htobe16(current_name_offset);
+  };
+
+  for (const auto& keyValue : resourceMap) {
+    const ResType type = keyValue.first;
+    const std::vector<const Resource*>& resources = keyValue.second;
+
     type_list.push_back(InMemoryTypeItem{
         .type = htobe32(type),
         .count = htobe16(static_cast<uint16_t>(resources.size() - 1)),
@@ -152,17 +152,11 @@ absl::Status ResourceFile::Save(const std::string& path) {
     for (const auto* resource : resources) {
       ref_list.push_back(InMemoryReferenceEntry{
           .id = htobe16(resource->GetId()),
-          .name_offset = resource->GetName().empty() ? (uint16_t)0xFFFF
-                                                     : htobe16(name_offset),
+          .name_offset = calculate_name_offset(resource->GetName()),
           .offset = htobe32((resource->GetAttributes() << 24) |
                             (data_offset & 0x00FFFFFF)),
           .handle = 0});
       data_offset += sizeof(uint32_t) + resource->GetSize();
-      if (!resource->GetName().empty()) {
-        const auto& name = resource->GetName();
-        names.push_back(name);
-        name_offset += sizeof(uint8_t) + name.size();
-      }
     }
   }
 
@@ -186,8 +180,8 @@ absl::Status ResourceFile::Save(const std::string& path) {
   write(&header, sizeof(InMemoryHeader));
   write_offset = 0x100;
 
-  for (const auto& type : resource_types) {
-    for (const auto* resource : resourceMap[type]) {
+  for (const auto& keyValue : resourceMap) {
+    for (const auto* resource : keyValue.second) {
       uint32_t size = htobe32(resource->GetSize());
       write(&size, sizeof(uint32_t));
       write(resource->GetData().raw_ptr(), resource->GetSize());
@@ -198,9 +192,7 @@ absl::Status ResourceFile::Save(const std::string& path) {
   map_header.type_list_offset =
       htobe16(sizeof(InMemoryMapHeader) - sizeof(uint16_t));
   map_header.type_list_count = htobe16(type_list.size() - 1);
-  map_header.name_list_offset = htobe16(
-      sizeof(InMemoryMapHeader) + sizeof(InMemoryTypeItem) * type_list.size() +
-      sizeof(InMemoryReferenceEntry) * ref_list.size());
+  map_header.name_list_offset = htobe16(total_map_size - name_offset);
   write(&map_header, sizeof(InMemoryMapHeader));
 
   for (const auto& item : type_list) {
