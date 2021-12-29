@@ -4,7 +4,7 @@
 
 #include "core/logging.h"
 #include "core/status_helpers.h"
-#include "rsrcloader.h"
+#include "resource_file.h"
 
 using namespace rsrcloader;
 
