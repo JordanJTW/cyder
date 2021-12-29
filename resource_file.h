@@ -9,6 +9,7 @@
 #include "absl/status/statusor.h"
 #include "in_memory_types.h"
 #include "resource.h"
+#include "resource_group.h"
 
 namespace rsrcloader {
 
@@ -18,7 +19,7 @@ class ResourceFile {
 
   absl::Status Save(const std::string&);
 
-  Resource* GetByTypeAndId(ResType, ResID);
+  Resource* FindByTypeAndId(ResType, ResID);
 
  protected:
   // Disallow copy and assign:
@@ -26,13 +27,11 @@ class ResourceFile {
   ResourceFile& operator=(ResourceFile&) = delete;
 
  private:
-  ResourceFile(InMemoryMapHeader header,
-               std::vector<std::unique_ptr<Resource>> resources);
+  ResourceFile(std::vector<std::unique_ptr<ResourceGroup>> resource_groups);
 
   friend std::ostream& operator<<(std::ostream&, const ResourceFile&);
 
-  const InMemoryMapHeader header_;
-  std::vector<std::unique_ptr<Resource>> resources_;
+  std::vector<std::unique_ptr<ResourceGroup>> resource_groups_;
 };
 
 std::ostream& operator<<(std::ostream&, const ResourceFile&);

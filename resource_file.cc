@@ -44,38 +44,6 @@ absl::StatusOr<InMemoryMapHeader> parseResourceHeader(
   return std::move(map_header);
 }
 
-absl::StatusOr<std::vector<std::unique_ptr<Resource>>> parseResources(
-    const InMemoryMapHeader& header,
-    const MemoryRegion& data_region,
-    const MemoryRegion& map_region) {
-  MemoryRegion type_list_region =
-      TRY(map_region.Create("TypeList", header.type_list_offset));
-  MemoryRegion name_list_region =
-      TRY(map_region.Create("NameList", header.name_list_offset));
-
-  auto type_item_offset = [&](size_t index) {
-    // The type list begins with a uint16_t count value immediately
-    // preceding the type list items so account for it here
-    return sizeof(InMemoryTypeItem) * index + sizeof(uint16_t);
-  };
-
-  std::vector<std::unique_ptr<Resource>> resources;
-  for (size_t item = 0; item <= header.type_list_count; ++item) {
-    InMemoryTypeItem type_item =
-        TRY(type_list_region.Copy<InMemoryTypeItem>(type_item_offset(item)));
-
-    type_item.type = be32toh(type_item.type);
-    type_item.count = be16toh(type_item.count);
-    type_item.offset = be16toh(type_item.offset);
-
-    for (size_t index = 0; index <= type_item.count; ++index) {
-      resources.push_back(TRY(Resource::Load(
-          type_item, type_list_region, name_list_region, data_region, index)));
-    }
-  }
-  return resources;
-}
-
 }  // namespace
 
 // static
@@ -104,27 +72,35 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
       TRY(base_region.Create("Data", header.header.data_offset));
   MemoryRegion map_region =
       TRY(base_region.Create("Map", header.header.map_offset));
+  MemoryRegion type_list_region =
+      TRY(map_region.Create("TypeList", header.type_list_offset));
+  MemoryRegion name_list_region =
+      TRY(map_region.Create("NameList", header.name_list_offset));
 
-  auto resources = TRY(parseResources(header, data_region, map_region));
+  std::vector<std::unique_ptr<ResourceGroup>> resource_groups;
+  for (size_t item = 0; item <= header.type_list_count; ++item) {
+    resource_groups.push_back(TRY(ResourceGroup::Load(
+        type_list_region, name_list_region, data_region, item)));
+  }
 
   return std::unique_ptr<ResourceFile>(
-      new ResourceFile(std::move(header), std::move(resources)));
+      new ResourceFile(std::move(resource_groups)));
 }
 
 absl::Status ResourceFile::Save(const std::string& path) {
-  std::map<ResType, std::vector<const Resource*>> resourceMap;
   uint32_t total_data_size = 0;
 
-  for (const auto& resource : resources_) {
-    resourceMap[resource->GetType()].push_back(resource.get());
-    total_data_size += sizeof(uint32_t) + resource->GetSize();
+  for (const auto& group : resource_groups_) {
+    for (const auto& resource : group->GetResources()) {
+      total_data_size += sizeof(uint32_t) + resource->GetSize();
+    }
   }
 
   std::vector<InMemoryTypeItem> type_list;
   std::vector<InMemoryReferenceEntry> ref_list;
 
   uint16_t reference_offset =
-      resourceMap.size() * sizeof(InMemoryTypeItem) + sizeof(uint16_t);
+      resource_groups_.size() * sizeof(InMemoryTypeItem) + sizeof(uint16_t);
   uint32_t data_offset = 0;
 
   std::vector<std::string> names;
@@ -140,16 +116,14 @@ absl::Status ResourceFile::Save(const std::string& path) {
     return htobe16(current_name_offset);
   };
 
-  for (const auto& keyValue : resourceMap) {
-    const ResType type = keyValue.first;
-    const std::vector<const Resource*>& resources = keyValue.second;
-
-    type_list.push_back(InMemoryTypeItem{
-        .type = htobe32(type),
-        .count = htobe16(static_cast<uint16_t>(resources.size() - 1)),
-        .offset = htobe16(reference_offset)});
-    reference_offset += resources.size() * sizeof(InMemoryReferenceEntry);
-    for (const auto* resource : resources) {
+  for (const auto& group : resource_groups_) {
+    type_list.push_back(InMemoryTypeItem{.type = htobe32(group->GetType()),
+                                         .count = htobe16(static_cast<uint16_t>(
+                                             group->GetResources().size() - 1)),
+                                         .offset = htobe16(reference_offset)});
+    reference_offset +=
+        group->GetResources().size() * sizeof(InMemoryReferenceEntry);
+    for (const auto& resource : group->GetResources()) {
       ref_list.push_back(InMemoryReferenceEntry{
           .id = htobe16(resource->GetId()),
           .name_offset = calculate_name_offset(resource->GetName()),
@@ -180,8 +154,8 @@ absl::Status ResourceFile::Save(const std::string& path) {
   write(&header, sizeof(InMemoryHeader));
   write_offset = 0x100;
 
-  for (const auto& keyValue : resourceMap) {
-    for (const auto* resource : keyValue.second) {
+  for (const auto& group : resource_groups_) {
+    for (const auto& resource : group->GetResources()) {
       uint32_t size = htobe32(resource->GetSize());
       write(&size, sizeof(uint32_t));
       write(resource->GetData().raw_ptr(), resource->GetSize());
@@ -217,23 +191,20 @@ absl::Status ResourceFile::Save(const std::string& path) {
   return absl::OkStatus();
 }
 
-Resource* ResourceFile::GetByTypeAndId(ResType theType, ResID theId) {
-  for (const auto& resource : resources_) {
-    if (resource->GetType() == theType && resource->GetId() == theId) {
-      return resource.get();
+Resource* ResourceFile::FindByTypeAndId(ResType theType, ResID theId) {
+  for (const auto& group : resource_groups_) {
+    if (group->GetType() == theType) {
+      return group->FindById(theId);
     }
   }
   return nullptr;
 }
 
-ResourceFile::ResourceFile(InMemoryMapHeader header,
-                           std::vector<std::unique_ptr<Resource>> resources)
-    : header_(std::move(header)), resources_(std::move(resources)) {}
+ResourceFile::ResourceFile(
+    std::vector<std::unique_ptr<ResourceGroup>> resource_groups)
+    : resource_groups_(std::move(resource_groups)) {}
 
 std::ostream& operator<<(std::ostream& out, const ResourceFile& value) {
-  for (const auto& entry : value.resources_) {
-    out << *entry << "\n";
-  }
   return out;
 }
 
