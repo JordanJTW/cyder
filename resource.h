@@ -4,6 +4,7 @@
 
 #include "absl/status/statusor.h"
 #include "in_memory_types.h"
+#include "memory_region.h"
 
 namespace rsrcloader {
 
@@ -16,14 +17,14 @@ class Resource {
            ResType type,
            uint8_t attributes,
            std::string name,
-           const uint8_t* const data_ptr,
+           const MemoryRegion& data,
            uint32_t size);
 
   static absl::StatusOr<std::unique_ptr<Resource>> Load(
-      const uint8_t* const base_ptr,
-      size_t size,
-      const InMemoryMapHeader& header,
       const InMemoryTypeItem& type_item,
+      const MemoryRegion& type_list_region,
+      const MemoryRegion& name_list_region,
+      const MemoryRegion& data_region,
       size_t index);
 
   ResID GetId() const { return id_; }
@@ -31,7 +32,7 @@ class Resource {
   const std::string& GetName() const { return name_; }
   uint8_t GetAttributes() const { return attributes_; }
   uint32_t GetSize() const { return size_; }
-  const uint8_t* const GetData() const { return data_ptr_; }
+  const MemoryRegion& GetData() const { return data_; }
 
   std::string GetTypeName() const;
 
@@ -47,7 +48,7 @@ class Resource {
   const ResType type_;
   const uint8_t attributes_;
   const std::string name_;
-  const uint8_t* const data_ptr_;
+  const MemoryRegion data_;
   const uint32_t size_;
 };
 

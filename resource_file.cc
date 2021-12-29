@@ -14,6 +14,7 @@
 #include "core/logging.h"
 #include "core/status_helpers.h"
 #include "in_memory_types.h"
+#include "memory_region.h"
 
 namespace rsrcloader {
 namespace {
@@ -23,25 +24,16 @@ absl::Status LoadFileError(absl::string_view file_path) {
       absl::StrCat("Error loading: '", file_path, "': ", strerror(errno)));
 }
 
-absl::StatusOr<InMemoryMapHeader> parseResourceHeader(const uint8_t* const data,
-                                                      size_t size) {
-  if (size < sizeof(InMemoryHeader)) {
-    return absl::InternalError("Overflow reading header");
-  }
-
-  InMemoryHeader header;
-  std::memcpy(&header, data, sizeof(InMemoryHeader));
+absl::StatusOr<InMemoryMapHeader> parseResourceHeader(
+    const MemoryRegion& base) {
+  InMemoryHeader header = TRY(base.Copy<InMemoryHeader>(/*offset=*/0));
   header.data_offset = be32toh(header.data_offset);
   header.data_length = be32toh(header.data_length);
   header.map_offset = be32toh(header.map_offset);
   header.map_length = be32toh(header.map_length);
 
-  if (size < header.map_offset + sizeof(InMemoryMapHeader)) {
-    return absl::InternalError("Overflow reading map header");
-  }
-
-  InMemoryMapHeader map_header;
-  std::memcpy(&map_header, data + header.map_offset, sizeof(InMemoryMapHeader));
+  InMemoryMapHeader map_header =
+      TRY(base.Copy<InMemoryMapHeader>(header.map_offset));
   map_header.header = std::move(header);
   map_header.file_attributes = be16toh(map_header.file_attributes);
   map_header.type_list_offset = be16toh(map_header.type_list_offset);
@@ -52,31 +44,31 @@ absl::StatusOr<InMemoryMapHeader> parseResourceHeader(const uint8_t* const data,
 
 absl::StatusOr<std::vector<std::unique_ptr<Resource>>> parseResources(
     const InMemoryMapHeader& header,
-    const uint8_t* const base_ptr,
-    size_t size) {
+    const MemoryRegion& data_region,
+    const MemoryRegion& map_region) {
   auto type_item_offset = [&](size_t index) {
     // The type list begins with a uint16_t count value immediately
     // preceding the type list items so account for it here
-    return header.header.map_offset + header.type_list_offset +
-           sizeof(InMemoryTypeItem) * index + sizeof(uint16_t);
+    return sizeof(InMemoryTypeItem) * index + sizeof(uint16_t);
   };
 
-  if (size < type_item_offset(header.type_list_count + 1)) {
-    return absl::InternalError("Overflow reading type list");
-  }
+  MemoryRegion type_list_region =
+      TRY(map_region.Create("TypeList", header.type_list_offset));
+  MemoryRegion name_list_region =
+      TRY(map_region.Create("NameList", header.name_list_offset));
 
   std::vector<std::unique_ptr<Resource>> resources;
   for (size_t item = 0; item <= header.type_list_count; ++item) {
-    InMemoryTypeItem type_item;
-    memcpy(&type_item, base_ptr + type_item_offset(item),
-           sizeof(InMemoryTypeItem));
+    InMemoryTypeItem type_item =
+        TRY(type_list_region.Copy<InMemoryTypeItem>(type_item_offset(item)));
+
     type_item.type = be32toh(type_item.type);
     type_item.count = be16toh(type_item.count);
     type_item.offset = be16toh(type_item.offset);
 
     for (size_t index = 0; index <= type_item.count; ++index) {
-      resources.push_back(
-          TRY(Resource::Load(base_ptr, size, header, type_item, index)));
+      resources.push_back(TRY(Resource::Load(
+          type_item, type_list_region, name_list_region, data_region, index)));
     }
   }
   return resources;
@@ -103,10 +95,15 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
     return LoadFileError(path);
   }
 
-  const uint8_t* const data = reinterpret_cast<uint8_t*>(mmap_ptr);
+  MemoryRegion base_region(mmap_ptr, size);
+  InMemoryMapHeader header = TRY(parseResourceHeader(base_region));
 
-  InMemoryMapHeader header = TRY(parseResourceHeader(data, size));
-  auto resources = TRY(parseResources(header, data, size));
+  MemoryRegion data_region =
+      TRY(base_region.Create("Data", header.header.data_offset));
+  MemoryRegion map_region =
+      TRY(base_region.Create("Map", header.header.map_offset));
+
+  auto resources = TRY(parseResources(header, data_region, map_region));
 
   return std::unique_ptr<ResourceFile>(
       new ResourceFile(std::move(header), std::move(resources)));
@@ -191,7 +188,7 @@ absl::Status ResourceFile::Save(const std::string& path) {
     for (const auto* resource : resourceMap[type]) {
       uint32_t size = htobe32(resource->GetSize());
       write(&size, sizeof(uint32_t));
-      write(resource->GetData(), resource->GetSize());
+      write(resource->GetData().raw_ptr(), resource->GetSize());
     }
   }
 
