@@ -48,16 +48,16 @@ absl::StatusOr<std::vector<std::unique_ptr<Resource>>> parseResources(
     const InMemoryMapHeader& header,
     const MemoryRegion& data_region,
     const MemoryRegion& map_region) {
+  MemoryRegion type_list_region =
+      TRY(map_region.Create("TypeList", header.type_list_offset));
+  MemoryRegion name_list_region =
+      TRY(map_region.Create("NameList", header.name_list_offset));
+
   auto type_item_offset = [&](size_t index) {
     // The type list begins with a uint16_t count value immediately
     // preceding the type list items so account for it here
     return sizeof(InMemoryTypeItem) * index + sizeof(uint16_t);
   };
-
-  MemoryRegion type_list_region =
-      TRY(map_region.Create("TypeList", header.type_list_offset));
-  MemoryRegion name_list_region =
-      TRY(map_region.Create("NameList", header.name_list_offset));
 
   std::vector<std::unique_ptr<Resource>> resources;
   for (size_t item = 0; item <= header.type_list_count; ++item) {

@@ -57,10 +57,11 @@ absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
       TRY(ParseNameFromTable(name_list_region, entry.name_offset),
           "Failed to parse name from table");
 
-  MemoryRegion resource_region = TRY(data_region.Create("Resource", offset));
-  uint32_t resource_size =
-      be32toh(TRY(resource_region.Copy<uint32_t>(/*offset=*/0),
-                  "Failed to parse resource size"));
+  uint32_t resource_size = be32toh(
+      TRY(data_region.Copy<uint32_t>(offset), "Failed to parse resource size"));
+
+  MemoryRegion resource_region =
+      TRY(data_region.Create("Resource", offset + sizeof(uint32_t)));
 
   return absl::make_unique<Resource>(entry.id, type_item.type, attributes, name,
                                      resource_region, resource_size);
