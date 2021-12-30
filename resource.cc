@@ -24,15 +24,6 @@ absl::StatusOr<std::string> ParseNameFromTable(
 
 }  // namespace
 
-std::string Resource::GetTypeName() const {
-  char type_name[4];
-  // The type value is actually a 4 byte string so we must reverse it
-  // back to big endian for the text to appear correctly
-  uint32_t reversed_type = htobe32(type_);
-  memcpy(type_name, &reversed_type, sizeof(uint32_t));
-  return type_name;
-}
-
 // static
 absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
     const InMemoryTypeItem& type_item,
@@ -105,8 +96,20 @@ Resource::Resource(uint16_t id,
       size_(size) {}
 
 std::ostream& operator<<(std::ostream& out, const Resource& value) {
-  return out << "Resource '" << value.GetTypeName() << "' (" << std::setw(5)
-             << value.id_ << ") is " << value.size_ << " bytes";
+  out << "Resource(id: " << value.GetId();
+  if (!value.GetName().empty()) {
+    out << ", name: '" << value.GetName() << "'";
+  }
+  return out << ") is " << value.GetSize() << " bytes";
+}
+
+std::string GetTypeName(ResType theType) {
+  char type_name[4];
+  // The type value is actually a 4 byte string so we must reverse it
+  // back to big endian for the text to appear correctly
+  uint32_t reversed_type = htobe32(theType);
+  memcpy(type_name, &reversed_type, sizeof(uint32_t));
+  return type_name;
 }
 
 }  // namespace rsrcloader

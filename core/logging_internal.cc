@@ -39,7 +39,7 @@ LogMessage::LogMessage(const char* filename,
 }
 
 LogMessage::~LogMessage() {
-  printf("%s\n", stream_.str().c_str());
+  fprintf(stderr, "%s\n", stream_.str().c_str());
   if (severity_ == FATAL) {
     abort();
   }

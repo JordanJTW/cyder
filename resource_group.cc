@@ -59,7 +59,11 @@ Resource* ResourceGroup::FindById(ResID theId) const {
 }
 
 std::ostream& operator<<(std::ostream& out, const ResourceGroup& value) {
-  return out;
+  out << "Group(type: '" << GetTypeName(value.GetType()) << "'):\n";
+  for (const auto& resource : value.resources_) {
+    out << "  + " << *resource << "\n";
+  }
+  return out << "\n";
 }
 
 }  // namespace rsrcloader

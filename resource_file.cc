@@ -183,6 +183,9 @@ ResourceFile::ResourceFile(
     : resource_groups_(std::move(resource_groups)) {}
 
 std::ostream& operator<<(std::ostream& out, const ResourceFile& value) {
+  for (const auto& group : value.resource_groups_) {
+    out << *group;
+  }
   return out;
 }
 

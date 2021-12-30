@@ -40,8 +40,6 @@ class Resource {
   uint32_t GetSize() const { return size_; }
   const MemoryRegion& GetData() const { return data_; }
 
-  std::string GetTypeName() const;
-
  protected:
   // Disallow copy and assign:
   Resource(const Resource&) = delete;
@@ -59,5 +57,7 @@ class Resource {
 };
 
 std::ostream& operator<<(std::ostream&, const Resource&);
+
+std::string GetTypeName(ResType);
 
 }  // namespace rsrcloader

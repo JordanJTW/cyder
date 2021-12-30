@@ -10,6 +10,7 @@ using namespace rsrcloader;
 
 absl::Status StatusMain(const std::string& filename) {
   auto file = TRY(ResourceFile::Load(filename));
+  std::cout << *file;
   RETURN_IF_ERROR(file->Save("/tmp/output.rsrc"));
   return absl::OkStatus();
 }
