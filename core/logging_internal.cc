@@ -1,5 +1,7 @@
-#include "logging.h"
 #include "logging_internal.h"
+
+#include "absl/strings/string_view.h"
+#include "logging.h"
 
 namespace core {
 namespace logging {
@@ -22,14 +24,18 @@ const std::string GetName(LogSeverity severity) {
 #undef NAME_STATEMENT
 }
 
+absl::string_view GetFileName(absl::string_view filepath) {
+  return filepath.substr(filepath.rfind('/') + 1);
+}
+
 }  // namespace
 
 LogMessage::LogMessage(const char* filename,
                        int line_number,
                        LogSeverity severity)
     : filename_(filename), line_number_(line_number), severity_(severity) {
-  stream_ << GetName(severity_) << ":" << filename_ << "(" << line_number_
-          << "): ";
+  stream_ << GetName(severity_) << ":" << GetFileName(filename_) << "("
+          << line_number_ << "): ";
 }
 
 LogMessage::~LogMessage() {
