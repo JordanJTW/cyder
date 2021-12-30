@@ -17,7 +17,7 @@ class ResourceFile {
  public:
   static absl::StatusOr<std::unique_ptr<ResourceFile>> Load(const std::string&);
 
-  absl::Status Save(const std::string&);
+  absl::Status Save(const std::string&) const;
 
   Resource* FindByTypeAndId(ResType, ResID);
 
@@ -27,10 +27,10 @@ class ResourceFile {
   ResourceFile& operator=(ResourceFile&) = delete;
 
  private:
-  ResourceFile(std::vector<std::unique_ptr<ResourceGroup>> resource_groups);
-
   friend std::ostream& operator<<(std::ostream&, const ResourceFile&);
 
+  ResourceFile(std::vector<std::unique_ptr<ResourceGroup>> resource_groups);
+  
   std::vector<std::unique_ptr<ResourceGroup>> resource_groups_;
 };
 

@@ -22,9 +22,13 @@ class ResourceGroup {
       const MemoryRegion& data_region,
       size_t type_item_index);
 
+  InMemoryTypeItem Save(size_t reference_offset) const;
+
   Resource* FindById(ResID) const;
 
   ResType GetType() const { return type_item_.type; }
+  size_t GetSize() const { return resources_.size(); }
+  size_t GetCount() const { return GetSize() - 1; }
 
   const std::vector<std::unique_ptr<Resource>>& GetResources() const {
     return resources_;

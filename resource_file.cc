@@ -87,105 +87,83 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
       new ResourceFile(std::move(resource_groups)));
 }
 
-absl::Status ResourceFile::Save(const std::string& path) {
-  uint32_t total_data_size = 0;
+absl::Status ResourceFile::Save(const std::string& path) const {
+  std::vector<InMemoryTypeItem> type_item_list;
+  std::vector<InMemoryReferenceEntry> reference_entry_list;
+  std::vector<std::string> name_entry_list;
 
+  // Must account for the type list count (a uint16_t) and type items:
+  size_t reference_offset =
+      sizeof(uint16_t) + resource_groups_.size() * sizeof(InMemoryTypeItem);
+
+  size_t name_offset = 0, data_offset = 0;
   for (const auto& group : resource_groups_) {
+    type_item_list.push_back(group->Save(reference_offset));
     for (const auto& resource : group->GetResources()) {
-      total_data_size += sizeof(uint32_t) + resource->GetSize();
+      reference_entry_list.push_back(
+          resource->Save(name_entry_list, name_offset, data_offset));
+      reference_offset += sizeof(InMemoryReferenceEntry);
     }
   }
 
-  std::vector<InMemoryTypeItem> type_list;
-  std::vector<InMemoryReferenceEntry> ref_list;
+  // The header occupies 16 bytes + 240 bytes of reserved space followed
+  // by the data and map (header, type list, reference list, name list):
+  const size_t file_header_size = 0x100;
+  const uint32_t total_data_size = data_offset;
+  const uint32_t total_map_size =
+      sizeof(InMemoryMapHeader) +
+      sizeof(InMemoryTypeItem) * type_item_list.size() +
+      sizeof(InMemoryReferenceEntry) * reference_entry_list.size() +
+      name_offset;
+  const size_t total_size = file_header_size + total_data_size + total_map_size;
 
-  uint16_t reference_offset =
-      resource_groups_.size() * sizeof(InMemoryTypeItem) + sizeof(uint16_t);
-  uint32_t data_offset = 0;
+  InMemoryHeader header;
+  header.data_offset = htobe32(file_header_size);
+  header.map_offset = htobe32(file_header_size + total_data_size);
+  header.data_length = htobe32(total_data_size);
+  header.map_length = htobe32(total_map_size);
 
-  std::vector<std::string> names;
-  uint16_t name_offset = 0;
-  auto calculate_name_offset = [&](const std::string& name) -> uint16_t {
-    if (name.empty()) {
-      return 0xFFFF;
-    }
+  InMemoryMapHeader map_header;
+  map_header.type_list_offset =
+      htobe16(sizeof(InMemoryMapHeader) - sizeof(uint16_t));
+  map_header.type_list_count = htobe16(type_item_list.size() - 1);
+  map_header.name_list_offset = htobe16(total_map_size - name_offset);
 
-    names.push_back(name);
-    uint16_t current_name_offset = name_offset;
-    name_offset += sizeof(uint8_t) + name.size();
-    return htobe16(current_name_offset);
-  };
-
-  for (const auto& group : resource_groups_) {
-    type_list.push_back(InMemoryTypeItem{.type = htobe32(group->GetType()),
-                                         .count = htobe16(static_cast<uint16_t>(
-                                             group->GetResources().size() - 1)),
-                                         .offset = htobe16(reference_offset)});
-    reference_offset +=
-        group->GetResources().size() * sizeof(InMemoryReferenceEntry);
-    for (const auto& resource : group->GetResources()) {
-      ref_list.push_back(InMemoryReferenceEntry{
-          .id = htobe16(resource->GetId()),
-          .name_offset = calculate_name_offset(resource->GetName()),
-          .offset = htobe32((resource->GetAttributes() << 24) |
-                            (data_offset & 0x00FFFFFF)),
-          .handle = 0});
-      data_offset += sizeof(uint32_t) + resource->GetSize();
-    }
-  }
-
-  uint32_t total_map_size =
-      sizeof(InMemoryMapHeader) + sizeof(InMemoryTypeItem) * type_list.size() +
-      sizeof(InMemoryReferenceEntry) * ref_list.size() + name_offset;
-
-  size_t output_length = 0x100 + total_data_size + total_map_size;
-  uint8_t output[output_length];
-
+  // Begin writing out bytes of data:
+  uint8_t output[total_size];
   size_t write_offset = 0;
-  auto write = [&](const void* data, size_t length) {
+  auto write_sequential = [&](const void* data, size_t length) {
     memcpy(output + write_offset, data, length);
     write_offset += length;
   };
 
-  InMemoryHeader header = {.data_offset = htobe32(0x100),
-                           .map_offset = htobe32(0x100 + total_data_size),
-                           .data_length = htobe32(total_data_size),
-                           .map_length = htobe32(total_map_size)};
-  write(&header, sizeof(InMemoryHeader));
+  write_sequential(&header, sizeof(InMemoryHeader));
   write_offset = 0x100;
 
   for (const auto& group : resource_groups_) {
     for (const auto& resource : group->GetResources()) {
       uint32_t size = htobe32(resource->GetSize());
-      write(&size, sizeof(uint32_t));
-      write(resource->GetData().raw_ptr(), resource->GetSize());
+      write_sequential(&size, sizeof(uint32_t));
+      write_sequential(resource->GetData().raw_ptr(), resource->GetSize());
     }
   }
 
-  InMemoryMapHeader map_header;
-  map_header.type_list_offset =
-      htobe16(sizeof(InMemoryMapHeader) - sizeof(uint16_t));
-  map_header.type_list_count = htobe16(type_list.size() - 1);
-  map_header.name_list_offset = htobe16(total_map_size - name_offset);
-  write(&map_header, sizeof(InMemoryMapHeader));
-
-  for (const auto& item : type_list) {
-    write(&item, sizeof(InMemoryTypeItem));
+  write_sequential(&map_header, sizeof(InMemoryMapHeader));
+  for (const auto& item : type_item_list) {
+    write_sequential(&item, sizeof(InMemoryTypeItem));
   }
-  for (const auto& entry : ref_list) {
-    write(&entry, sizeof(InMemoryReferenceEntry));
+  for (const auto& entry : reference_entry_list) {
+    write_sequential(&entry, sizeof(InMemoryReferenceEntry));
   }
-
-  for (const auto& name : names) {
+  for (const auto& name : name_entry_list) {
     uint8_t size = name.size();
-    write(&size, sizeof(uint8_t));
-    write(name.c_str(), size);
+    write_sequential(&size, sizeof(uint8_t));
+    write_sequential(name.c_str(), size);
   }
 
-  CHECK_EQ(write_offset, output_length);
-
+  CHECK_EQ(write_offset, total_size);
   FILE* file = fopen(path.c_str(), "wb");
-  fwrite(output, 1, output_length, file);
+  fwrite(output, 1, total_size, file);
   fclose(file);
 
   return absl::OkStatus();
