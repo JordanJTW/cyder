@@ -21,6 +21,8 @@ class ResourceFile {
 
   Resource* FindByTypeAndId(ResType, ResID);
 
+  ResourceGroup* FindGroupByType(ResType theType);
+
  protected:
   // Disallow copy and assign:
   ResourceFile(const ResourceFile&) = delete;

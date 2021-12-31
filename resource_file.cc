@@ -178,6 +178,15 @@ Resource* ResourceFile::FindByTypeAndId(ResType theType, ResID theId) {
   return nullptr;
 }
 
+ResourceGroup* ResourceFile::FindGroupByType(ResType theType) {
+  for (const auto& group : resource_groups_) {
+    if (group->GetType() == theType) {
+      return group.get();
+    }
+  }
+  return nullptr;
+}
+
 ResourceFile::ResourceFile(
     std::vector<std::unique_ptr<ResourceGroup>> resource_groups)
     : resource_groups_(std::move(resource_groups)) {}
