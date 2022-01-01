@@ -14,13 +14,10 @@ set(ABSL_PROPAGATE_CXX_STD ON)
 add_subdirectory(third_party/abseil-cpp)
 include_directories(third_party/abseil-cpp)
 
+include_directories(.)
+
+add_subdirectory(bin)
 add_subdirectory(core)
 add_executable(rsrcloader main.cc resource.cc resource_file.cc resource_group.cc)
 target_link_libraries(rsrcloader CORE_LIB)
 target_link_libraries(rsrcloader absl::base absl::statusor)
-
-add_executable(updateinfo updateinfo.cc)
-target_link_libraries(updateinfo CORE_LIB)
-
-add_executable(colorswatch colorswatch.cc)
-target_link_libraries(colorswatch CORE_LIB)
