@@ -66,19 +66,20 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
   }
 
   MemoryRegion base_region(mmap_ptr, size);
-  InMemoryMapHeader header = TRY(parseResourceHeader(base_region));
+  InMemoryMapHeader map_header = TRY(parseResourceHeader(base_region));
 
+  const InMemoryHeader& header = map_header.header;
   MemoryRegion data_region =
-      TRY(base_region.Create("Data", header.header.data_offset));
+      TRY(base_region.Create("Data", header.data_offset, header.data_length));
   MemoryRegion map_region =
-      TRY(base_region.Create("Map", header.header.map_offset));
+      TRY(base_region.Create("Map", header.map_offset, header.map_length));
   MemoryRegion type_list_region =
-      TRY(map_region.Create("TypeList", header.type_list_offset));
+      TRY(map_region.Create("TypeList", map_header.type_list_offset));
   MemoryRegion name_list_region =
-      TRY(map_region.Create("NameList", header.name_list_offset));
+      TRY(map_region.Create("NameList", map_header.name_list_offset));
 
   std::vector<std::unique_ptr<ResourceGroup>> resource_groups;
-  for (size_t item = 0; item <= header.type_list_count; ++item) {
+  for (size_t item = 0; item <= map_header.type_list_count; ++item) {
     resource_groups.push_back(TRY(ResourceGroup::Load(
         type_list_region, name_list_region, data_region, item)));
   }

@@ -51,8 +51,8 @@ absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
   uint32_t resource_size = be32toh(
       TRY(data_region.Copy<uint32_t>(offset), "Failed to parse resource size"));
 
-  MemoryRegion resource_region =
-      TRY(data_region.Create("Resource", offset + sizeof(uint32_t)));
+  MemoryRegion resource_region = TRY(
+      data_region.Create("Resource", offset + sizeof(uint32_t), resource_size));
 
   return absl::make_unique<Resource>(entry.id, type_item.type, attributes, name,
                                      resource_region, resource_size);
