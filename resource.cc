@@ -100,7 +100,8 @@ std::ostream& operator<<(std::ostream& out, const Resource& value) {
   if (!value.GetName().empty()) {
     out << ", name: '" << value.GetName() << "'";
   }
-  return out << ") is " << value.GetSize() << " bytes";
+  out << ") is " << value.GetSize() << " bytes\n";
+  return out << value.GetData();
 }
 
 std::string GetTypeName(ResType theType) {

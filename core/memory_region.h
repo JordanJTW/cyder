@@ -26,6 +26,7 @@ class MemoryRegion final {
   absl::Status Copy(void* dest, size_t offset, size_t length) const;
 
   const uint8_t* const raw_ptr() const { return data_; }
+  size_t base_offset() const { return base_offset_; }
   size_t size() const { return size_; }
 
  private:
@@ -42,5 +43,7 @@ class MemoryRegion final {
   const size_t base_offset_;
   const size_t maximum_size_;
 };
+
+std::ostream& operator<<(std::ostream&, const MemoryRegion&);
 
 }  // namespace rsrcloader
