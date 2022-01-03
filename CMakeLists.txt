@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(rsrcloader VERSION 0.0.0 LANGUAGES CXX)
+project(rsrcloader VERSION 0.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,7 +19,8 @@ include_directories(.)
 
 add_subdirectory(bin)
 add_subdirectory(core)
+add_subdirectory(third_party/musashi)
 
 add_executable(rsrcloader main.cc resource.cc resource_file.cc resource_group.cc)
-target_link_libraries(rsrcloader CORE_LIB)
+target_link_libraries(rsrcloader CORE_LIB MUSASHI_LIB)
 target_link_libraries(rsrcloader absl::base absl::statusor)
