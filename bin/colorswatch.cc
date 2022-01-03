@@ -4,7 +4,7 @@
 #include "absl/strings/str_format.h"
 #include "color_palette.h"
 
-const char* HTML_TEMPLATE_HEADER = R"(
+constexpr char HTML_TEMPLATE_HEADER[] = R"(
 <head>
   <style>
     .header {
@@ -23,17 +23,17 @@ const char* HTML_TEMPLATE_HEADER = R"(
 <body>
 )";
 
-const char* HTML_TEMPLATE_SECTION_HEADER = R"(
+constexpr char HTML_TEMPLATE_SECTION_HEADER[] = R"(
   <div class="header">%s</div>
   <div>
 )";
 
-const char* HTML_TEMPLATE_SWATCH = R"(
+constexpr char HTML_TEMPLATE_SWATCH[] = R"(
     <div class="swatch", style="background-color: rgb(%d, %d, %d);"></div>
 )";
 
-const char* HTML_TEMPLATE_SECTION_FOOTER = "</div>";
-const char* HTML_TEMPLATE_FOOTER = "</body>";
+constexpr char HTML_TEMPLATE_SECTION_FOOTER[] = "</div>";
+constexpr char HTML_TEMPLATE_FOOTER[] = "</body>";
 
 void GenerateSection(const std::string& name,
                      std::tuple<int, int, int> (*colorAtIndex)(uint8_t),

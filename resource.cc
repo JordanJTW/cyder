@@ -110,7 +110,7 @@ std::string GetTypeName(ResType theType) {
   // back to big endian for the text to appear correctly
   uint32_t reversed_type = htobe32(theType);
   memcpy(type_name, &reversed_type, sizeof(uint32_t));
-  return type_name;
+  return std::string(type_name, 4);
 }
 
 }  // namespace rsrcloader
