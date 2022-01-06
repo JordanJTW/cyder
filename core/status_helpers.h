@@ -6,7 +6,7 @@
 #include "logging.h"
 #include "macro_helpers.h"
 
-// Useful helpers for workign with absl::Status/absl::StatusOr.
+// Useful helpers for working with absl::Status/absl::StatusOr.
 //
 // Inspired by Serenity OS:
 //  https://github.com/SerenityOS/serenity/blob/master/AK/Try.h
@@ -45,6 +45,15 @@
       return std::move(_status_or).status();    \
     }                                           \
     std::move(_status_or).value();              \
+  })
+
+// MUST() works similarly to TRY() but CHECK() fails if the returned Status
+// is not OK. This will cause crashes so care should be taken when using it.
+#define MUST(expr)                                            \
+  ({                                                          \
+    auto _status_or = (expr);                                 \
+    CHECK(_status_or.ok()) << std::move(_status_or).status(); \
+    std::move(_status_or).value();                            \
   })
 
 // If (expr) results in an error (not absl::OkStatus()) then it will return
