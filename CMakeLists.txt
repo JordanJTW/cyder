@@ -21,6 +21,10 @@ add_subdirectory(bin)
 add_subdirectory(core)
 add_subdirectory(third_party/musashi)
 
-add_executable(rsrcloader main.cc resource.cc resource_file.cc resource_group.cc)
-target_link_libraries(rsrcloader CORE_LIB MUSASHI_LIB)
-target_link_libraries(rsrcloader absl::base absl::statusor)
+add_library(rsrcfork resource_file.cc resource_group.cc resource.cc)
+target_link_libraries(rsrcfork CORE_LIB)
+target_link_libraries(rsrcfork absl::statusor)
+
+add_executable(rsrcloader main.cc)
+target_link_libraries(rsrcloader CORE_LIB MUSASHI_LIB rsrcfork)
+target_link_libraries(rsrcloader absl::statusor)
