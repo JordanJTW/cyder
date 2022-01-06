@@ -13,6 +13,10 @@ MemoryRegion::MemoryRegion(void* data, size_t size)
                    /*maximum_size=*/size,
                    /*base_offset=*/0) {}
 
+absl::StatusOr<MemoryRegion> MemoryRegion::Create(size_t offset) const {
+  return Create(/*name=*/"", offset);
+}
+
 absl::StatusOr<MemoryRegion> MemoryRegion::Create(std::string name,
                                                   size_t offset) const {
   return Create(std::move(name), offset, 0);
@@ -31,6 +35,7 @@ absl::StatusOr<MemoryRegion> MemoryRegion::Create(std::string name,
     LOG(WARNING) << "Offset [" << offset << ":+" << size << "] is outside "
                  << size_;
   }
+  size = size == 0 ? size_ - offset : size;
   return MemoryRegion(std::move(name), data_ + offset, size,
                       maximum_size_ - offset, base_offset_ + offset);
 }

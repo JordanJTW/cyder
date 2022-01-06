@@ -13,6 +13,7 @@ class MemoryRegion final {
  public:
   MemoryRegion(void* data, size_t size);
 
+  absl::StatusOr<MemoryRegion> Create(size_t offset) const;
   absl::StatusOr<MemoryRegion> Create(std::string name, size_t offset) const;
   absl::StatusOr<MemoryRegion> Create(std::string name, size_t offset, size_t size) const;
 
@@ -40,8 +41,8 @@ class MemoryRegion final {
   const uint8_t* const data_;
   const size_t size_;
 
-  const size_t base_offset_;
   const size_t maximum_size_;
+  const size_t base_offset_;
 };
 
 std::ostream& operator<<(std::ostream&, const MemoryRegion&);
