@@ -11,3 +11,4 @@ add_custom_command(
 )
 
 add_library(MUSASHI_LIB src/m68kcpu.c src/m68kdasm.c m68kops.c src/softfloat/softfloat.c)
+target_compile_definitions(MUSASHI_LIB PRIVATE -DMUSASHI_CNF="${CMAKE_CURRENT_SOURCE_DIR}/m68kconf.h")

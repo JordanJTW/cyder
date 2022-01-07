@@ -19,6 +19,7 @@ include_directories(.)
 
 add_subdirectory(bin)
 add_subdirectory(core)
+add_subdirectory(emu)
 add_subdirectory(third_party/musashi)
 
 add_library(rsrcfork resource_file.cc resource_group.cc resource.cc)
