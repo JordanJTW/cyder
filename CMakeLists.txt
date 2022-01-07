@@ -26,5 +26,5 @@ target_link_libraries(rsrcfork CORE_LIB)
 target_link_libraries(rsrcfork absl::statusor)
 
 add_executable(rsrcloader main.cc)
-target_link_libraries(rsrcloader CORE_LIB MUSASHI_LIB rsrcfork)
-target_link_libraries(rsrcloader absl::statusor)
+target_link_libraries(rsrcloader CORE_LIB MAIN_LIB MUSASHI_LIB rsrcfork)
+target_link_libraries(rsrcloader absl::flags absl::statusor)

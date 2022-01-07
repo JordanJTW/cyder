@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstdint>
 
 #include "third_party/abseil-cpp/absl/strings/string_view.h"

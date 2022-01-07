@@ -6,6 +6,7 @@
 #include "color_palette.h"
 #include "core/logging.h"
 #include "core/status_helpers.h"
+#include "core/status_main.h"
 #include "resource_file.h"
 
 using namespace rsrcloader;
@@ -76,8 +77,9 @@ void ParseIcon4bit(const std::string& name,
   }
 }
 
-absl::Status StatusMain(const std::string& filename) {
-  auto file = TRY(ResourceFile::Load(filename));
+absl::Status Main(const core::Args& args) {
+  auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
+
   if (ResourceGroup* group = file->FindGroupByType('ICON')) {
     for (const auto& resource : group->GetResources()) {
       ParseIcon(absl::StrCat("icon.", resource->GetId()),
@@ -125,13 +127,4 @@ absl::Status StatusMain(const std::string& filename) {
   std::cout << *file;
   RETURN_IF_ERROR(file->Save("/tmp/output.rsrc"));
   return absl::OkStatus();
-}
-
-int main(int argc, const char** argv) {
-  auto status = StatusMain(argv[1]);
-  if (!status.ok()) {
-    LOG(ERROR) << "Error: " << status.message();
-    return -1;
-  }
-  return 0;
 }

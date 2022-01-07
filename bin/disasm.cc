@@ -1,5 +1,6 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
+#include "core/status_main.h"
 #include "disasm_trap.h"
 #include "resource_file.h"
 #include "third_party/musashi/src/m68k.h"
@@ -105,9 +106,8 @@ absl::Status ParseCode(const Resource& resource) {
   return ParseSegment(resource.GetId(), TRY(data.Create(0x04)));
 }
 
-absl::Status StatusMain(const std::string& filename) {
-  auto file = TRY(ResourceFile::Load(filename));
-
+absl::Status Main(const core::Args& args) {
+  auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
   if (ResourceGroup* code = file->FindGroupByType('CODE')) {
     if (Resource* resource = code->FindById(1)) {
       return ParseCode(*resource);
@@ -117,13 +117,4 @@ absl::Status StatusMain(const std::string& filename) {
   }
 
   return absl::NotFoundError("Could not find any 'CODE' resource");
-}
-
-int main(int argc, const char** argv) {
-  auto status = StatusMain(argv[1]);
-  if (!status.ok()) {
-    LOG(ERROR) << "Error: " << status.message();
-    return -1;
-  }
-  return 0;
 }
