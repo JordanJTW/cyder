@@ -15,7 +15,7 @@ class MemoryRegion final {
  public:
   // Constructs a "base" region to access [`data` : `data` + `size`)
   // `size` is the maximum size that any sub-region can occupy
-  MemoryRegion(void* data, size_t size);
+  MemoryRegion(void* const data, size_t size);
 
   // Creates a new MemoryRegion representing a subset of the parent region from
   // [`offset`, `parent size`).
@@ -37,6 +37,10 @@ class MemoryRegion final {
                                       size_t offset,
                                       size_t size) const;
 
+  // Copies `length` bytes from `offset` to `dest`. Returns
+  // absl::OutOfRangeError if `offset` + `length` overflows the "base" region.
+  absl::Status Copy(void* dest, size_t offset, size_t length) const;
+
   template <typename T>
   absl::StatusOr<T> Copy(size_t offset) const {
     T value;
@@ -44,9 +48,13 @@ class MemoryRegion final {
     return std::move(value);
   }
 
-  // Copies `length` bytes from `offset` to `dest`. Returns
-  // absl::OutOfRangeError if `offset` + `length` overflows the "base" region.
-  absl::Status Copy(void* dest, size_t offset, size_t length) const;
+  // Writes `length` bytes from `src` to `offset`
+  absl::Status Write(void* src, size_t offset, size_t length);
+
+  template <typename T>
+  absl::StatusOr<T> Write(size_t offset, T data) {
+    return Write(&data, offset, sizeof(T));
+  }
 
   // The offset of this region within "base"
   size_t base_offset() const { return base_offset_; }
@@ -57,13 +65,17 @@ class MemoryRegion final {
 
  private:
   MemoryRegion(std::string name,
-               const uint8_t* const data,
+               uint8_t* const data,
                size_t size,
                size_t maximum_size,
                size_t base_offset);
 
+  absl::Status CheckSafeAccess(const std::string& access_type,
+                               size_t offset,
+                               size_t size) const;
+
   const std::string name_;
-  const uint8_t* const data_;
+  uint8_t* const data_;
   const size_t size_;
 
   const size_t maximum_size_;

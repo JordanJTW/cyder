@@ -4,11 +4,14 @@
 #include <cctype>
 #include <iomanip>
 
+#define CHECK_SAFE_ACCESS(offset, size) \
+  RETURN_IF_ERROR(CheckSafeAccess(__func__, offset, size))
+
 namespace core {
 
-MemoryRegion::MemoryRegion(void* data, size_t size)
+MemoryRegion::MemoryRegion(void* const data, size_t size)
     : MemoryRegion("Base",
-                   reinterpret_cast<const uint8_t* const>(data),
+                   reinterpret_cast<uint8_t* const>(data),
                    size,
                    /*maximum_size=*/size,
                    /*base_offset=*/0) {}
@@ -19,23 +22,14 @@ absl::StatusOr<MemoryRegion> MemoryRegion::Create(size_t offset) const {
 
 absl::StatusOr<MemoryRegion> MemoryRegion::Create(std::string name,
                                                   size_t offset) const {
-  return Create(std::move(name), offset, 0);
+  return Create(std::move(name), offset, std::max(size_ - offset, 0ul));
 }
 
 absl::StatusOr<MemoryRegion> MemoryRegion::Create(std::string name,
                                                   size_t offset,
                                                   size_t size) const {
-  // Prevent creating a region which overflows the base data
-  if (maximum_size_ < offset + size) {
-    return absl::OutOfRangeError(absl::StrCat("Offset [", offset, ":+", size,
-                                              "] overflows ", maximum_size_));
-  }
-  // Being outside of the parent is undesirable but not a hard fault
-  if (size_ && size_ < offset + size) {
-    LOG(WARNING) << "Offset [" << offset << ":+" << size << "] is outside "
-                 << size_;
-  }
-  size = size == 0 ? size_ - offset : size;
+  CHECK_SAFE_ACCESS(offset, size);
+
   return MemoryRegion(std::move(name), data_ + offset, size,
                       maximum_size_ - offset, base_offset_ + offset);
 }
@@ -43,19 +37,36 @@ absl::StatusOr<MemoryRegion> MemoryRegion::Create(std::string name,
 absl::Status MemoryRegion::Copy(void* dest,
                                 size_t offset,
                                 size_t length) const {
-  if (maximum_size_ < offset + length) {
-    return absl::OutOfRangeError(absl::StrCat("Overflow"));
-  }
-  if (size_ && size_ < offset + length) {
-    LOG(WARNING) << "Reading " << (offset + length - size_)
-                 << " bytes outside of '" << name_ << "' region";
-  }
+  CHECK_SAFE_ACCESS(offset, length);
+
   memcpy(dest, data_ + offset, length);
   return absl::OkStatus();
 }
 
+absl::Status MemoryRegion::Write(void* src, size_t offset, size_t length) {
+  CHECK_SAFE_ACCESS(offset, length);
+
+  memcpy(data_ + offset, src, length);
+  return absl::OkStatus();
+}
+
+absl::Status MemoryRegion::CheckSafeAccess(const std::string& access_type,
+                                           size_t offset,
+                                           size_t size) const {
+  // Prevent access which would overflow the base data (segfault)
+  if (maximum_size_ < offset + size) {
+    return absl::OutOfRangeError(absl::StrCat("Overflow"));
+  }
+  // Warn but do not _prevent_ accesses outside preferred size
+  if (size_ && size_ < offset + size) {
+    LOG(WARNING) << access_type << " " << (offset + size - size_)
+                 << " bytes outside of '" << name_ << "' region";
+  }
+  return absl::OkStatus();
+}
+
 MemoryRegion::MemoryRegion(std::string name,
-                           const uint8_t* const data,
+                           uint8_t* const data,
                            size_t size,
                            size_t maximum_size,
                            size_t base_offset)
