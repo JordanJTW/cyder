@@ -25,7 +25,7 @@ absl::Status LoadFileError(absl::string_view file_path) {
 }
 
 absl::StatusOr<InMemoryMapHeader> parseResourceHeader(
-    const MemoryRegion& base) {
+    const core::MemoryRegion& base) {
   InMemoryHeader header =
       TRY(base.Copy<InMemoryHeader>(/*offset=*/0), "Failed to parse header");
   header.data_offset = be32toh(header.data_offset);
@@ -65,17 +65,17 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
     return LoadFileError(path);
   }
 
-  MemoryRegion base_region(mmap_ptr, size);
+  core::MemoryRegion base_region(mmap_ptr, size);
   InMemoryMapHeader map_header = TRY(parseResourceHeader(base_region));
 
   const InMemoryHeader& header = map_header.header;
-  MemoryRegion data_region =
+  core::MemoryRegion data_region =
       TRY(base_region.Create("Data", header.data_offset, header.data_length));
-  MemoryRegion map_region =
+  core::MemoryRegion map_region =
       TRY(base_region.Create("Map", header.map_offset, header.map_length));
-  MemoryRegion type_list_region =
+  core::MemoryRegion type_list_region =
       TRY(map_region.Create("TypeList", map_header.type_list_offset));
-  MemoryRegion name_list_region =
+  core::MemoryRegion name_list_region =
       TRY(map_region.Create("NameList", map_header.name_list_offset));
 
   std::vector<std::unique_ptr<ResourceGroup>> resource_groups;

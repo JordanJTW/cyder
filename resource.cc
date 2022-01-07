@@ -10,7 +10,7 @@ namespace rsrcloader {
 namespace {
 
 absl::StatusOr<std::string> ParseNameFromTable(
-    const MemoryRegion& name_list_region,
+    const core::MemoryRegion& name_list_region,
     uint16_t name_offset) {
   if (name_offset == 0xFFFF) {
     return std::string{};
@@ -27,9 +27,9 @@ absl::StatusOr<std::string> ParseNameFromTable(
 // static
 absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
     const InMemoryTypeItem& type_item,
-    const MemoryRegion& type_list_region,
-    const MemoryRegion& name_list_region,
-    const MemoryRegion& data_region,
+    const core::MemoryRegion& type_list_region,
+    const core::MemoryRegion& name_list_region,
+    const core::MemoryRegion& data_region,
     size_t index) {
   InMemoryReferenceEntry entry =
       TRY(type_list_region.Copy<InMemoryReferenceEntry>(
@@ -51,7 +51,7 @@ absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
   uint32_t resource_size = be32toh(
       TRY(data_region.Copy<uint32_t>(offset), "Failed to parse resource size"));
 
-  MemoryRegion resource_region = TRY(
+  core::MemoryRegion resource_region = TRY(
       data_region.Create("Resource", offset + sizeof(uint32_t), resource_size));
 
   return absl::make_unique<Resource>(entry.id, type_item.type, attributes, name,
@@ -86,7 +86,7 @@ Resource::Resource(uint16_t id,
                    uint32_t type,
                    uint8_t attributes,
                    std::string name,
-                   const MemoryRegion& data,
+                   const core::MemoryRegion& data,
                    uint32_t size)
     : id_(id),
       type_(type),

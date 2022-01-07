@@ -1,5 +1,8 @@
 #pragma once
 
+// Cross-platform (Linux/macOS currently) header for accessing
+// endian converter functions.
+
 #ifdef __APPLE__
 
 #include <libkern/OSByteOrder.h>

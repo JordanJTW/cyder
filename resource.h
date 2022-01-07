@@ -19,14 +19,14 @@ class Resource {
            ResType type,
            uint8_t attributes,
            std::string name,
-           const MemoryRegion& data,
+           const core::MemoryRegion& data,
            uint32_t size);
 
   static absl::StatusOr<std::unique_ptr<Resource>> Load(
       const InMemoryTypeItem& type_item,
-      const MemoryRegion& type_list_region,
-      const MemoryRegion& name_list_region,
-      const MemoryRegion& data_region,
+      const core::MemoryRegion& type_list_region,
+      const core::MemoryRegion& name_list_region,
+      const core::MemoryRegion& data_region,
       size_t index);
 
   InMemoryReferenceEntry Save(std::vector<std::string>& name_entry_list,
@@ -38,7 +38,7 @@ class Resource {
   const std::string& GetName() const { return name_; }
   uint8_t GetAttributes() const { return attributes_; }
   uint32_t GetSize() const { return size_; }
-  const MemoryRegion& GetData() const { return data_; }
+  const core::MemoryRegion& GetData() const { return data_; }
 
  protected:
   // Disallow copy and assign:
@@ -52,7 +52,7 @@ class Resource {
   const ResType type_;
   const uint8_t attributes_;
   const std::string name_;
-  const MemoryRegion data_;
+  const core::MemoryRegion data_;
   const uint32_t size_;
 };
 

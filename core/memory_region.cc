@@ -4,7 +4,7 @@
 #include <cctype>
 #include <iomanip>
 
-namespace rsrcloader {
+namespace core {
 
 MemoryRegion::MemoryRegion(void* data, size_t size)
     : MemoryRegion("Base",
@@ -102,4 +102,4 @@ std::ostream& operator<<(std::ostream& os, const MemoryRegion& region) {
   return os << std::dec;
 }
 
-}  // namespace rsrcloader
+}  // namespace core

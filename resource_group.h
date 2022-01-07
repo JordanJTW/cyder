@@ -17,9 +17,9 @@ class ResourceGroup {
   ResourceGroup(InMemoryTypeItem, std::vector<std::unique_ptr<Resource>>);
 
   static absl::StatusOr<std::unique_ptr<ResourceGroup>> Load(
-      const MemoryRegion& type_list_region,
-      const MemoryRegion& name_list_region,
-      const MemoryRegion& data_region,
+      const core::MemoryRegion& type_list_region,
+      const core::MemoryRegion& name_list_region,
+      const core::MemoryRegion& data_region,
       size_t type_item_index);
 
   InMemoryTypeItem Save(size_t reference_offset) const;

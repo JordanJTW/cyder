@@ -15,9 +15,9 @@ ResourceGroup::ResourceGroup(InMemoryTypeItem type_item,
 
 // static
 absl::StatusOr<std::unique_ptr<ResourceGroup>> ResourceGroup::Load(
-    const MemoryRegion& type_list_region,
-    const MemoryRegion& name_list_region,
-    const MemoryRegion& data_region,
+    const core::MemoryRegion& type_list_region,
+    const core::MemoryRegion& name_list_region,
+    const core::MemoryRegion& data_region,
     size_t type_item_index) {
   // The type list begins with a uint16_t count value immediately
   // preceding the type list items so account for it here

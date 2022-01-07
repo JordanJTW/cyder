@@ -7,7 +7,7 @@
 
 using namespace rsrcloader;
 
-const MemoryRegion* codeSegment;
+const core::MemoryRegion* codeSegment;
 
 unsigned int m68k_read_disassembler_8(unsigned int address) {
   return MUST(codeSegment->Copy<uint8_t>(address));
@@ -21,7 +21,7 @@ unsigned int m68k_read_disassembler_32(unsigned int address) {
 
 // TODO: Figure out where this is documented...
 // From: https://github.com/ksherlock/mpw/blob/master/bin/disasm.cpp#L171-L197
-size_t SkipDebugSection(uint16_t op, const MemoryRegion& remaining_data) {
+size_t SkipDebugSection(uint16_t op, const core::MemoryRegion& remaining_data) {
   size_t offset = 0;
 
   // Read the first byte as the length of the debug string
@@ -55,7 +55,7 @@ bool IsDebugSection(uint16_t prevOp, uint16_t op) {
   return (prevOp == OP_RTS || prevOp == OP_RTD) && op > 0x8000;
 }
 
-absl::Status ParseSegment(uint16_t id, const MemoryRegion& data) {
+absl::Status ParseSegment(uint16_t id, const core::MemoryRegion& data) {
   printf("Parsing code segment %d length %lu\n", id, data.size());
   codeSegment = &data;
 
