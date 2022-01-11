@@ -49,10 +49,10 @@ class MemoryRegion final {
   }
 
   // Writes `length` bytes from `src` to `offset`
-  absl::Status Write(void* src, size_t offset, size_t length);
+  absl::Status Write(const void* src, size_t offset, size_t length);
 
   template <typename T>
-  absl::StatusOr<T> Write(size_t offset, T data) {
+  absl::Status Write(size_t offset, T data) {
     return Write(&data, offset, sizeof(T));
   }
 

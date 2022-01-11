@@ -19,9 +19,9 @@ class ResourceFile {
 
   absl::Status Save(const std::string&) const;
 
-  Resource* FindByTypeAndId(ResType, ResID);
+  Resource* FindByTypeAndId(ResType, ResID) const;
 
-  ResourceGroup* FindGroupByType(ResType theType);
+  ResourceGroup* FindGroupByType(ResType theType) const;
 
  protected:
   // Disallow copy and assign:
