@@ -55,8 +55,40 @@ bool IsDebugSection(uint16_t prevOp, uint16_t op) {
   return (prevOp == OP_RTS || prevOp == OP_RTD) && op > 0x8000;
 }
 
+absl::Status ParseJumpTable(const core::MemoryRegion& data) {
+  // The jump table is described at:
+  // http://mirror.informatimago.com/next/developer.apple.com/documentation/mac/runtimehtml/RTArch-118.html#MARKER-9-35
+  struct InMemoryTableHeader {
+    uint32_t above_a5;
+    uint32_t below_a5;
+    uint32_t table_size;
+    uint32_t table_offset;
+  };
+
+  InMemoryTableHeader header = TRY(data.Copy<InMemoryTableHeader>(0));
+
+  printf("Above A5: 0x%x\n", be32toh(header.above_a5));
+  printf("Below A5: 0x%x\n", be32toh(header.below_a5));
+  header.table_size = be32toh(header.table_size);
+  printf("Jump-Table Size: %d\n", header.table_size);
+  printf("Jump-Table Offset: %d\n", be32toh(header.table_offset));
+
+  CHECK_EQ(header.table_size, data.size() - sizeof(InMemoryTableHeader));
+
+  // Each entry in the jump table is 8-bytes long (an offset to the subroutine
+  // within a segment followed by instructions to _LoadSeg)
+  for (int i = 0; i < header.table_size; i = i + 8) {
+    size_t entry_offset = sizeof(InMemoryTableHeader) + i;
+    printf("Offset (relative to segment): %x\n",
+           be16toh(TRY(data.Copy<uint16_t>(entry_offset))));
+    CHECK_EQ(be16toh(TRY(data.Copy<uint16_t>(entry_offset + 6))),
+             /*_SegLoad:*/ 0xA9F0)
+        << "Expected to find _SegLoad op-code in jump entry";
+  }
+  return absl::OkStatus();
+}
+
 absl::Status ParseSegment(uint16_t id, const core::MemoryRegion& data) {
-  printf("Parsing code segment %d length %lu\n", id, data.size());
   codeSegment = &data;
 
   size_t countTraps = 0;
@@ -88,17 +120,23 @@ absl::Status ParseSegment(uint16_t id, const core::MemoryRegion& data) {
     prevOp = op;
   }
 
-  printf("Traps called %lu times...", countTraps);
+  printf("Traps called %lu times...\n", countTraps);
   return absl::OkStatus();
 }
 
 absl::Status ParseCode(const Resource& resource) {
+  const auto& data = resource.GetData();
+  printf("\nParsing Segment %d which is %lu bytes\n", resource.GetId(),
+         data.size());
+
+  if (resource.GetId() == 0) {
+    return ParseJumpTable(data);
+  }
+
   // A code resource can contain either a near (4-byte header) or far (28-byte
   // header) segment. The far model header can be identified by checking that
   // the first two bytes are 0xFFFF as documented here:
   //   mirror.informatimago.com/next/developer.apple.com/documentation/mac/runtimehtml/RTArch-128.html
-
-  const auto& data = resource.GetData();
   if (0xFFFF == TRY(data.Copy<uint16_t>(0))) {
     return ParseSegment(resource.GetId(), TRY(data.Create(0x28)));
   }
@@ -108,13 +146,14 @@ absl::Status ParseCode(const Resource& resource) {
 
 absl::Status Main(const core::Args& args) {
   auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
-  if (ResourceGroup* code = file->FindGroupByType('CODE')) {
-    if (Resource* resource = code->FindById(1)) {
-      return ParseCode(*resource);
-    } else {
-      return absl::NotFoundError("Could not find first 'CODE' resource");
-    }
+
+  ResourceGroup* const code = file->FindGroupByType('CODE');
+  if (code == nullptr) {
+    return absl::NotFoundError("Could not find any 'CODE' resource");
   }
 
-  return absl::NotFoundError("Could not find any 'CODE' resource");
+  for (const auto& resource : code->GetResources()) {
+    RETURN_IF_ERROR(ParseCode(*resource));
+  }
+  return absl::OkStatus();
 }
