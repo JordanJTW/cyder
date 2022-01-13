@@ -25,15 +25,21 @@ const LogSeverity FATAL = 3;
   ::core::logging::LogMessage(__FILE__, __LINE__, ::core::logging::severity) \
       .stream()
 
+#define LOG_IF(severity, cond) LAZY_CHECK_STREAM(LOG(severity), !(cond))
+
 // Creates a LOG(FATAL), crashing the program, if (expr) is false.
 //
 // Example:
 //   CHECK(0 == 0) << "The universe is not right...";
 #define CHECK(expr) \
-  LAZY_CHECK_STREAM(LOG(FATAL), (expr)) << "Check failed: " << #expr
+  LAZY_CHECK_STREAM(LOG(FATAL), (expr)) << "CHECK(" << #expr << ") failed: "
 // Operator extenstions to CHECK macro:
 #define CHECK_EQ(lhs, rhs) CHECK(lhs == rhs)
 #define CHECK_NE(lhs, rhs) CHECK(lhs != rhs)
+#define CHECK_LT(lhs, rhs) CHECK(lhs < rhs)
+
+// Specialization for use with absl::Status:
+#define CHECK_STATUS(status) CHECK(status.ok()) << std::move(status).message() << " "
 
 // Indicates a point which should not be reached in code.
 #define NOTREACHED() LOG(FATAL) << "NOTREACHED() reached..."
