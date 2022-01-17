@@ -1,5 +1,6 @@
 #include "segment_loader.h"
 
+#include "core/endian.h"
 #include "core/logging.h"
 #include "memory_map.h"
 

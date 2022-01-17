@@ -1,7 +1,8 @@
+#include "build/gen/trap_names.h"
+#include "core/endian.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
-#include "emu/disasm_trap.h"
 #include "resource_file.h"
 #include "third_party/musashi/src/m68k.h"
 
