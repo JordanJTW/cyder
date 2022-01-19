@@ -1,10 +1,10 @@
-#include "build/gen/trap_names.h"
 #include "core/endian.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
 #include "resource_file.h"
 #include "third_party/musashi/src/m68k.h"
+#include "trap_names.h"
 
 using namespace rsrcloader;
 
