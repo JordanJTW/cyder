@@ -113,17 +113,20 @@ unsigned int m68k_read_memory_32(unsigned int address) {
 
 void m68k_write_memory_8(unsigned int address, unsigned int value) {
   CheckWriteAccess(address, value);
-  CHECK_STATUS(kSystemMemory.Write<uint8_t>(address, value))
+  LOG(INFO) << std::hex << __func__ << address << " = " << value;
+  CHECK(kSystemMemory.Write<uint8_t>(address, value).ok())
       << " unable to write " << std::hex << value << " to " << address;
 }
 void m68k_write_memory_16(unsigned int address, unsigned int value) {
   CheckWriteAccess(address, value);
-  CHECK_STATUS(kSystemMemory.Write<uint16_t>(address, htobe16(value)))
+  LOG(INFO) << std::hex << __func__ << address << " = " << value;
+  CHECK(kSystemMemory.Write<uint16_t>(address, htobe16(value)).ok())
       << " unable to write " << std::hex << value << " to " << address;
 }
 void m68k_write_memory_32(unsigned int address, unsigned int value) {
   CheckWriteAccess(address, value);
-  CHECK_STATUS(kSystemMemory.Write<uint32_t>(address, htobe32(value)))
+  LOG(INFO) << std::hex << __func__ << address << " = " << value;
+  CHECK(kSystemMemory.Write<uint32_t>(address, htobe32(value)).ok())
       << " unable to write " << std::hex << value << " to " << address;
 }
 

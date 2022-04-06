@@ -38,9 +38,6 @@ const LogSeverity FATAL = 3;
 #define CHECK_NE(lhs, rhs) CHECK(lhs != rhs)
 #define CHECK_LT(lhs, rhs) CHECK(lhs < rhs)
 
-// Specialization for use with absl::Status:
-#define CHECK_STATUS(status) CHECK(status.ok()) << std::move(status).message() << " "
-
 // Indicates a point which should not be reached in code.
 #define NOTREACHED() LOG(FATAL) << "NOTREACHED() reached..."
 
