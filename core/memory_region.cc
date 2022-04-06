@@ -84,7 +84,10 @@ MemoryRegion::MemoryRegion(std::string name,
 std::ostream& operator<<(std::ostream& os, const MemoryRegion& region) {
   constexpr size_t bytes_per_line = 16;
 
-  size_t line_count = region.size() / bytes_per_line + 1;
+  size_t line_count = region.size() / bytes_per_line;
+  if (region.size() % bytes_per_line) {
+    line_count += 1;
+  }
   for (int line = 0; line < line_count; ++line) {
     size_t start_index = line * bytes_per_line;
     size_t full_line = start_index + bytes_per_line;
