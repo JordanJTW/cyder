@@ -1,24 +1,23 @@
 #pragma once
 
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "core/memory_region.h"
 #include "third_party/musashi/src/m68k.h"
 
 extern core::MemoryRegion kSystemMemory;
 
 // Pops `T` off of the stack pointed to by `stack_ptr_reg`
-//
-// Only specializations below should be used.
 template <typename T>
 absl::StatusOr<T> Pop(m68k_register_t stack_ptr_reg);
 template <>
 absl::StatusOr<uint16_t> Pop(m68k_register_t stack_ptr_reg);
 template <>
 absl::StatusOr<uint32_t> Pop(m68k_register_t stack_ptr_reg);
+template <>
+absl::StatusOr<absl::string_view> Pop(m68k_register_t stack_ptr_reg);
 
 // Pushes `T` on to the stack pointed to by `stack_ptr_reg`
-//
-// Only specializations below should be used.
 template <typename T>
 absl::Status Push(T value, m68k_register_t stack_ptr_reg);
 template <>

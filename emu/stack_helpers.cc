@@ -13,6 +13,15 @@ absl::StatusOr<uint32_t> Pop(m68k_register_t stack_ptr_reg) {
 }
 
 template <>
+absl::StatusOr<absl::string_view> Pop(m68k_register_t stack_ptr_reg) {
+  size_t pstring_addr = TRY(Pop<uint32_t>(stack_ptr_reg));
+  size_t pstring_len = TRY(kSystemMemory.Copy<uint8_t>(pstring_addr));
+  return absl::string_view(
+      reinterpret_cast<const char*>(kSystemMemory.raw_ptr()) + pstring_addr + 1,
+      pstring_len);
+}
+
+template <>
 absl::Status Push(uint16_t value, m68k_register_t stack_ptr_reg) {
   return internal::Push<uint16_t>(htobe16(value), stack_ptr_reg);
 }
