@@ -8,6 +8,8 @@
 
 class MemoryManager {
  public:
+  static constexpr size_t kHeapHandleOffset{512};
+
   Handle Allocate(size_t size, std::string tag);
   bool Deallocate(Handle handle);
 
@@ -17,7 +19,7 @@ class MemoryManager {
   uint32_t GetHandleSize(Handle handle);
 
  private:
-  size_t heap_offset_{4096};
+  size_t heap_offset_{kHeapHandleOffset};
   size_t handle_offset_{0};
 
   struct HandleData {

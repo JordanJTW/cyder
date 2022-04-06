@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "absl/status/status.h"
+#include "memory_manager.h"
 #include "resource_file.h"
 #include "resource_group.h"
 
@@ -21,7 +22,8 @@ class SegmentLoader final {
   // Parses 'CODE' segment 0 and loads the jump-table into kSystemMemory,
   // calculating the initial program counter (the first subroutine offset of the
   // first 'CODE' segment), and creates a new SegmentLoader.
-  static absl::StatusOr<SegmentLoader> Create(rsrcloader::ResourceFile&);
+  static absl::StatusOr<SegmentLoader> Create(rsrcloader::ResourceFile&,
+                                              MemoryManager&);
 
   // Loads the segment with the given ID into the heap in kSystemMemory and
   // updates the jump-table entries to point to the newly loaded code.
@@ -31,13 +33,13 @@ class SegmentLoader final {
   size_t entry_point() const { return initial_program_counter_; }
 
  private:
-  SegmentLoader(InMemoryTableHeader,
+  SegmentLoader(MemoryManager&,
+                InMemoryTableHeader,
                 rsrcloader::ResourceGroup&,
                 uint32_t initial_program_counter);
 
+  MemoryManager& memory_manager_;
   const InMemoryTableHeader table_header_;
   rsrcloader::ResourceGroup& code_resources_;
   const uint32_t initial_program_counter_;
-
-  size_t heap_offset_{0};
 };

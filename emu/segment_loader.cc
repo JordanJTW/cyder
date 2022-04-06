@@ -9,7 +9,8 @@ using rsrcloader::ResourceGroup;
 
 // static
 absl::StatusOr<SegmentLoader> SegmentLoader::Create(
-    ResourceFile& resource_file) {
+    ResourceFile& resource_file,
+    MemoryManager& memory_manager) {
   ResourceGroup* const code_group = resource_file.FindGroupByType('CODE');
   if (code_group == nullptr) {
     return absl::NotFoundError("Missing 'CODE' resource");
@@ -44,9 +45,10 @@ absl::StatusOr<SegmentLoader> SegmentLoader::Create(
   // heap it's absolute address can be calculated.
   uint32_t initial_program_counter =
       be16toh(TRY(table_data.Copy<uint16_t>(sizeof(InMemoryTableHeader)))) +
-      kHeapStart;
+      kHeapStart + MemoryManager::kHeapHandleOffset;
 
-  return SegmentLoader(std::move(header), *code_group, initial_program_counter);
+  return SegmentLoader(memory_manager, std::move(header), *code_group,
+                       initial_program_counter);
 }
 
 absl::Status SegmentLoader::Load(uint16_t segment_id) {
@@ -64,17 +66,19 @@ absl::Status SegmentLoader::Load(uint16_t segment_id) {
   uint16_t offset_in_table = be16toh(TRY(resourece_data.Copy<uint16_t>(0)));
   uint16_t table_entry_count = be16toh(TRY(resourece_data.Copy<uint16_t>(2)));
 
-  size_t load_addr = kHeapStart + heap_offset_;
+  Handle handle = memory_manager_.Allocate(
+      segment.size(), absl::StrCat("Segment(id:", segment_id, ")"));
+
+  size_t load_addr = be32toh(TRY(kSystemMemory.Copy<uint32_t>(handle)));
   LOG(INFO) << "Load Segment " << segment_id << " at "
             << "[0x" << std::hex << load_addr << ", 0x"
-            << (load_addr + segment.size()) << "]";
+            << (load_addr + segment.size()) << "] count: " << table_entry_count;
 
   // TODO: Add an allocator instead of just sequential offsets
   for (int i = 0; i < segment.size(); ++i) {
     RETURN_IF_ERROR(kSystemMemory.Write<uint8_t>(
-        kHeapStart + heap_offset_ + i, TRY(segment.Copy<uint8_t>(i))));
+        load_addr + i, TRY(segment.Copy<uint8_t>(i))));
   }
-  heap_offset_ += segment.size();
 
   uint32_t segment_table_offset =
       kA5Position + table_header_.table_offset + offset_in_table;
@@ -101,9 +105,11 @@ absl::Status SegmentLoader::Load(uint16_t segment_id) {
   return absl::OkStatus();
 }
 
-SegmentLoader::SegmentLoader(InMemoryTableHeader table_header,
+SegmentLoader::SegmentLoader(MemoryManager& memory_manager,
+                             InMemoryTableHeader table_header,
                              ResourceGroup& code_resources,
                              uint32_t initial_program_counter)
-    : table_header_(std::move(table_header)),
+    : memory_manager_(memory_manager),
+      table_header_(std::move(table_header)),
       code_resources_(code_resources),
       initial_program_counter_(initial_program_counter) {}

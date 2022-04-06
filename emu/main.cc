@@ -3,6 +3,7 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
+#include "memory_manager.h"
 #include "memory_map.h"
 #include "resource_file.h"
 #include "segment_loader.h"
@@ -23,12 +24,14 @@ typedef std::function<void(uint32_t)> on_exception_callback_t;
 on_exception_callback_t on_exception_callback = nullptr;
 
 absl::Status HandleALineTrap(SegmentLoader& segment_loader,
-                             uint16_t trap_op,
+                             rsrcloader::ResourceFile& current_rsrc,
+                             MemoryManager& memory_manager,
+                             uint16_t trap,
                              int& return_addr_offset) {
-  LOG(INFO) << "A-Line Exception: 0x" << std::hex << trap_op;
+  LOG(INFO) << "A-Line Exception: 0x" << std::hex << trap;
   // single_step = true;
 
-  switch (trap_op) {
+  switch (trap) {
     case 0xA9F0: {
       uint16_t load_segment = TRY(Pop<uint16_t>(M68K_REG_USP));
       LOG(INFO) << "_LoadSeg(" << load_segment << ")";
@@ -47,11 +50,13 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       return absl::OkStatus();
     default:
       return absl::UnimplementedError(absl::StrCat(
-          "Reached unimplemented trap: '", GetTrapName(trap_op), "'"));
+          "Reached unimplemented trap: '", GetTrapName(trap), "'"));
   }
 }
 
 absl::Status HandleException(SegmentLoader& segment_loader,
+                             rsrcloader::ResourceFile& current_rsrc,
+                             MemoryManager& memory_manager,
                              unsigned int address) {
   CHECK_LT(address, 0x100) << "Address 0x" << std::hex << address
                            << " is outside of the IVT";
@@ -66,8 +71,9 @@ absl::Status HandleException(SegmentLoader& segment_loader,
           TRY(kSystemMemory.Copy<uint16_t>(m68k_get_reg(NULL, M68K_REG_PPC))));
 
       int return_addr_offset = 0;
-      RETURN_IF_ERROR(
-          HandleALineTrap(segment_loader, trap_op, return_addr_offset));
+      RETURN_IF_ERROR(HandleALineTrap(segment_loader, current_rsrc,
+                                      memory_manager, trap_op,
+                                      return_addr_offset));
       rts_addr += return_addr_offset;
 
       RETURN_IF_ERROR(Push<uint32_t>(rts_addr, M68K_REG_SP));
@@ -141,7 +147,9 @@ absl::Status Main(const core::Args& args) {
   auto file =
       TRY(rsrcloader::ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
 
-  auto segment_loader = TRY(SegmentLoader::Create(*file));
+  MemoryManager memory_manager;
+
+  auto segment_loader = TRY(SegmentLoader::Create(*file, memory_manager));
   RETURN_IF_ERROR(segment_loader.Load(1));
 
   size_t pc = segment_loader.entry_point();
@@ -150,7 +158,7 @@ absl::Status Main(const core::Args& args) {
 
   on_exception_callback = [&](uint32_t address) {
     auto status =
-        HandleException(segment_loader, address);
+        HandleException(segment_loader, *file, memory_manager, address);
     CHECK(status.ok()) << std::move(status).message();
   };
 
