@@ -24,29 +24,35 @@ typedef std::function<void(uint32_t)> on_exception_callback_t;
 
 on_exception_callback_t on_exception_callback = nullptr;
 
+constexpr bool IsToolbox(uint16_t trap) {
+  // 1010 | X _ _ _ | _ _ _ _ | _ _ _ _|
+  // Toolbox: X = 1 OS: X = 0
+  return (trap & 0x0800) == 0x0800;
+}
+
 absl::Status HandleALineTrap(SegmentLoader& segment_loader,
                              rsrcloader::ResourceFile& current_rsrc,
                              MemoryManager& memory_manager,
                              uint16_t trap,
                              int& return_addr_offset) {
-  LOG(INFO) << "A-Line Exception: 0x" << std::hex << trap;
-  // single_step = true;
+  LOG(INFO) << "A-Line Exception: " << (IsToolbox(trap) ? "Toolbox" : "OS")
+            << "::" << GetTrapName(trap) << " (0x" << std::hex << trap << ")";
 
   switch (trap) {
-    case 0xA9F0: {
+    case Trap::LoadSeg: {
       uint16_t load_segment = TRY(Pop<uint16_t>(M68K_REG_USP));
-      LOG(INFO) << "_LoadSeg(" << load_segment << ")";
+      LOG(INFO) << "TRAP LoadSeg(" << load_segment << ")";
       RETURN_IF_ERROR(segment_loader.Load(load_segment));
       return_addr_offset = -6;
       return absl::OkStatus();
     }
-    case 0xa9c8: {
+    case Trap::SysBeep: {
       uint16_t duration = TRY(Pop<uint16_t>(M68K_REG_USP));
-      LOG(INFO) << "_SysBeep(" << duration << ")";
+      LOG(INFO) << "TRAP SysBeep(" << duration << ")";
       return absl::OkStatus();
     }
-    case 0xa9f4:
-      LOG(INFO) << "_ExitToShell()";
+    case Trap::ExitToShell:
+      LOG(INFO) << "TRAP ExitToShell()";
       exit(0);
       return absl::OkStatus();
     default:
@@ -140,10 +146,19 @@ void m68k_write_memory_32(unsigned int address, unsigned int value) {
       << " unable to write " << std::hex << value << " to " << address;
 }
 
+MemoryManager* memory_manager_ptr;
+
 void cpu_instr_callback(unsigned int pc) {
-  char buffer[255];
-  size_t increment = m68k_disassemble(buffer, pc, M68K_CPU_TYPE_68000);
-  LOG_IF(INFO, disassemble_log) << std::hex << pc << ": " << buffer;
+  CHECK(pc != 0) << "Reset";
+  if (disassemble_log) {
+    char buffer[255];
+    size_t increment = m68k_disassemble(buffer, pc, M68K_CPU_TYPE_68000);
+    Handle handle = memory_manager_ptr->GetHandleThatContains(pc);
+    std::string tag = (handle == 0) ? "" : memory_manager_ptr->GetTag(handle);
+    LOG(INFO) << std::hex << pc << " (" << tag << "): " << buffer;
+  }
+  CHECK(m68k_get_reg(NULL, M68K_REG_USP) <= kUserStackStart);
+  CHECK(m68k_get_reg(NULL, M68K_REG_ISP) <= kInterruptStackStart);
   m68k_end_timeslice();
 }
 
@@ -152,6 +167,7 @@ absl::Status Main(const core::Args& args) {
       TRY(rsrcloader::ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
 
   MemoryManager memory_manager;
+  memory_manager_ptr = &memory_manager;
 
   auto segment_loader = TRY(SegmentLoader::Create(*file, memory_manager));
   RETURN_IF_ERROR(segment_loader.Load(1));
