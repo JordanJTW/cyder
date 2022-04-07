@@ -16,6 +16,7 @@ HEADER = """
 
 // Gets the name of the given `trap`
 const char* GetTrapName(uint32_t trap);
+
 """
 
 CC_HEADER = """
@@ -80,6 +81,11 @@ def main():
     # Write the .h
     with open(h_path, 'w') as f:
         f.write(HEADER)
+
+        f.write('enum Trap {')
+        for entry in match_lines:
+            f.write(f"\n  {entry.group('name')} = 0x{entry.group('trap')},")
+        f.write('\n};')
 
     # Write the .cc
     with open(cc_path, 'w') as f:
