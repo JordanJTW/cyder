@@ -14,7 +14,7 @@
 constexpr bool disassemble_log = false;
 constexpr bool memory_write_log = false;
 
-constexpr size_t global_app_name = 0x910;
+constexpr size_t kGlobalAppNameAddr = 0x910;
 
 bool single_step = false;
 
@@ -72,6 +72,8 @@ absl::Status HandleException(SegmentLoader& segment_loader,
     // 1010 Instruction Trap Handler
     case 0x28: {
       uint16_t status = TRY(Pop<uint16_t>(M68K_REG_SP));
+      // The return address points to the trap which triggered this exception
+      // so add the width of that instruction (2 bytes) to return past it:
       uint32_t rts_addr = TRY(Pop<uint32_t>(M68K_REG_SP)) + 2;
 
       uint16_t trap_op = be16toh(
@@ -192,7 +194,10 @@ absl::Status Main(const core::Args& args) {
   m68k_set_reg(M68K_REG_ISP, kInterruptStackStart);
 
   // Sets the size of the name to 0 so it is not read:
-  RETURN_IF_ERROR(kSystemMemory.Write<uint8_t>(global_app_name, 0));
+  // TODO: Store the application name here as a Pascal string
+  RETURN_IF_ERROR(kSystemMemory.Write<uint8_t>(kGlobalAppNameAddr, 0));
+  // Stores the 'RTE' op-code at the exception return address to
+  // jump back from the exception handler back to user code:
   RETURN_IF_ERROR(
       kSystemMemory.Write<uint16_t>(kExceptionReturnAddr, htobe16(0x4E73)));
 
