@@ -9,6 +9,7 @@
 #include "segment_loader.h"
 #include "stack_helpers.h"
 #include "third_party/musashi/src/m68k.h"
+#include "trap_helpers.h"
 #include "trap_names.h"
 
 constexpr bool disassemble_log = false;
@@ -24,19 +25,15 @@ typedef std::function<void(uint32_t)> on_exception_callback_t;
 
 on_exception_callback_t on_exception_callback = nullptr;
 
-constexpr bool IsToolbox(uint16_t trap) {
-  // 1010 | X _ _ _ | _ _ _ _ | _ _ _ _|
-  // Toolbox: X = 1 OS: X = 0
-  return (trap & 0x0800) == 0x0800;
-}
-
 absl::Status HandleALineTrap(SegmentLoader& segment_loader,
                              rsrcloader::ResourceFile& current_rsrc,
                              MemoryManager& memory_manager,
                              uint16_t trap,
                              int& return_addr_offset) {
-  LOG(INFO) << "A-Line Exception: " << (IsToolbox(trap) ? "Toolbox" : "OS")
-            << "::" << GetTrapName(trap) << " (0x" << std::hex << trap << ")";
+  LOG(INFO) << "A-Line Exception " << (trap::IsToolbox(trap) ? "Toolbox" : "OS")
+            << "::" << GetTrapName(trap) << " (0x" << std::hex << trap
+            << ") Index: " << std::dec << trap::ExtractIndex(trap)
+            << " Flags: " << trap::ExtractFlags(trap);
 
   switch (trap) {
     case Trap::LoadSeg: {
