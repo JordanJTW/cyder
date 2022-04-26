@@ -25,11 +25,37 @@ typedef std::function<void(uint32_t)> on_exception_callback_t;
 
 on_exception_callback_t on_exception_callback = nullptr;
 
+// RAII class to capture the return address on the stack while processing an
+// exception, modify it, then push it back on to the stack.
+class ExceptionReturn {
+ public:
+  ExceptionReturn()
+      : status_(MUST(Pop<uint32_t>(M68K_REG_SP))),
+        return_address_(MUST(Pop<uint16_t>(M68K_REG_SP))) {}
+
+  ~ExceptionReturn() {
+    CHECK(Push<uint32_t>(return_address_ + return_offset_, M68K_REG_SP).ok());
+    CHECK(Push<uint16_t>(status_, M68K_REG_SP).ok());
+  }
+
+  void SetReturnOffset(int16_t return_offset) {
+    return_offset_ = return_offset;
+  }
+
+ private:
+  // By default skip past the instruction that triggered the exception when
+  // returning (the instruction should be 2-bytes wide).
+  int16_t return_offset_{2};
+
+  uint16_t status_;
+  uint32_t return_address_;
+};
+
 absl::Status HandleALineTrap(SegmentLoader& segment_loader,
                              rsrcloader::ResourceFile& current_rsrc,
                              MemoryManager& memory_manager,
                              uint16_t trap,
-                             int& return_addr_offset) {
+                             ExceptionReturn& stack_return) {
   LOG(INFO) << "A-Line Exception " << (trap::IsToolbox(trap) ? "Toolbox" : "OS")
             << "::" << GetTrapName(trap) << " (0x" << std::hex << trap
             << ") Index: " << std::dec << trap::ExtractIndex(trap)
@@ -40,7 +66,10 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       uint16_t load_segment = TRY(Pop<uint16_t>(M68K_REG_USP));
       LOG(INFO) << "TRAP LoadSeg(" << load_segment << ")";
       RETURN_IF_ERROR(segment_loader.Load(load_segment));
-      return_addr_offset = -6;
+      // The segment loader modifies the six byte entry for this segment in the
+      // table so return to the begining of the entry (4 bytes behind the 2 byte
+      // trap being executed):
+      stack_return.SetReturnOffset(-4);
       return absl::OkStatus();
     }
     case Trap::SysBeep: {
@@ -68,22 +97,13 @@ absl::Status HandleException(SegmentLoader& segment_loader,
   switch (address) {
     // 1010 Instruction Trap Handler
     case 0x28: {
-      uint16_t status = TRY(Pop<uint16_t>(M68K_REG_SP));
-      // The return address points to the trap which triggered this exception
-      // so add the width of that instruction (2 bytes) to return past it:
-      uint32_t rts_addr = TRY(Pop<uint32_t>(M68K_REG_SP)) + 2;
-
       uint16_t trap_op = be16toh(
           TRY(kSystemMemory.Copy<uint16_t>(m68k_get_reg(NULL, M68K_REG_PPC))));
 
-      int return_addr_offset = 0;
+      ExceptionReturn exception_return;
       RETURN_IF_ERROR(HandleALineTrap(segment_loader, current_rsrc,
                                       memory_manager, trap_op,
-                                      return_addr_offset));
-      rts_addr += return_addr_offset;
-
-      RETURN_IF_ERROR(Push<uint32_t>(rts_addr, M68K_REG_SP));
-      RETURN_IF_ERROR(Push<uint16_t>(status, M68K_REG_SP));
+                                      exception_return));
       return absl::OkStatus();
     }
     default:
