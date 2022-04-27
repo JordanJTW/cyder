@@ -30,8 +30,8 @@ on_exception_callback_t on_exception_callback = nullptr;
 class ExceptionReturn {
  public:
   ExceptionReturn()
-      : status_(MUST(Pop<uint32_t>(M68K_REG_SP))),
-        return_address_(MUST(Pop<uint16_t>(M68K_REG_SP))) {}
+      : status_(MUST(Pop<uint16_t>(M68K_REG_SP))),
+        return_address_(MUST(Pop<uint32_t>(M68K_REG_SP))) {}
 
   ~ExceptionReturn() {
     CHECK(Push<uint32_t>(return_address_ + return_offset_, M68K_REG_SP).ok());
