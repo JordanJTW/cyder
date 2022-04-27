@@ -5,12 +5,15 @@
 #include "core/status_main.h"
 #include "memory_manager.h"
 #include "memory_map.h"
+#include "resource.h"
 #include "resource_file.h"
 #include "segment_loader.h"
 #include "stack_helpers.h"
 #include "third_party/musashi/src/m68k.h"
 #include "trap_helpers.h"
 #include "trap_names.h"
+
+using rsrcloader::ResType;
 
 constexpr bool disassemble_log = false;
 constexpr bool memory_write_log = false;
@@ -71,6 +74,14 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       // trap being executed):
       stack_return.SetReturnOffset(-4);
       return absl::OkStatus();
+    }
+    case Trap::Get1NamedResource: {
+      auto name = TRY(Pop<absl::string_view>(M68K_REG_USP));
+      ResType type = TRY(Pop<ResType>(M68K_REG_USP));
+
+      LOG(INFO) << "TRAP Get1NamedResource('" << rsrcloader::GetTypeName(type)
+                << "', \"" << name << "\")";
+      return absl::UnimplementedError("");
     }
     case Trap::SysBeep: {
       uint16_t duration = TRY(Pop<uint16_t>(M68K_REG_USP));
