@@ -4,6 +4,7 @@
 #include "absl/strings/string_view.h"
 #include "core/memory_region.h"
 #include "third_party/musashi/src/m68k.h"
+#include "system_types.h"
 
 extern core::MemoryRegion kSystemMemory;
 
@@ -14,8 +15,16 @@ template <>
 absl::StatusOr<uint16_t> Pop(m68k_register_t stack_ptr_reg);
 template <>
 absl::StatusOr<uint32_t> Pop(m68k_register_t stack_ptr_reg);
+
+// Pops pointer to `T` off of the stack pointed to by
+// `stack_ptr_reg` and returns the dereferenced value
+template <typename T>
+absl::StatusOr<T> PopRef(m68k_register_t stack_ptr_reg) {
+  auto ptr = TRY(Pop<Ptr>(stack_ptr_reg));
+  return *reinterpret_cast<const T*>(kSystemMemory.raw_ptr() + ptr);
+}
 template <>
-absl::StatusOr<absl::string_view> Pop(m68k_register_t stack_ptr_reg);
+absl::StatusOr<absl::string_view> PopRef(m68k_register_t stack_ptr_reg);
 
 // Pushes `T` on to the stack pointed to by `stack_ptr_reg`
 template <typename T>

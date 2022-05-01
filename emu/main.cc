@@ -76,7 +76,7 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       return absl::OkStatus();
     }
     case Trap::Get1NamedResource: {
-      auto name = TRY(Pop<absl::string_view>(M68K_REG_USP));
+      auto name = TRY(PopRef<absl::string_view>(M68K_REG_USP));
       ResType type = TRY(Pop<ResType>(M68K_REG_USP));
 
       LOG(INFO) << "TRAP Get1NamedResource('" << rsrcloader::GetTypeName(type)

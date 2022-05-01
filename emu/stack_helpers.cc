@@ -13,7 +13,7 @@ absl::StatusOr<uint32_t> Pop(m68k_register_t stack_ptr_reg) {
 }
 
 template <>
-absl::StatusOr<absl::string_view> Pop(m68k_register_t stack_ptr_reg) {
+absl::StatusOr<absl::string_view> PopRef(m68k_register_t stack_ptr_reg) {
   size_t pstring_addr = TRY(Pop<uint32_t>(stack_ptr_reg));
   size_t pstring_len = TRY(kSystemMemory.Copy<uint8_t>(pstring_addr));
   return absl::string_view(
