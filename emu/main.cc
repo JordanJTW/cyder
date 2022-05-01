@@ -9,6 +9,7 @@
 #include "resource_file.h"
 #include "segment_loader.h"
 #include "stack_helpers.h"
+#include "system_types.h"
 #include "third_party/musashi/src/m68k.h"
 #include "trap_helpers.h"
 #include "trap_names.h"
@@ -79,13 +80,14 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       auto name = TRY(PopRef<absl::string_view>(M68K_REG_USP));
       ResType type = TRY(Pop<ResType>(M68K_REG_USP));
 
-      LOG(INFO) << "TRAP Get1NamedResource('" << rsrcloader::GetTypeName(type)
-                << "', \"" << name << "\")";
+      LOG(INFO) << "TRAP Get1NamedResource(theType: '"
+                << rsrcloader::GetTypeName(type) << "', name: \"" << name
+                << "\")";
       return absl::UnimplementedError("");
     }
     case Trap::SysBeep: {
-      uint16_t duration = TRY(Pop<uint16_t>(M68K_REG_USP));
-      LOG(INFO) << "TRAP SysBeep(" << duration << ")";
+      uint16_t duration = TRY(Pop<Integer>(M68K_REG_USP));
+      LOG(INFO) << "TRAP SysBeep(duration: " << duration << ")";
       return absl::OkStatus();
     }
     case Trap::ExitToShell:
