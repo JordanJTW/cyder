@@ -123,7 +123,7 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
   // Global Variables / OS Reserved
   if (within_region(0x100, kHeapStart)) {
     LOG(WARNING) << std::hex << "Write system global [0x100, 0x" << kHeapStart
-                 << "): 0x" << address;
+                 << "): 0x" << address << " = 0x" << value;
     return;
   }
 

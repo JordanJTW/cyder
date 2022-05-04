@@ -183,6 +183,12 @@ MemoryManager* memory_manager_ptr;
 void cpu_instr_callback(unsigned int pc) {
   CHECK(pc != 0) << "Reset";
   if (disassemble_log) {
+#define REG(name) " " << #name << ": 0x" << m68k_get_reg(NULL, M68K_REG_##name)
+
+    LOG(INFO) << std::hex << REG(A0) << REG(A1) << REG(A2) << REG(A3) << REG(A4)
+              << REG(A5) << REG(A6) << REG(A7) << REG(USP) << REG(ISP);
+#undef REG
+
     char buffer[255];
     size_t increment = m68k_disassemble(buffer, pc, M68K_CPU_TYPE_68000);
     Handle handle = memory_manager_ptr->GetHandleThatContains(pc);
