@@ -85,6 +85,46 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
                 << "\")";
       return absl::UnimplementedError("");
     }
+    case Trap::InitGraf: {
+      auto globalPtr = TRY(Pop<Ptr>(M68K_REG_USP));
+      LOG(INFO) << "TRAP InitGraf(globalPtr: 0x" << std::hex << globalPtr
+                << ")";
+      return absl::OkStatus();
+    }
+    case Trap::OpenPort: {
+      auto thePortPtr = TRY(Pop<GrafPtr>(M68K_REG_USP));
+      LOG(INFO) << "TRAP OpenPort(port: 0x" << std::hex << thePortPtr << ")";
+      return absl::OkStatus();
+    }
+    case Trap::HideCursor: {
+      LOG(INFO) << "TRAP HideCursor()";
+      return absl::OkStatus();
+    }
+    case Trap::PaintRect: {
+      auto rect = TRY(PopRef<Rect>(M68K_REG_USP));
+      LOG(INFO) << "TRAP PaintRect(rect: " << rect << ")";
+      return absl::OkStatus();
+    }
+    case Trap::Random: {
+      LOG(INFO) << "TRAP Random()";
+      RETURN_IF_ERROR(TrapReturn<int16_t>(0x0000));
+      return absl::OkStatus();
+    }
+    case Trap::Button: {
+      LOG(INFO) << "TRAP Button()";
+      RETURN_IF_ERROR(TrapReturn<uint16_t>(0x0000));
+      return absl::OkStatus();
+    }
+    case Trap::PaintOval: {
+      auto rect = TRY(PopRef<Rect>(M68K_REG_USP));
+      LOG(INFO) << "TRAP PaintOval(rect: " << rect << ")";
+      return absl::OkStatus();
+    }
+    case Trap::EraseOval: {
+      auto rect = TRY(PopRef<Rect>(M68K_REG_USP));
+      LOG(INFO) << "TRAP EraseOval(rect: " << rect << ")";
+      return absl::OkStatus();
+    }
     case Trap::SysBeep: {
       uint16_t duration = TRY(Pop<Integer>(M68K_REG_USP));
       LOG(INFO) << "TRAP SysBeep(duration: " << duration << ")";

@@ -19,12 +19,11 @@ absl::StatusOr<uint32_t> Pop(m68k_register_t stack_ptr_reg);
 // Pops pointer to `T` off of the stack pointed to by
 // `stack_ptr_reg` and returns the dereferenced value
 template <typename T>
-absl::StatusOr<T> PopRef(m68k_register_t stack_ptr_reg) {
-  auto ptr = TRY(Pop<Ptr>(stack_ptr_reg));
-  return *reinterpret_cast<const T*>(kSystemMemory.raw_ptr() + ptr);
-}
+absl::StatusOr<T> PopRef(m68k_register_t stack_ptr_reg);
 template <>
 absl::StatusOr<absl::string_view> PopRef(m68k_register_t stack_ptr_reg);
+template <>
+absl::StatusOr<Rect> PopRef(m68k_register_t stack_ptr_reg);
 
 // Pushes `T` on to the stack pointed to by `stack_ptr_reg`
 template <typename T>
@@ -33,6 +32,18 @@ template <>
 absl::Status Push(uint16_t value, m68k_register_t stack_ptr_reg);
 template <>
 absl::Status Push(uint32_t value, m68k_register_t stack_ptr_reg);
+
+// Returns a value in a caller-allocated position in the User Stack.
+// TODO: Find where this behavior of using a caller-allocated space
+// on the stack to return a value from Toolbox traps is documented.
+template <typename T>
+absl::Status TrapReturn(T value);
+template <>
+absl::Status TrapReturn(int16_t value);
+template <>
+absl::Status TrapReturn(uint16_t value);
+template <>
+absl::Status TrapReturn(uint32_t value);
 
 namespace internal {
 
@@ -49,6 +60,14 @@ absl::Status Push(T value, m68k_register_t stack_ptr_reg) {
   uint32_t new_stack_ptr = m68k_get_reg(NULL, stack_ptr_reg) - sizeof(T);
   RETURN_IF_ERROR(kSystemMemory.Write<T>(new_stack_ptr, value));
   m68k_set_reg(stack_ptr_reg, new_stack_ptr);
+  return absl::OkStatus();
+}
+
+template <typename T>
+absl::Status TrapReturn(T value) {
+  uint32_t current_stack = m68k_get_reg(NULL, M68K_REG_USP);
+  CHECK_EQ(MUST(kSystemMemory.Copy<T>(current_stack)), 0);
+  RETURN_IF_ERROR(kSystemMemory.Write<T>(current_stack, value));
   return absl::OkStatus();
 }
 
