@@ -2,7 +2,7 @@
 #include <cstring>
 #include <iostream>
 
-#include "core/endian.h"
+#include "core/endian_helpers.h"
 #include "core/logging.h"
 
 size_t GetFileSize(const char* path) {

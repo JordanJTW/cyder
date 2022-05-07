@@ -3,7 +3,7 @@
 #include <cstring>
 #include <iomanip>
 
-#include "core/endian.h"
+#include "core/endian_helpers.h"
 #include "core/status_helpers.h"
 
 namespace rsrcloader {

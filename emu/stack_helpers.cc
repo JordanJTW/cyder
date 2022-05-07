@@ -1,6 +1,6 @@
 #include "stack_helpers.h"
 
-#include "core/endian.h"
+#include "core/endian_helpers.h"
 
 template <>
 absl::StatusOr<uint16_t> Pop(m68k_register_t stack_ptr_reg) {
