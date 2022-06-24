@@ -24,6 +24,7 @@ add_subdirectory(core)
 add_subdirectory(emu)
 add_subdirectory(gen)
 add_subdirectory(third_party/musashi)
+add_subdirectory(third_party/imgui)
 
 add_library(rsrcfork resource_file.cc resource_group.cc resource.cc)
 target_link_libraries(rsrcfork CORE_LIB)
