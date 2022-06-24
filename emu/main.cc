@@ -1,3 +1,8 @@
+#include <SDL2/SDL.h>
+
+#include <iomanip>
+#include <tuple>
+
 #include "absl/status/status.h"
 #include "core/endian_helpers.h"
 #include "core/memory_region.h"
@@ -28,6 +33,28 @@ extern core::MemoryRegion kSystemMemory;
 typedef std::function<void(uint32_t)> on_exception_callback_t;
 
 on_exception_callback_t on_exception_callback = nullptr;
+
+SDL_Renderer* renderer;
+
+void DrawRect(const Rect& rect,
+              const std::tuple<uint8_t, uint8_t, uint8_t>& color) {
+  SDL_SetRenderDrawColor(renderer, std::get<0>(color), std::get<1>(color),
+                         std::get<2>(color), 255);
+
+  int width = (rect.right - rect.left);
+  int height = (rect.bottom - rect.top);
+
+  if (width < 0 || height < 0)
+    return;
+
+  SDL_Rect sdl_rect = {
+      .x = rect.left,
+      .y = rect.top,
+      .w = width,
+      .h = height,
+  };
+  SDL_RenderFillRect(renderer, &sdl_rect);
+}
 
 // RAII class to capture the return address on the stack while processing an
 // exception, modify it, then push it back on to the stack.
@@ -103,11 +130,14 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
     case Trap::PaintRect: {
       auto rect = TRY(PopRef<Rect>(M68K_REG_USP));
       LOG(INFO) << "TRAP PaintRect(rect: " << rect << ")";
+      // FIXME: Paint with the color set for QuickDraw (A5 World?)
+      DrawRect(rect, {0, 0, 0});
       return absl::OkStatus();
     }
     case Trap::Random: {
       LOG(INFO) << "TRAP Random()";
-      RETURN_IF_ERROR(TrapReturn<int16_t>(0x0000));
+      // FIXME: Use the same algorithm used in Mac OS to generate rand()
+      RETURN_IF_ERROR(TrapReturn<int16_t>(0xFFFF * rand()));
       return absl::OkStatus();
     }
     case Trap::Button: {
@@ -118,11 +148,15 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
     case Trap::PaintOval: {
       auto rect = TRY(PopRef<Rect>(M68K_REG_USP));
       LOG(INFO) << "TRAP PaintOval(rect: " << rect << ")";
+      // FIXME: Paint with the color set for QuickDraw (A5 World?)
+      DrawRect(rect, {0, 0, 0});
       return absl::OkStatus();
     }
     case Trap::EraseOval: {
       auto rect = TRY(PopRef<Rect>(M68K_REG_USP));
       LOG(INFO) << "TRAP EraseOval(rect: " << rect << ")";
+      // FIXME: Clear with the color set for QuickDraw (A5 World?)
+      DrawRect(rect, {0xFF, 0xBF, 0x00});
       return absl::OkStatus();
     }
     case Trap::SysBeep: {
@@ -237,7 +271,28 @@ void cpu_instr_callback(unsigned int pc) {
   }
   CHECK(m68k_get_reg(NULL, M68K_REG_USP) <= kUserStackStart);
   CHECK(m68k_get_reg(NULL, M68K_REG_ISP) <= kInterruptStackStart);
-  m68k_end_timeslice();
+  if (single_step)
+    m68k_end_timeslice();
+}
+
+void PrintFrameTiming(std::ostream& os = std::cout, float period = 2.0f) {
+  static unsigned int frames = 0;
+  frames++;
+  static auto start = std::chrono::steady_clock::now();
+  auto end = std::chrono::steady_clock::now();
+
+  float seconds =
+      std::chrono::duration_cast<std::chrono::duration<float> >(end - start)
+          .count();
+  if (seconds > period) {
+    float spf = seconds / frames;
+    os << frames << " frames in " << std::setprecision(1) << std::fixed
+       << seconds << " seconds = " << std::setprecision(1) << std::fixed
+       << 1.0f / spf << " FPS (" << std::setprecision(3) << std::fixed
+       << spf * 1000.0f << " ms/frame)\n";
+    frames = 0;
+    start = end;
+  }
 }
 
 absl::Status Main(const core::Args& args) {
@@ -277,16 +332,46 @@ absl::Status Main(const core::Args& args) {
   RETURN_IF_ERROR(
       kSystemMemory.Write<uint16_t>(kExceptionReturnAddr, htobe16(0x4E73)));
 
-  std::string input;
-  while (input != "quit") {
-    m68k_execute(100000);
-    if (single_step) {
-      std::cin >> input;
-      if (input.find("run") != std::string::npos) {
-        single_step = false;
+  SDL_Init(SDL_INIT_VIDEO);
+  SDL_Window* window = SDL_CreateWindow("Cyder", SDL_WINDOWPOS_UNDEFINED,
+                                        SDL_WINDOWPOS_UNDEFINED, 512, 384, 0);
+
+  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+  SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+                                           SDL_TEXTUREACCESS_TARGET, 512, 384);
+
+  SDL_Event event;
+  bool should_exit = false;
+  while (!should_exit) {
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_RenderClear(renderer);
+
+    if (!single_step) {
+      SDL_SetRenderTarget(renderer, texture);
+      m68k_execute(100000);
+      SDL_SetRenderTarget(renderer, NULL);
+    }
+
+    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+    SDL_RenderPresent(renderer);
+
+    while (SDL_PollEvent(&event)) {
+      switch (event.type) {
+        case SDL_KEYDOWN:
+          single_step = false;
+          break;
+        case SDL_QUIT:
+          should_exit = true;
+          break;
       }
     }
-    // LOG(INFO) << "$ " << input;
+    PrintFrameTiming();
   }
+
+  SDL_DestroyTexture(texture);
+  SDL_DestroyRenderer(renderer);
+  SDL_DestroyWindow(window);
+  SDL_Quit();
   return absl::OkStatus();
 }
