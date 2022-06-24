@@ -10,6 +10,8 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 	set(CMAKE_CXX_FLAGS "-Wall")
 endif()
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/exe)
+
 set(ABSL_PROPAGATE_CXX_STD ON)
 add_subdirectory(third_party/abseil-cpp)
 include_directories(third_party/abseil-cpp)
