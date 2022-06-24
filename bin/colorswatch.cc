@@ -35,6 +35,8 @@ constexpr char HTML_TEMPLATE_SWATCH[] = R"(
 constexpr char HTML_TEMPLATE_SECTION_FOOTER[] = "</div>";
 constexpr char HTML_TEMPLATE_FOOTER[] = "</body>";
 
+constexpr char OUTPUT_PATH[] = "/tmp/color_swatch.html";
+
 void GenerateSection(const std::string& name,
                      std::tuple<int, int, int> (*colorAtIndex)(uint8_t),
                      size_t count,
@@ -50,7 +52,7 @@ void GenerateSection(const std::string& name,
 
 int main() {
   std::ofstream output;
-  output.open("/tmp/color_swatch.html", std::ios::out);
+  output.open(OUTPUT_PATH, std::ios::out);
   output << HTML_TEMPLATE_HEADER;
 
   GenerateSection("4-Bit Greyscale", colorAtIndex4BitGreyscale, 16, output);
@@ -58,5 +60,7 @@ int main() {
   GenerateSection("8-Bit Color", colorAtIndex, 256, output);
 
   output << HTML_TEMPLATE_FOOTER;
+
+  std::cout << "Color swatch written to: " << OUTPUT_PATH << std::endl;
   return 0;
 }
