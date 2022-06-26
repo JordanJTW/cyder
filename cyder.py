@@ -64,12 +64,12 @@ def run_step(command: str, *args: Tuple[Any],
             print(' ↳ \u001b[38;5;242m{}\u001b[0m'.format(cwd))
 
     if not dry_run:
-      try:
-        subprocess.check_call([command, *args], cwd=cwd)
-      except subprocess.CalledProcessError as e:
-        sys.exit(e.returncode)
-      except KeyboardInterrupt:
-        return
+        try:
+            subprocess.check_call([command, *args], cwd=cwd)
+        except subprocess.CalledProcessError as e:
+            sys.exit(e.returncode)
+        except KeyboardInterrupt:
+            return
 
 
 @Command
@@ -81,7 +81,8 @@ def build(targets, clean, **kwargs):
     release_name = 'Release' if kwargs.get('release', False) else 'Debug'
     build_path = BUILD_PATH.joinpath(release_name)
 
-    print(f'🐙 Build {", ".join(f"`{target}`" for target in targets)} in {release_name}')
+    print(
+        f'🐙 Build {", ".join(f"`{target}`" for target in targets)} in {release_name}')
 
     if clean:
         run_step('rm', '-rf', build_path, **kwargs)
