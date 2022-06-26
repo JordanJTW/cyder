@@ -127,6 +127,21 @@ def bar(target, **kwargs):
     run(target, **kwargs)
 
 
+@Command
+@Argument('args', nargs='*', metavar='ARGS')
+@Argument('-c', '--clean', action='store_true', help='remove build directory before building')
+def test(args, **kwargs):
+    """Build and run a single target"""
+
+    # Build all targets
+    build(targets=[], **kwargs)
+
+    release_name = 'Release' if kwargs.get('release', False) else 'Debug'
+    build_path = BUILD_PATH.joinpath(release_name)
+
+    run_step('ctest', *args, cwd=build_path)
+
+
 def main():
     (func, args) = parse_args()
     func(**args)
