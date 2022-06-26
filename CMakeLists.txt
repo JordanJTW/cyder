@@ -1,16 +1,28 @@
 cmake_minimum_required(VERSION 3.5)
-project(rsrcloader VERSION 0.0.0 LANGUAGES C CXX)
+project(
+  rsrcloader
+  VERSION 0.0.0
+  LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-	# Clang or AppleClang
-	set(CMAKE_CXX_FLAGS "-Wall")
+if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+  # Clang or AppleClang
+  set(CMAKE_CXX_FLAGS "-Wall")
 endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/exe)
+
+# Fetch the latest gtest (main) and enable testing for the project
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG main)
+FetchContent_MakeAvailable(googletest)
+enable_testing()
 
 set(ABSL_PROPAGATE_CXX_STD ON)
 add_subdirectory(third_party/abseil-cpp)
