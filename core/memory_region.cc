@@ -43,7 +43,9 @@ absl::Status MemoryRegion::Copy(void* dest,
   return absl::OkStatus();
 }
 
-absl::Status MemoryRegion::Write(const void* src, size_t offset, size_t length) {
+absl::Status MemoryRegion::Write(const void* src,
+                                 size_t offset,
+                                 size_t length) {
   CHECK_SAFE_ACCESS(offset, length);
 
   memcpy(data_ + offset, src, length);

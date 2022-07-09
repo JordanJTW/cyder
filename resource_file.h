@@ -32,7 +32,7 @@ class ResourceFile {
   friend std::ostream& operator<<(std::ostream&, const ResourceFile&);
 
   ResourceFile(std::vector<std::unique_ptr<ResourceGroup>> resource_groups);
-  
+
   std::vector<std::unique_ptr<ResourceGroup>> resource_groups_;
 };
 

@@ -467,7 +467,7 @@ void PrintFrameTiming(std::ostream& os = std::cout, float period = 2.0f) {
   auto end = std::chrono::steady_clock::now();
 
   float seconds =
-      std::chrono::duration_cast<std::chrono::duration<float> >(end - start)
+      std::chrono::duration_cast<std::chrono::duration<float>>(end - start)
           .count();
   if (seconds > period) {
     float spf = seconds / frames;

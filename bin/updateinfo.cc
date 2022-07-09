@@ -18,7 +18,7 @@ struct Metadata {
   char author[4];
   uint16_t flags;
   char reserved[8];
-  uint32_t datal;   
+  uint32_t datal;
   uint32_t rsrcl;
   uint32_t time_created;
   uint32_t time_modified;
@@ -37,9 +37,9 @@ int main(int argc, char** argv) {
   Metadata metadata;
   memcpy(&metadata, data + 1, sizeof(Metadata));
 
-  LOG(INFO) << std::string(metadata.name, metadata.name_len) << "(type:"
-            << std::string(metadata.type, 4) << ",author:"
-            << std::string(metadata.author, 4) << "):"
+  LOG(INFO) << std::string(metadata.name, metadata.name_len)
+            << "(type:" << std::string(metadata.type, 4)
+            << ",author:" << std::string(metadata.author, 4) << "):"
             << " flags: " << be16toh(metadata.flags)
             << " data len: " << be32toh(metadata.datal)
             << " rsrc len: " << be32toh(metadata.rsrcl)
@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
   uint8_t blank = 0;
   fwrite(&blank, sizeof(uint8_t), 1, file);
   fwrite(&metadata, sizeof(Metadata), 1, file);
-  for (int i=0; i < 29; ++i) {
+  for (int i = 0; i < 29; ++i) {
     fwrite(&blank, sizeof(uint8_t), 1, file);
   }
   fclose(file);
