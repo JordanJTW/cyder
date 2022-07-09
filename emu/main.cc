@@ -160,6 +160,18 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       uint16_t attrs = 8;
       return TrapReturn<uint16_t>(attrs);
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-75.html
+    case Trap::NewPtr:
+    // FIXME: Should "SYS" pointers be allocated differently?
+    case Trap::NewPtrSys: {
+      // D0 seems to contain the argument in a sample program...
+      // but the documentation says it should be in A0.
+      uint32_t logical_size = m68k_get_reg(NULL, M68K_REG_D0);
+      LOG(INFO) << "TRAP NewPtr(logicalSize: " << logical_size << ")";
+      auto ptr = memory_manager.Allocate(logical_size);
+      m68k_set_reg(M68K_REG_A0, ptr);
+      return absl::OkStatus();
+    }
     case Trap::InitGraf: {
       auto globalPtr = TRY(Pop<Ptr>(M68K_REG_USP));
       LOG(INFO) << "TRAP InitGraf(globalPtr: 0x" << std::hex << globalPtr
