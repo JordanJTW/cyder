@@ -2,6 +2,7 @@
 
 #include <iomanip>
 
+#include "core/endian_helpers.h"
 #include "core/logging.h"
 #include "core/memory_region.h"
 #include "memory_map.h"
