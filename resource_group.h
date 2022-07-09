@@ -24,7 +24,7 @@ class ResourceGroup {
 
   InMemoryTypeItem Save(size_t reference_offset) const;
 
-  Resource* FindById(ResID) const;
+  Resource* FindById(ResId) const;
 
   ResType GetType() const { return type_item_.type; }
   size_t GetSize() const { return resources_.size(); }

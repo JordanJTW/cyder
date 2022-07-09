@@ -19,7 +19,7 @@ class ResourceFile {
 
   absl::Status Save(const std::string&) const;
 
-  Resource* FindByTypeAndId(ResType, ResID) const;
+  Resource* FindByTypeAndId(ResType, ResId) const;
 
   ResourceGroup* FindGroupByType(ResType theType) const;
 

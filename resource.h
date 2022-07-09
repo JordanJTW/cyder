@@ -11,11 +11,11 @@
 namespace rsrcloader {
 
 typedef uint32_t ResType;
-typedef uint16_t ResID;
+typedef uint16_t ResId;
 
 class Resource {
  public:
-  Resource(ResID id,
+  Resource(ResId id,
            ResType type,
            uint8_t attributes,
            std::string name,
@@ -33,7 +33,7 @@ class Resource {
                               size_t& current_name_offset,
                               size_t& current_data_offset) const;
 
-  ResID GetId() const { return id_; }
+  ResId GetId() const { return id_; }
   ResType GetType() const { return type_; }
   const std::string& GetName() const { return name_; }
   uint8_t GetAttributes() const { return attributes_; }
@@ -48,7 +48,7 @@ class Resource {
  private:
   friend std::ostream& operator<<(std::ostream&, const Resource&);
 
-  const ResID id_;
+  const ResId id_;
   const ResType type_;
   const uint8_t attributes_;
   const std::string name_;

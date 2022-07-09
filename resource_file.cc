@@ -170,7 +170,7 @@ absl::Status ResourceFile::Save(const std::string& path) const {
   return absl::OkStatus();
 }
 
-Resource* ResourceFile::FindByTypeAndId(ResType theType, ResID theId) const {
+Resource* ResourceFile::FindByTypeAndId(ResType theType, ResId theId) const {
   for (const auto& group : resource_groups_) {
     if (group->GetType() == theType) {
       return group->FindById(theId);

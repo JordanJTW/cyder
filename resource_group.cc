@@ -49,7 +49,7 @@ InMemoryTypeItem ResourceGroup::Save(size_t reference_offset) const {
   return type_item;
 }
 
-Resource* ResourceGroup::FindById(ResID theId) const {
+Resource* ResourceGroup::FindById(ResId theId) const {
   for (const auto& resource : resources_) {
     if (resource->GetId() == theId) {
       return resource.get();
