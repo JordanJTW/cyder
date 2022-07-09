@@ -19,6 +19,8 @@
 #include "trap_helpers.h"
 #include "trap_names.h"
 
+using rsrcloader::GetTypeName;
+using rsrcloader::ResId;
 using rsrcloader::ResType;
 
 constexpr bool disassemble_log = false;
@@ -119,6 +121,25 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
                 << rsrcloader::GetTypeName(type) << "', name: \"" << name
                 << "\")";
       return absl::UnimplementedError("");
+    }
+    case Trap::GetResource: {
+      auto id = TRY(Pop<ResId>(M68K_REG_USP));
+      auto type = TRY(Pop<ResType>(M68K_REG_USP));
+      LOG(INFO) << "TRAP GetResource(theType: '" << GetTypeName(type)
+                << "', theID: " << id << ")";
+
+      auto* resource = current_rsrc.FindByTypeAndId(type, id);
+      // FIXME: Set ResError in D0 and call ResErrorProc
+      // http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-35.html#MARKER-9-220
+      CHECK(resource) << "Resource not found";
+
+      LOG(INFO) << "Attributes: "
+                << static_cast<int>(resource->GetAttributes());
+      auto handle = memory_manager.AllocateHandleForRegion(
+          resource->GetData(),
+          absl::StrCat("Resource[", GetTypeName(type), ":", id, "]"));
+
+      return TrapReturn<uint32_t>(handle);
     }
     case Trap::InitGraf: {
       auto globalPtr = TRY(Pop<Ptr>(M68K_REG_USP));
