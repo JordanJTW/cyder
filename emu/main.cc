@@ -141,6 +141,18 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
 
       return TrapReturn<uint32_t>(handle);
     }
+    case Trap::LoadResource: {
+      auto handle = TRY(Pop<uint32_t>(M68K_REG_USP));
+      LOG(INFO) << "TRAP LoadResource(theResource: 0x" << std::hex << handle
+                << ")";
+      return absl::OkStatus();
+    }
+    case Trap::ReleaseResource: {
+      auto handle = TRY(Pop<uint32_t>(M68K_REG_USP));
+      LOG(INFO) << "TRAP ReleaseResource(theResource: 0x" << std::hex << handle
+                << ")";
+      return absl::OkStatus();
+    }
     case Trap::SizeRsrc: {
       auto handle = TRY(Pop<uint32_t>(M68K_REG_USP));
       LOG(INFO) << "TRAP GetResourceSizeOnDisk(theResource: 0x" << std::hex
