@@ -237,6 +237,59 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
                 << ", trapNum: 0x" << trap_index << ")";
       return absl::OkStatus();
     }
+    // Link: https://dev.os9.ca/techpubs/mac/Files/Files-232.html#HEADING232-0
+    case Trap::Open: {
+      // Link:
+      // https://dev.os9.ca/techpubs/mac/Files/Files-301A.html#HEADING301-362
+      // typedef struct IOParam {
+      //  QElemPtr   qLink;         /* next queue entry */
+      //  short      qType;         /* queue type */
+      //  short      ioTrap;        /* routine trap */
+      //  Ptr        ioCmdAddr;     /* routine address */
+      //  ProcPtr    ioCompletion;  /* completion routine address */
+      //  OSErr      ioResult;      /* result code */
+      //  StringPtr  ioNamePtr;     /* pointer to driver name */
+      //  short      ioVRefNum;     /* volume reference or drive number * /
+      //  short      ioRefNum;      /* driver reference number */
+      //  char       ioVersNum;     /* not used by the Device Manager * /
+      //  char       ioPermssn;     /* read/write permission */
+      //  Ptr        ioMisc;        /* not used by the Device Manager * /
+      //  Ptr        ioBuffer;      /* pointer to data buffer */
+      //  long       ioReqCount;    /* requested number of bytes */
+      //  long       ioActCount;    /* actual number of bytes completed * /
+      //  short      ioPosMode;     /* positioning mode */
+      //  long       ioPosOffset;   /* positioning offset */
+      // } IOParam;
+      uint32_t ptr = m68k_get_reg(NULL, M68K_REG_A0);
+      LOG(INFO) << "TRAP Open(ptr: 0x" << std::hex << ptr << ")";
+      auto qLink = TRY(kSystemMemory.Copy<Ptr>(ptr));
+      auto qType = TRY(kSystemMemory.Copy<uint8_t>(ptr + 4));
+      auto ioTrap = TRY(kSystemMemory.Copy<uint8_t>(ptr + 5));
+      auto ioCmdAddr = TRY(kSystemMemory.Copy<Ptr>(ptr + 6));
+      auto ioCompletion = TRY(kSystemMemory.Copy<Ptr>(ptr + 10));
+      auto ioResult = TRY(kSystemMemory.Copy<int16_t>(ptr + 14));
+      auto ioNamePtr = TRY(kSystemMemory.Copy<Ptr>(ptr + 16));
+      auto ioVRefNum = TRY(kSystemMemory.Copy<uint8_t>(ptr + 20));
+      auto ioRefNum = TRY(kSystemMemory.Copy<uint8_t>(ptr + 21));
+      auto ioVersNum = TRY(kSystemMemory.Copy<char>(ptr + 22));
+      auto ioPermssn = TRY(kSystemMemory.Copy<char>(ptr + 23));
+      auto ioMisc = TRY(kSystemMemory.Copy<Ptr>(ptr + 24));
+      auto ioBuffer = TRY(kSystemMemory.Copy<Ptr>(ptr + 28));
+      auto ioReqCount = TRY(kSystemMemory.Copy<uint16_t>(ptr + 32));
+      auto ioActCount = TRY(kSystemMemory.Copy<uint16_t>(ptr + 34));
+      auto ioPosMode = TRY(kSystemMemory.Copy<uint8_t>(ptr + 36));
+      auto ioPosOffset = TRY(kSystemMemory.Copy<uint16_t>(ptr + 37));
+
+#define FIELD(name) "\n\t" << #name << ": " << (static_cast<int>(name)) << ", "
+      LOG(INFO) << "IOParam: {" << FIELD(qLink) << FIELD(qType) << FIELD(ioTrap)
+                << FIELD(ioCmdAddr) << FIELD(ioCompletion) << FIELD(ioResult)
+                << FIELD(ioNamePtr) << FIELD(ioVRefNum) << FIELD(ioRefNum)
+                << FIELD(ioVersNum) << FIELD(ioPermssn) << FIELD(ioMisc)
+                << FIELD(ioBuffer) << FIELD(ioReqCount) << FIELD(ioActCount)
+                << FIELD(ioPosMode) << FIELD(ioPosOffset) << "\n}";
+#undef FIELD
+      return absl::OkStatus();
+    }
     case Trap::InitGraf: {
       auto globalPtr = TRY(Pop<Ptr>(M68K_REG_USP));
       LOG(INFO) << "TRAP InitGraf(globalPtr: 0x" << std::hex << globalPtr
