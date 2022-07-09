@@ -38,7 +38,7 @@ absl::StatusOr<SegmentLoader> SegmentLoader::Create(
   // Write all unloaded entries verbatim to system memory:
   RETURN_IF_ERROR(kSystemMemory.Write(
       table_data.raw_ptr() + sizeof(InMemoryTableHeader),
-      kA5Position + header.table_offset, header.table_size));
+      GetA5WorldPosition() + header.table_offset, header.table_size));
 
   // Unloaded entries in the jump-table begin with the relative offset to the
   // subroutine so assuming Segment 1 will be the first thing loaded into the
@@ -81,7 +81,7 @@ absl::Status SegmentLoader::Load(uint16_t segment_id) {
   }
 
   uint32_t segment_table_offset =
-      kA5Position + table_header_.table_offset + offset_in_table;
+      GetA5WorldPosition() + table_header_.table_offset + offset_in_table;
   for (int i = 0; i < table_entry_count; ++i) {
     uint32_t offset = segment_table_offset + i * 8;
     uint16_t routine_offset =

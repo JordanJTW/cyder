@@ -16,6 +16,7 @@ constexpr bool verbose_logging = false;
 // Stores the size above/below the A5 World (used for bounds checking)
 uint32_t above_a5_size{0};
 uint32_t below_a5_size{0};
+uint32_t a5_world{0};
 
 // Stores whether a given address is initialized (written to)
 bool kHasInitializedMemory[kSystemMemorySize];
@@ -25,6 +26,11 @@ bool kHasInitializedMemory[kSystemMemorySize];
 void SetA5WorldBounds(uint32_t above_a5, uint32_t below_a5) {
   above_a5_size = above_a5;
   below_a5_size = below_a5;
+  a5_world = kUserStackStart + below_a5_size;
+}
+
+uint32_t GetA5WorldPosition() {
+  return a5_world;
 }
 
 void CheckReadAccess(uint32_t address) {
@@ -66,29 +72,29 @@ void CheckReadAccess(uint32_t address) {
   }
 
   // A5 World
-  if (address == kA5Position) {
+  if (address == a5_world) {
     LOG(WARNING) << "Read A5 (Pointer to QuickDraw): 0x" << std::hex << address;
     return;
   }
-  if (within_region(kA5Position - below_a5_size, kA5Position)) {
+  if (within_region(a5_world - below_a5_size, a5_world)) {
     LOG_IF(INFO, verbose_logging) << "Read below A5: 0x" << std::hex << address
-                                  << " (-0x" << (kA5Position - address) << ")";
+                                  << " (-0x" << (a5_world - address) << ")";
     if (kHasInitializedMemory[address]) {
       return;
     }
     LOG(WARNING) << "Read un-initialized below A5: 0x" << std::hex << address
-                 << " (-0x" << (kA5Position - address) << ")";
+                 << " (-0x" << (a5_world - address) << ")";
     return;
   }
-  if (within_region(kA5Position, kA5Position + above_a5_size)) {
-    if (address < kA5Position + 32) {
+  if (within_region(a5_world, a5_world + above_a5_size)) {
+    if (address < a5_world + 32) {
       LOG(WARNING) << "Read unimplemented application parameters: 0x"
-                   << std::hex << address << " (0x" << (address - kA5Position)
+                   << std::hex << address << " (0x" << (address - a5_world)
                    << ")";
       return;
     }
     LOG_IF(INFO, verbose_logging) << "Read above A5: 0x" << std::hex << address
-                                  << " (+0x" << (address - kA5Position) << ")";
+                                  << " (+0x" << (address - a5_world) << ")";
     return;
   }
 
@@ -142,27 +148,27 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
   }
 
   // A5 World
-  if (address == kA5Position) {
+  if (address == a5_world) {
     LOG(WARNING) << "Write A5 (Pointer to QuickDraw): 0x" << std::hex
                  << address;
     return;
   }
-  if (within_region(kA5Position - below_a5_size, kA5Position)) {
+  if (within_region(a5_world - below_a5_size, a5_world)) {
     LOG_IF(INFO, verbose_logging)
         << "Write below A5 (app globals): 0x" << std::hex << address << " (-0x"
-        << (kA5Position - address) << ")";
+        << (a5_world - address) << ")";
     kHasInitializedMemory[address] = true;
     return;
   }
-  if (within_region(kA5Position, kA5Position + above_a5_size)) {
-    if (address < kA5Position + 32) {
+  if (within_region(a5_world, a5_world + above_a5_size)) {
+    if (address < a5_world + 32) {
       LOG(WARNING) << "Write unimplemented application parameters: 0x"
-                   << std::hex << address << " (0x" << (address - kA5Position)
+                   << std::hex << address << " (0x" << (address - a5_world)
                    << ")";
       return;
     }
     LOG(WARNING) << "Write above A5: 0x" << std::hex << address << " (+0x"
-                 << (address - kA5Position) << ")";
+                 << (address - a5_world) << ")";
     return;
   }
 
@@ -188,7 +194,7 @@ std::string MemoryMapToStr() {
      << "User Stack: [0x" << kUserStackEnd << ", 0x" << kUserStackStart << "] "
      << "Interrupt Stack: "
      << "[0x" << kInterruptStackEnd << ", 0x" << kInterruptStackStart << "] "
-     << "A5 World: 0x" << kA5Position << " (+" << above_a5_size << ", -"
+     << "A5 World: 0x" << a5_world << " (+" << above_a5_size << ", -"
      << below_a5_size << ")";
   return ss.str();
 }

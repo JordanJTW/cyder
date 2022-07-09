@@ -45,10 +45,9 @@ const size_t kInterruptStackStart = kSystemMemorySize - 4_kb;
 const size_t kInterruptStackEnd = kInterruptStackStart - kDefaultStackSize;
 
 // A5 World
-const size_t kA5Position = kSystemMemorySize - 32_kb;
 
 // User Stack
-const size_t kUserStackStart = kA5Position - 32_kb;
+const size_t kUserStackStart = kSystemMemorySize - 32_kb;
 const size_t kUserStackEnd = kUserStackStart - kDefaultStackSize;
 
 // Application Heap
@@ -65,6 +64,7 @@ void CheckWriteAccess(uint32_t address, uint32_t value);
 
 // Sets the bounds of the A5 world when bounds checking.
 void SetA5WorldBounds(uint32_t above_a5, uint32_t below_a5);
+uint32_t GetA5WorldPosition();
 
 // Returns a string representation of the memory map (for debugging).
 std::string MemoryMapToStr();

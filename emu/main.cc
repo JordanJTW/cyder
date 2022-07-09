@@ -325,7 +325,7 @@ absl::Status Main(const core::Args& args) {
   m68k_set_cpu_type(M68K_CPU_TYPE_68000);
 
   m68k_set_reg(M68K_REG_PC, pc);
-  m68k_set_reg(M68K_REG_A5, kA5Position);
+  m68k_set_reg(M68K_REG_A5, GetA5WorldPosition());
   m68k_set_reg(M68K_REG_USP, kUserStackStart);
   m68k_set_reg(M68K_REG_ISP, kInterruptStackStart);
 
