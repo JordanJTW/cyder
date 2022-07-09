@@ -25,6 +25,7 @@ constexpr bool disassemble_log = false;
 constexpr bool memory_write_log = false;
 
 constexpr size_t kGlobalAppNameAddr = 0x910;
+constexpr size_t kCurrentStackBase = 0x908;
 
 bool single_step = false;
 
@@ -336,6 +337,9 @@ absl::Status Main(const core::Args& args) {
   // jump back from the exception handler back to user code:
   RETURN_IF_ERROR(
       kSystemMemory.Write<uint16_t>(kExceptionReturnAddr, htobe16(0x4E73)));
+
+  RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(kCurrentStackBase,
+                                                htobe32(kUserStackStart)));
 
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Window* window = SDL_CreateWindow("Cyder", SDL_WINDOWPOS_UNDEFINED,
