@@ -152,6 +152,14 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       LOG(INFO) << "Handle size: " << handle_size;
       return TrapReturn<uint32_t>(handle_size);
     }
+    case Trap::GetResAttrs: {
+      auto handle = TRY(Pop<uint32_t>(M68K_REG_USP));
+      LOG(INFO) << "TRAP GetResAttrs(theResource: 0x" << std::hex << handle
+                << ")";
+      // FIXME: Load the actual attributes from the resource...
+      uint16_t attrs = 8;
+      return TrapReturn<uint16_t>(attrs);
+    }
     case Trap::InitGraf: {
       auto globalPtr = TRY(Pop<Ptr>(M68K_REG_USP));
       LOG(INFO) << "TRAP InitGraf(globalPtr: 0x" << std::hex << globalPtr
