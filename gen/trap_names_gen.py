@@ -14,8 +14,11 @@ HEADER = """
 
 #include <cstdint>
 
-// Gets the name of the given `trap`
-const char* GetTrapName(uint32_t trap);
+const char* GetTrapName(uint16_t trap);
+
+const char* GetTrapNameByToolboxIndex(uint16_t index);
+
+const char* GetTrapNameBySystemIndex(uint16_t index);
 
 """
 
@@ -26,22 +29,11 @@ CC_HEADER = """
 #include <iomanip>
 
 #include "core/logging.h"
-
-const char* GetTrapName(uint32_t trap) {
-  switch (trap) {
 """
 
-CC_ENTRY = """
+SWITCH_CASE = """
     // {}
-    case 0x{}: return "{}";
-"""
-
-CC_FOOTER = """
-    default:
-      NOTREACHED() << "Unknown Trap: 0x" << std::hex << trap;
-      return nullptr;
-  }
-}
+    case {}: return "{}";
 """
 
 
@@ -55,6 +47,7 @@ def parse_args():
     cc_path = '{}.cc'.format(output)
     h_path = '{}.h'.format(output)
     return (cc_path, h_path)
+
 
 def main():
     (cc_path, h_path) = parse_args()
@@ -78,6 +71,38 @@ def main():
             print('Error reading: "{}"'.format(line.strip()))
         sys.exit(-2)
 
+    traps = {'TB': {}, 'OS': {}}
+    for entry in match_lines:
+        (name, trap) = (entry.group('name'), entry.group('trap'))
+        trap = int(trap, 16)
+
+        is_toolbox = (trap >> 11) & 1
+        category = 'TB' if is_toolbox else 'OS'
+        index = (trap & 0x03FF) if is_toolbox else (trap & 0x00FF)
+
+        if index not in traps[category]:
+            traps[category][index] = []
+        elif category == 'TB':
+            print('Duplicate index found for Toolbox trap!')
+            sys.exit(-1)
+
+        if category == 'OS':
+            flags = (trap >> 9) & 0x03
+            name = f'{name}[{flags:02b}]'
+
+        traps[category][index].append(name)
+
+    # Remove [00] flags from the end of traps with unique indexs
+    for index, names in traps['OS'].items():
+        if len(names) > 1:
+            continue
+
+        if not names[0].endswith('[00]'):
+            print('Expected unique OS trap to have [00] flag')
+            sys.exit(-1)
+
+        traps['OS'][index] = [names[0].replace('[00]', '')]
+
     # Write the .h
     with open(h_path, 'w') as f:
         f.write(HEADER)
@@ -90,10 +115,57 @@ def main():
     # Write the .cc
     with open(cc_path, 'w') as f:
         f.write(CC_HEADER)
+
+        # GetTrapName:
+        f.write(
+            """
+const char* GetTrapName(uint16_t trap) {
+  switch (trap) {""")
+
         for entry in match_lines:
-            f.write(CC_ENTRY.format(
-                entry.group(0), entry.group('trap'), entry.group('name')))
-        f.write(CC_FOOTER)
+            f.write(SWITCH_CASE.format(
+                entry.group(0), '0x{}'.format(entry.group('trap')), entry.group('name')))
+
+        f.write("""
+    default:
+      NOTREACHED() << "Unknown trap encountered: 0x" << std::hex << trap;
+      return nullptr; 
+  }
+}""")
+
+        # GetTrapNameByToolboxIndex:
+        f.write(
+            """
+const char* GetTrapNameByToolboxIndex(uint16_t index) {
+  switch (index) {""")
+
+        for index, names in traps['TB'].items():
+            f.write(SWITCH_CASE.format(
+                'Toolbox', index, '|'.join(names)))
+
+        f.write("""
+    default:
+      NOTREACHED() << "Unknown toolbox index encountered: " << index;
+      return nullptr; 
+  }
+}""")
+
+        # GetTrapNameBySystemIndex:
+        f.write(
+            """
+const char* GetTrapNameBySystemIndex(uint16_t index) {
+  switch (index) {""")
+
+        for index, names in traps['OS'].items():
+            f.write(SWITCH_CASE.format(
+                'System', index, '|'.join(names)))
+
+        f.write("""
+    default:
+      NOTREACHED() << "Unknown system index encountered: " << index;
+      return nullptr; 
+  }
+}""")
 
 
 if __name__ == '__main__':
