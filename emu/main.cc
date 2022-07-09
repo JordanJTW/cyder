@@ -184,6 +184,25 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       m68k_set_reg(M68K_REG_A0, ptr);
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-103.html
+    case Trap::BlockMove: {
+      uint32_t source_ptr = m68k_get_reg(NULL, M68K_REG_A0);
+      uint32_t dest_ptr = m68k_get_reg(NULL, M68K_REG_A1);
+      uint32_t byte_count = m68k_get_reg(NULL, M68K_REG_D0);
+
+      LOG(INFO) << "TRAP BlockMove(sourcePtr: 0x" << std::hex << source_ptr
+                << ", destPtr: 0x" << dest_ptr << ", byteCount: " << byte_count
+                << ")";
+
+      // FIXME: Allow for more efficient copies in system memory (memcpy)?
+      for (size_t i = 0; i < byte_count; ++i) {
+        RETURN_IF_ERROR(kSystemMemory.Write<uint8_t>(
+            dest_ptr + i, TRY(kSystemMemory.Copy<uint8_t>(source_ptr + i))));
+      }
+      // Return result code "noErr"
+      m68k_set_reg(M68K_REG_D0, 0);
+      return absl::OkStatus();
+    }
     case Trap::InitGraf: {
       auto globalPtr = TRY(Pop<Ptr>(M68K_REG_USP));
       LOG(INFO) << "TRAP InitGraf(globalPtr: 0x" << std::hex << globalPtr
