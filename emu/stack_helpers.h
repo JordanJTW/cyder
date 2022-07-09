@@ -41,15 +41,18 @@ absl::Status Push(T value, m68k_register_t stack_ptr_reg) {
   m68k_set_reg(stack_ptr_reg, new_stack_ptr);
   return absl::OkStatus();
 }
-// Returns a value in a caller-allocated position on the User Stack.
-// TODO: Find where this behavior of using a caller-allocated space
-// on the stack to return a value from Toolbox traps is documented.
+
+// Function results are returned by value or by address on the stack.
+// Space for the function result is allocated by the caller before the
+// parameters are pushed. The caller is responsible for removing the
+// result from the stack after the call.
+// Link:
+// https://dev.os9.ca/techpubs/mac/OSUtilities/OSUtilities-170.html#HEADING170-121
 template <typename T>
 absl::Status TrapReturn(T value) {
   static_assert(std::is_integral<T>::value,
                 "Only integers are stored on the stack");
   Ptr current_stack = m68k_get_reg(NULL, M68K_REG_USP);
-  CHECK_EQ(MUST(kSystemMemory.Copy<T>(current_stack)), 0);
   RETURN_IF_ERROR(kSystemMemory.Write<T>(current_stack, htobe<T>(value)));
   return absl::OkStatus();
 }
