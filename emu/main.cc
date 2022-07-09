@@ -209,6 +209,27 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       m68k_set_reg(M68K_REG_D0, memory_manager.GetHandleSize(handle));
       return absl::OkStatus();
     }
+    case Trap::GetOSTrapAddress: {
+      uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
+      LOG(INFO) << "TRAP GetOSTrapAddress(trap: '"
+                << GetTrapNameBySystemIndex(trap_index) << "')";
+      m68k_set_reg(M68K_REG_A0, 0x3000);
+      return absl::OkStatus();
+    }
+    case Trap::GetToolBoxTrapAddress: {
+      uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
+      LOG(INFO) << "TRAP GetToolBoxTrapAddress(trap: '"
+                << GetTrapNameByToolboxIndex(trap_index) << "')";
+      m68k_set_reg(M68K_REG_A0, 0x3000);
+      return absl::OkStatus();
+    }
+    case Trap::GetTrapAddress: {
+      uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
+      LOG(INFO) << "TRAP GetTrapAddress(trapNum: 0x" << std::hex << trap_index
+                << ")";
+      m68k_set_reg(M68K_REG_A0, 0x3000);
+      return absl::OkStatus();
+    }
     case Trap::InitGraf: {
       auto globalPtr = TRY(Pop<Ptr>(M68K_REG_USP));
       LOG(INFO) << "TRAP InitGraf(globalPtr: 0x" << std::hex << globalPtr
