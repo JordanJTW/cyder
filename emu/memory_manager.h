@@ -22,12 +22,12 @@ class MemoryManager {
   size_t heap_offset_{kHeapHandleOffset};
   size_t handle_offset_{0};
 
-  struct HandleData {
+  struct HandleMetadata {
     std::string tag;
     uint32_t start;
     uint32_t end;
     uint32_t size;
   };
 
-  std::map<Handle, HandleData> handle_to_data_;
+  std::map<Handle, HandleMetadata> handle_to_metadata_;
 };

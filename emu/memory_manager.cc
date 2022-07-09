@@ -21,38 +21,38 @@ Handle MemoryManager::Allocate(size_t size, std::string tag) {
   LOG(INFO) << "Handles used: " << handle_offset_ / sizeof(Handle);
   CHECK(kSystemMemory.Write<uint32_t>(handle, htobe32(offset)).ok());
 
-  HandleData metadata;
+  HandleMetadata metadata;
   metadata.tag = std::move(tag);
   metadata.start = offset;
   metadata.end = offset + size;
   metadata.size = size;
 
-  handle_to_data_.insert({handle, std::move(metadata)});
+  handle_to_metadata_.insert({handle, std::move(metadata)});
   return handle;
 }
 
 bool MemoryManager::Deallocate(Handle handle) {
-  auto entry = handle_to_data_.find(handle);
-  if (entry == handle_to_data_.cend()) {
+  auto entry = handle_to_metadata_.find(handle);
+  if (entry == handle_to_metadata_.cend()) {
     LOG(ERROR) << "Handle was already deallocated...";
     return false;
   }
 
   LOG(INFO) << "Dealloc: '" << entry->second.tag << "'";
-  handle_to_data_.erase(handle);
+  handle_to_metadata_.erase(handle);
   return true;
 }
 
 std::string MemoryManager::GetTag(Handle handle) {
-  auto entry = handle_to_data_.find(handle);
-  if (entry == handle_to_data_.cend()) {
+  auto entry = handle_to_metadata_.find(handle);
+  if (entry == handle_to_metadata_.cend()) {
     return {};
   }
   return entry->second.tag;
 }
 
 Handle MemoryManager::GetHandleThatContains(uint32_t address) {
-  for (const auto& entry : handle_to_data_) {
+  for (const auto& entry : handle_to_metadata_) {
     if (address < entry.second.end && address >= entry.second.start) {
       return entry.first;
     }
@@ -61,8 +61,8 @@ Handle MemoryManager::GetHandleThatContains(uint32_t address) {
 }
 
 uint32_t MemoryManager::GetHandleSize(Handle handle) {
-  auto entry = handle_to_data_.find(handle);
-  if (entry == handle_to_data_.cend()) {
+  auto entry = handle_to_metadata_.find(handle);
+  if (entry == handle_to_metadata_.cend()) {
     return {};
   }
   return entry->second.size;
