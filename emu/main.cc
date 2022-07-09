@@ -89,8 +89,13 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
                              ExceptionReturn& stack_return) {
   LOG(INFO) << "A-Line Exception " << (trap::IsToolbox(trap) ? "Toolbox" : "OS")
             << "::" << GetTrapName(trap) << " (0x" << std::hex << trap
-            << ") Index: " << std::dec << trap::ExtractIndex(trap)
-            << " Flags: " << trap::ExtractFlags(trap);
+            << ") Index: " << std::dec << trap::ExtractIndex(trap);
+
+  CHECK(!trap::IsAutoPopSet(trap));
+  if (trap::IsSystem(trap))
+    LOG(INFO) << "Should return A0? "
+              << (trap::IsReturnA0(trap) ? "true" : "false")
+              << " Flags: " << trap::ExtractFlags(trap);
 
   switch (trap) {
     case Trap::LoadSeg: {
