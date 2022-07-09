@@ -88,9 +88,11 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
                              MemoryManager& memory_manager,
                              uint16_t trap,
                              ExceptionReturn& stack_return) {
-  LOG(INFO) << "A-Line Exception " << (trap::IsToolbox(trap) ? "Toolbox" : "OS")
+  LOG(INFO) << "\u001b[38;5;160m"
+            << "A-Line Exception " << (trap::IsToolbox(trap) ? "Toolbox" : "OS")
             << "::" << GetTrapName(trap) << " (0x" << std::hex << trap
-            << ") Index: " << std::dec << trap::ExtractIndex(trap);
+            << ") Index: " << std::dec << trap::ExtractIndex(trap)
+            << "\u001b[0m";
 
   CHECK(!trap::IsAutoPopSet(trap));
   if (trap::IsSystem(trap))
@@ -265,8 +267,15 @@ void cpu_instr_callback(unsigned int pc) {
   if (disassemble_log) {
 #define REG(name) " " << #name << ": 0x" << m68k_get_reg(NULL, M68K_REG_##name)
 
-    LOG(INFO) << std::hex << REG(A0) << REG(A1) << REG(A2) << REG(A3) << REG(A4)
-              << REG(A5) << REG(A6) << REG(A7) << REG(USP) << REG(ISP);
+    LOG(INFO) << "\u001b[38;5;240m" << std::hex << REG(A0) << REG(A1) << REG(A2)
+              << REG(A3) << REG(A4) << REG(A5) << REG(A6) << REG(A7) << REG(USP)
+              << REG(ISP) << "\u001b[0m";
+    LOG(INFO) << "\u001b[38;5;240m" << std::hex << REG(D0) << REG(D1) << REG(D2)
+              << REG(D3) << REG(D4) << REG(D5) << REG(D6) << REG(D7)
+              << "\u001b[0m";
+
+    LOG(INFO) << "\u001b[38;5;240m"
+              << "Handles: " << memory_manager_ptr->LogHandles() << "\u001b[0m";
 #undef REG
 
     char buffer[255];

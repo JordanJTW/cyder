@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <map>
+#include <sstream>
 #include <string>
 
 #include "system_types.h"
@@ -17,6 +18,15 @@ class MemoryManager {
   Handle GetHandleThatContains(uint32_t address);
 
   uint32_t GetHandleSize(Handle handle);
+
+  std::string LogHandles() {
+    std::stringstream os;
+    for (const auto& handle_pair : handle_to_metadata_) {
+      os << "\t0x" << std::hex << handle_pair.first << " -> 0x"
+         << handle_pair.second.start;
+    }
+    return os.str();
+  }
 
  private:
   size_t heap_offset_{kHeapHandleOffset};
