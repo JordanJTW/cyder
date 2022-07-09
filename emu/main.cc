@@ -141,6 +141,17 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
 
       return TrapReturn<uint32_t>(handle);
     }
+    case Trap::SizeRsrc: {
+      auto handle = TRY(Pop<uint32_t>(M68K_REG_USP));
+      LOG(INFO) << "TRAP GetResourceSizeOnDisk(theResource: 0x" << std::hex
+                << handle << ")";
+      // FIXME: This should read the size from disk not memory i.e. from
+      // ResourceManager
+      // http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-82.html
+      auto handle_size = memory_manager.GetHandleSize(handle);
+      LOG(INFO) << "Handle size: " << handle_size;
+      return TrapReturn<uint32_t>(handle_size);
+    }
     case Trap::InitGraf: {
       auto globalPtr = TRY(Pop<Ptr>(M68K_REG_USP));
       LOG(INFO) << "TRAP InitGraf(globalPtr: 0x" << std::hex << globalPtr
