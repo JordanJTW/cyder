@@ -66,19 +66,13 @@ absl::Status SegmentLoader::Load(uint16_t segment_id) {
   uint16_t offset_in_table = be16toh(TRY(resourece_data.Copy<uint16_t>(0)));
   uint16_t table_entry_count = be16toh(TRY(resourece_data.Copy<uint16_t>(2)));
 
-  Handle handle = memory_manager_.Allocate(
-      segment.size(), absl::StrCat("Segment(id:", segment_id, ")"));
-
+  Handle handle = memory_manager_.AllocateHandleForRegion(
+      segment, absl::StrCat("Segment(id:", segment_id, ")"));
   size_t load_addr = be32toh(TRY(kSystemMemory.Copy<uint32_t>(handle)));
+
   LOG(INFO) << "Load Segment " << segment_id << " at "
             << "[0x" << std::hex << load_addr << ", 0x"
             << (load_addr + segment.size()) << "] count: " << table_entry_count;
-
-  // TODO: Add an allocator instead of just sequential offsets
-  for (int i = 0; i < segment.size(); ++i) {
-    RETURN_IF_ERROR(kSystemMemory.Write<uint8_t>(
-        load_addr + i, TRY(segment.Copy<uint8_t>(i))));
-  }
 
   uint32_t segment_table_offset =
       GetA5WorldPosition() + table_header_.table_offset + offset_in_table;

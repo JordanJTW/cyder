@@ -8,26 +8,47 @@
 
 extern core::MemoryRegion kSystemMemory;
 
-Handle MemoryManager::Allocate(size_t size, std::string tag) {
-  size_t offset = kHeapStart + heap_offset_;
-  LOG(INFO) << "Alloc: '" << tag << "'";
-  LOG(INFO) << "Handle " << (handle_offset_ / sizeof(Handle)) << " @ "
-            << std::hex << offset << " size: " << size;
+Ptr MemoryManager::Allocate(uint32_t size) {
+  size_t ptr = kHeapStart + heap_offset_;
+  LOG(INFO) << "Allocate " << size << " bytes at 0x" << std::hex << ptr;
   heap_offset_ += size;
   LOG(INFO) << "Memory used: " << heap_offset_ << " / "
             << (kHeapEnd - kHeapStart);
+  return ptr;
+}
+
+Handle MemoryManager::AllocateHandle(uint32_t size, std::string tag) {
+  Ptr block = Allocate(size);
   Handle handle = kHeapStart + handle_offset_;
+
+  LOG(INFO) << "Handle " << (handle_offset_ / sizeof(Handle)) << " ["
+            << std::hex << handle << "] for '" << tag << "'";
+
   handle_offset_ += sizeof(Handle);
   LOG(INFO) << "Handles used: " << handle_offset_ / sizeof(Handle);
-  CHECK(kSystemMemory.Write<uint32_t>(handle, htobe32(offset)).ok());
+
+  CHECK(kSystemMemory.Write<uint32_t>(handle, htobe32(block)).ok());
 
   HandleMetadata metadata;
   metadata.tag = std::move(tag);
-  metadata.start = offset;
-  metadata.end = offset + size;
+  metadata.start = block;
+  metadata.end = block + size;
   metadata.size = size;
 
   handle_to_metadata_.insert({handle, std::move(metadata)});
+  return handle;
+}
+
+Handle MemoryManager::AllocateHandleForRegion(const core::MemoryRegion& region,
+                                              std::string tag) {
+  Handle handle = AllocateHandle(region.size(), tag);
+  size_t load_addr = be32toh(MUST(kSystemMemory.Copy<uint32_t>(handle)));
+
+  for (int i = 0; i < region.size(); ++i) {
+    CHECK(kSystemMemory
+              .Write<uint8_t>(load_addr + i, MUST(region.Copy<uint8_t>(i)))
+              .ok());
+  }
   return handle;
 }
 

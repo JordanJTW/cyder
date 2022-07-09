@@ -5,13 +5,17 @@
 #include <sstream>
 #include <string>
 
+#include "core/memory_region.h"
 #include "system_types.h"
 
 class MemoryManager {
  public:
   static constexpr size_t kHeapHandleOffset{512};
 
-  Handle Allocate(size_t size, std::string tag);
+  Ptr Allocate(uint32_t size);
+  Handle AllocateHandle(uint32_t size, std::string tag);
+  Handle AllocateHandleForRegion(const core::MemoryRegion& region,
+                                 std::string tag);
   bool Deallocate(Handle handle);
 
   std::string GetTag(Handle handle);
