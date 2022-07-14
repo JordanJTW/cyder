@@ -67,7 +67,10 @@ void CheckReadAccess(uint32_t address) {
 
   // System Heap
   if (within_region(kSystemHeapStart, kSystemHeapEnd)) {
-    LOG(WARNING) << "Read uninitialized system heap: 0x" << std::hex << address;
+    if (kHasInitializedMemory[address])
+      return;
+
+    LOG(WARNING) << "Read system heap: 0x" << std::hex << address;
     return;
   }
 
@@ -153,8 +156,12 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
 
   // System Heap
   if (within_region(kSystemHeapStart, kSystemHeapEnd)) {
-    LOG(WARNING) << "Write to system heap: 0x" << std::hex << address
-                 << " = 0x" << value;
+    if (kHasInitializedMemory[address])
+      return;
+
+    LOG(WARNING) << "Write to system heap: 0x" << std::hex << address << " = 0x"
+                 << value;
+    kHasInitializedMemory[address] = true;
     return;
   }
 
