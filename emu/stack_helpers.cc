@@ -3,16 +3,16 @@
 #include "core/endian_helpers.h"
 
 template <>
-absl::StatusOr<absl::string_view> PopRef(m68k_register_t stack_ptr_reg) {
-  auto ptr = TRY(Pop<Ptr>(stack_ptr_reg));
+absl::StatusOr<absl::string_view> PopRef() {
+  auto ptr = TRY(Pop<Ptr>());
   auto length = TRY(kSystemMemory.Copy<uint8_t>(ptr));
   return absl::string_view(
       reinterpret_cast<const char*>(kSystemMemory.raw_ptr()) + ptr + 1, length);
 }
 
 template <>
-absl::StatusOr<Rect> PopRef(m68k_register_t stack_ptr_reg) {
-  auto ptr = TRY(Pop<Ptr>(stack_ptr_reg));
+absl::StatusOr<Rect> PopRef() {
+  auto ptr = TRY(Pop<Ptr>());
   Rect rect;
   rect.top = be16toh(TRY(kSystemMemory.Copy<Integer>(ptr)));
   rect.left = be16toh(TRY(kSystemMemory.Copy<Integer>(ptr + 2)));

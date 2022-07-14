@@ -26,7 +26,7 @@ bool kHasInitializedMemory[kSystemMemorySize];
 void SetA5WorldBounds(uint32_t above_a5, uint32_t below_a5) {
   above_a5_size = above_a5;
   below_a5_size = below_a5;
-  a5_world = kUserStackStart + below_a5_size;
+  a5_world = kStackStart + below_a5_size;
 }
 
 uint32_t GetA5WorldPosition() {
@@ -63,11 +63,11 @@ void CheckReadAccess(uint32_t address) {
     return;
   }
 
-  // User Stack
-  if (within_stack(kUserStackStart, kUserStackEnd)) {
+  // Stack
+  if (within_stack(kStackStart, kStackEnd)) {
     LOG_IF(INFO, verbose_logging)
-        << "Read User Stack: 0x" << std::hex << address << " (0x"
-        << (kUserStackStart - address) << ")";
+        << "Read Stack: 0x" << std::hex << address << " (0x"
+        << (kStackStart - address) << ")";
     return;
   }
 
@@ -95,14 +95,6 @@ void CheckReadAccess(uint32_t address) {
     }
     LOG_IF(INFO, verbose_logging) << "Read above A5: 0x" << std::hex << address
                                   << " (+0x" << (address - a5_world) << ")";
-    return;
-  }
-
-  // Interrupt Stack
-  if (within_stack(kInterruptStackStart, kInterruptStackEnd)) {
-    LOG_IF(INFO, verbose_logging)
-        << "Read Interrupt Stack: 0x" << std::hex << address << " (0x"
-        << (kInterruptStackStart - address) << ")";
     return;
   }
 
@@ -139,11 +131,11 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
     return;
   }
 
-  // User Stack
-  if (within_stack(kUserStackStart, kUserStackEnd)) {
+  // Stack
+  if (within_stack(kStackStart, kStackEnd)) {
     LOG_IF(INFO, verbose_logging)
-        << "Write User Stack: 0x" << std::hex << address << " (0x"
-        << (kUserStackStart - address) << ")";
+        << "Write Stack: 0x" << std::hex << address << " (0x"
+        << (kStackStart - address) << ")";
     return;
   }
 
@@ -172,14 +164,6 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
     return;
   }
 
-  // Interrupt Stack
-  if (within_stack(kInterruptStackStart, kInterruptStackEnd)) {
-    LOG_IF(INFO, verbose_logging)
-        << "Write Interrupt Stack: 0x" << std::hex << address << " (0x"
-        << (kInterruptStackStart - address) << ")";
-    return;
-  }
-
   // RTE
   CHECK(address != kExceptionReturnAddr)
       << "Interrupt return instruction is read-only";
@@ -191,9 +175,7 @@ std::string MemoryMapToStr() {
   std::stringstream ss;
   ss << std::hex;
   ss << "Heap: [0x" << kHeapStart << ", 0x" << kHeapEnd << "] "
-     << "User Stack: [0x" << kUserStackEnd << ", 0x" << kUserStackStart << "] "
-     << "Interrupt Stack: "
-     << "[0x" << kInterruptStackEnd << ", 0x" << kInterruptStackStart << "] "
+     << "Stack: [0x" << kStackEnd << ", 0x" << kStackStart << "] "
      << "A5 World: 0x" << a5_world << " (+" << above_a5_size << ", -"
      << below_a5_size << ")";
   return ss.str();

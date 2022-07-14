@@ -64,12 +64,12 @@ void DrawRect(const Rect& rect,
 class ExceptionReturn {
  public:
   ExceptionReturn()
-      : status_(MUST(Pop<uint16_t>(M68K_REG_SP))),
-        return_address_(MUST(Pop<uint32_t>(M68K_REG_SP))) {}
+      : status_(MUST(Pop<uint16_t>())),
+        return_address_(MUST(Pop<uint32_t>())) {}
 
   ~ExceptionReturn() {
-    CHECK(Push<uint32_t>(return_address_ + return_offset_, M68K_REG_SP).ok());
-    CHECK(Push<uint16_t>(status_, M68K_REG_SP).ok());
+    CHECK(Push<uint32_t>(return_address_ + return_offset_).ok());
+    CHECK(Push<uint16_t>(status_).ok());
   }
 
   void SetReturnOffset(int16_t return_offset) {
@@ -104,7 +104,7 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
 
   switch (trap) {
     case Trap::LoadSeg: {
-      uint16_t load_segment = TRY(Pop<uint16_t>(M68K_REG_USP));
+      uint16_t load_segment = TRY(Pop<uint16_t>());
       LOG(INFO) << "TRAP LoadSeg(" << load_segment << ")";
       RETURN_IF_ERROR(segment_loader.Load(load_segment));
       // The segment loader modifies the six byte entry for this segment in the
@@ -114,8 +114,8 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       return absl::OkStatus();
     }
     case Trap::Get1NamedResource: {
-      auto name = TRY(PopRef<absl::string_view>(M68K_REG_USP));
-      ResType type = TRY(Pop<ResType>(M68K_REG_USP));
+      auto name = TRY(PopRef<absl::string_view>());
+      ResType type = TRY(Pop<ResType>());
 
       LOG(INFO) << "TRAP Get1NamedResource(theType: '"
                 << rsrcloader::GetTypeName(type) << "', name: \"" << name
@@ -123,8 +123,8 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       return absl::UnimplementedError("");
     }
     case Trap::GetResource: {
-      auto id = TRY(Pop<ResId>(M68K_REG_USP));
-      auto type = TRY(Pop<ResType>(M68K_REG_USP));
+      auto id = TRY(Pop<ResId>());
+      auto type = TRY(Pop<ResType>());
       LOG(INFO) << "TRAP GetResource(theType: '" << GetTypeName(type)
                 << "', theID: " << id << ")";
 
@@ -142,19 +142,19 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       return TrapReturn<uint32_t>(handle);
     }
     case Trap::LoadResource: {
-      auto handle = TRY(Pop<uint32_t>(M68K_REG_USP));
+      auto handle = TRY(Pop<uint32_t>());
       LOG(INFO) << "TRAP LoadResource(theResource: 0x" << std::hex << handle
                 << ")";
       return absl::OkStatus();
     }
     case Trap::ReleaseResource: {
-      auto handle = TRY(Pop<uint32_t>(M68K_REG_USP));
+      auto handle = TRY(Pop<uint32_t>());
       LOG(INFO) << "TRAP ReleaseResource(theResource: 0x" << std::hex << handle
                 << ")";
       return absl::OkStatus();
     }
     case Trap::SizeRsrc: {
-      auto handle = TRY(Pop<uint32_t>(M68K_REG_USP));
+      auto handle = TRY(Pop<uint32_t>());
       LOG(INFO) << "TRAP GetResourceSizeOnDisk(theResource: 0x" << std::hex
                 << handle << ")";
       // FIXME: This should read the size from disk not memory i.e. from
@@ -165,7 +165,7 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       return TrapReturn<uint32_t>(handle_size);
     }
     case Trap::GetResAttrs: {
-      auto handle = TRY(Pop<uint32_t>(M68K_REG_USP));
+      auto handle = TRY(Pop<uint32_t>());
       LOG(INFO) << "TRAP GetResAttrs(theResource: 0x" << std::hex << handle
                 << ")";
       // FIXME: Load the actual attributes from the resource...
@@ -291,13 +291,13 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       return absl::OkStatus();
     }
     case Trap::InitGraf: {
-      auto globalPtr = TRY(Pop<Ptr>(M68K_REG_USP));
+      auto globalPtr = TRY(Pop<Ptr>());
       LOG(INFO) << "TRAP InitGraf(globalPtr: 0x" << std::hex << globalPtr
                 << ")";
       return absl::OkStatus();
     }
     case Trap::OpenPort: {
-      auto thePortPtr = TRY(Pop<GrafPtr>(M68K_REG_USP));
+      auto thePortPtr = TRY(Pop<GrafPtr>());
       LOG(INFO) << "TRAP OpenPort(port: 0x" << std::hex << thePortPtr << ")";
       return absl::OkStatus();
     }
@@ -306,7 +306,7 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       return absl::OkStatus();
     }
     case Trap::PaintRect: {
-      auto rect = TRY(PopRef<Rect>(M68K_REG_USP));
+      auto rect = TRY(PopRef<Rect>());
       LOG(INFO) << "TRAP PaintRect(rect: " << rect << ")";
       // FIXME: Paint with the color set for QuickDraw (A5 World?)
       DrawRect(rect, {0, 0, 0});
@@ -324,21 +324,21 @@ absl::Status HandleALineTrap(SegmentLoader& segment_loader,
       return absl::OkStatus();
     }
     case Trap::PaintOval: {
-      auto rect = TRY(PopRef<Rect>(M68K_REG_USP));
+      auto rect = TRY(PopRef<Rect>());
       LOG(INFO) << "TRAP PaintOval(rect: " << rect << ")";
       // FIXME: Paint with the color set for QuickDraw (A5 World?)
       DrawRect(rect, {0, 0, 0});
       return absl::OkStatus();
     }
     case Trap::EraseOval: {
-      auto rect = TRY(PopRef<Rect>(M68K_REG_USP));
+      auto rect = TRY(PopRef<Rect>());
       LOG(INFO) << "TRAP EraseOval(rect: " << rect << ")";
       // FIXME: Clear with the color set for QuickDraw (A5 World?)
       DrawRect(rect, {0xFF, 0xBF, 0x00});
       return absl::OkStatus();
     }
     case Trap::SysBeep: {
-      uint16_t duration = TRY(Pop<Integer>(M68K_REG_USP));
+      uint16_t duration = TRY(Pop<Integer>());
       LOG(INFO) << "TRAP SysBeep(duration: " << duration << ")";
       return absl::OkStatus();
     }
@@ -454,8 +454,7 @@ void cpu_instr_callback(unsigned int pc) {
     std::string tag = (handle == 0) ? "" : memory_manager_ptr->GetTag(handle);
     LOG(INFO) << std::hex << pc << " (" << tag << "): " << buffer;
   }
-  CHECK(m68k_get_reg(NULL, M68K_REG_USP) <= kUserStackStart);
-  CHECK(m68k_get_reg(NULL, M68K_REG_ISP) <= kInterruptStackStart);
+  CHECK(m68k_get_reg(NULL, M68K_REG_ISP) <= kStackStart);
   if (single_step)
     m68k_end_timeslice();
 }
@@ -506,8 +505,12 @@ absl::Status Main(const core::Args& args) {
 
   m68k_set_reg(M68K_REG_PC, pc);
   m68k_set_reg(M68K_REG_A5, GetA5WorldPosition());
-  m68k_set_reg(M68K_REG_USP, kUserStackStart);
-  m68k_set_reg(M68K_REG_ISP, kInterruptStackStart);
+  m68k_set_reg(M68K_REG_SP, kStackStart);
+
+  // Mac OS _always_ runs in supervisor mode so set the SR
+  // Link: https://en.wikibooks.org/wiki/68000_Assembly/Registers
+  uint32_t sr = m68k_get_reg(NULL, M68K_REG_SR);
+  m68k_set_reg(M68K_REG_SR, sr | (1 << 13));
 
   // Sets the size of the name to 0 so it is not read:
   // TODO: Store the application name here as a Pascal string
@@ -517,8 +520,8 @@ absl::Status Main(const core::Args& args) {
   RETURN_IF_ERROR(
       kSystemMemory.Write<uint16_t>(kExceptionReturnAddr, htobe16(0x4E73)));
 
-  RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(kCurrentStackBase,
-                                                htobe32(kUserStackStart)));
+  RETURN_IF_ERROR(
+      kSystemMemory.Write<uint32_t>(kCurrentStackBase, htobe32(kStackStart)));
 
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Window* window = SDL_CreateWindow("Cyder", SDL_WINDOWPOS_UNDEFINED,

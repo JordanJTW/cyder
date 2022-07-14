@@ -25,9 +25,9 @@ const size_t kDefaultStackSize = 4_kb;
 //  A5 World Addr (Above/Below relative to here)
 //   ... Buffer (32KB)
 //
-//  User Stack
+//  Stack
 //   ... Default Stack Size
-//  End of User Stack
+//  End of Stack
 //  End of Application Heap
 //   ... Heap size depends on Default Stack Size
 //  Application Heap
@@ -40,19 +40,15 @@ const size_t kDefaultStackSize = 4_kb;
 // used in Interrupt Vector Table entries to return to user mode).
 const size_t kExceptionReturnAddr = kSystemMemorySize - sizeof(uint16_t);
 
-// Interrupt Stack
-const size_t kInterruptStackStart = kSystemMemorySize - 4_kb;
-const size_t kInterruptStackEnd = kInterruptStackStart - kDefaultStackSize;
-
 // A5 World
 
 // User Stack
-const size_t kUserStackStart = kSystemMemorySize - 32_kb;
-const size_t kUserStackEnd = kUserStackStart - kDefaultStackSize;
+const size_t kStackStart = kSystemMemorySize - 32_kb;
+const size_t kStackEnd = kStackStart - kDefaultStackSize;
 
 // Application Heap
 const size_t kHeapStart = 32_kb;
-const size_t kHeapEnd = kUserStackEnd;
+const size_t kHeapEnd = kStackEnd;
 
 // Interrupt Vector Table
 const size_t kInterruptVectorTableEnd = 0x100;
