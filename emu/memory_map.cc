@@ -37,24 +37,37 @@ void CheckReadAccess(uint32_t address) {
   auto within_region = [&](size_t lower, size_t upper) {
     return address >= lower && address < upper;
   };
-  auto within_stack = [&](size_t start, size_t end) {
-    return address > end && address <= start;
-  };
 
-  // Interrupt Vector Table (handled below)
+  // Interrupt Vector Table
   if (within_region(0, kInterruptVectorTableEnd)) {
     return;
   }
 
-  // Global Variables / OS Reserved
-  if (within_region(kInterruptVectorTableEnd, kHeapStart)) {
-    // AppName (STR[31]):
-    if (within_region(0x910, 0x932)) {
-      return;
-    }
+  // System Globals
+  if (within_region(kSystemGlobalsLowStart, kSystemGlobalsLowEnd) ||
+      within_region(kSystemGlobalsHighStart, kSystemGlobalsHighEnd)) {
+    LOG(WARNING) << "Read uninitialized system global at: 0x" << std::hex
+                 << address;
+    return;
+  }
 
-    LOG(WARNING) << std::hex << "Read un-initialized system global [0x100, 0x"
-                 << kHeapStart << "): 0x" << address;
+  // System A-Trap Table
+  if (within_region(kSystemTrapTableStart, kSystemTrapTableEnd)) {
+    LOG(FATAL) << "Read system A-Trap table directly: 0x" << std::hex
+               << address;
+    return;
+  }
+
+  // Toolbox A-Trap Table
+  if (within_region(kToolboxTrapTableStart, kToolboxTrapTableEnd)) {
+    LOG(FATAL) << "Read toolbox A-Trap table directly: 0x" << std::hex
+               << address;
+    return;
+  }
+
+  // System Heap
+  if (within_region(kSystemHeapStart, kSystemHeapEnd)) {
+    LOG(WARNING) << "Read uninitialized system heap: 0x" << std::hex << address;
     return;
   }
 
@@ -64,10 +77,9 @@ void CheckReadAccess(uint32_t address) {
   }
 
   // Stack
-  if (within_stack(kStackStart, kStackEnd)) {
-    LOG_IF(INFO, verbose_logging)
-        << "Read Stack: 0x" << std::hex << address << " (0x"
-        << (kStackStart - address) << ")";
+  if (within_region(kStackEnd, kStackStart)) {
+    LOG_IF(INFO, verbose_logging) << "Read Stack: 0x" << std::hex << address
+                                  << " (0x" << (kStackStart - address) << ")";
     return;
   }
 
@@ -110,18 +122,39 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
   auto within_region = [&](size_t lower, size_t upper) {
     return address >= lower && address < upper;
   };
-  auto within_stack = [&](size_t start, size_t end) {
-    return address > end && address <= start;
-  };
 
   // Interrupt Vector Table
   CHECK(!within_region(0, 0x100))
       << "IVT is read-only: 0x" << std::hex << address;
 
-  // Global Variables / OS Reserved
-  if (within_region(0x100, kHeapStart)) {
-    LOG(WARNING) << std::hex << "Write system global [0x100, 0x" << kHeapStart
-                 << "): 0x" << address << " = 0x" << value;
+  // System Globals
+  if (within_region(kSystemGlobalsLowStart, kSystemGlobalsLowEnd) ||
+      within_region(kSystemGlobalsHighStart, kSystemGlobalsHighEnd)) {
+    LOG(WARNING) << "Write system global at: 0x" << std::hex << address
+                 << " = 0x" << value;
+    return;
+  }
+
+  // System A-Trap Table
+  if (within_region(kSystemTrapTableStart, kSystemTrapTableEnd)) {
+    LOG(FATAL) << "Write system A-Trap table directly: 0x" << std::hex
+               << address << " = 0x" << value;
+    ;
+    return;
+  }
+
+  // Toolbox A-Trap Table
+  if (within_region(kToolboxTrapTableStart, kToolboxTrapTableEnd)) {
+    LOG(FATAL) << "Write toolbox A-Trap table directly: 0x" << std::hex
+               << address << " = 0x" << value;
+    ;
+    return;
+  }
+
+  // System Heap
+  if (within_region(kSystemHeapStart, kSystemHeapEnd)) {
+    LOG(WARNING) << "Write to system heap: 0x" << std::hex << address
+                 << " = 0x" << value;
     return;
   }
 
@@ -132,10 +165,9 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
   }
 
   // Stack
-  if (within_stack(kStackStart, kStackEnd)) {
-    LOG_IF(INFO, verbose_logging)
-        << "Write Stack: 0x" << std::hex << address << " (0x"
-        << (kStackStart - address) << ")";
+  if (within_region(kStackEnd, kStackStart)) {
+    LOG_IF(INFO, verbose_logging) << "Write Stack: 0x" << std::hex << address
+                                  << " (0x" << (kStackStart - address) << ")";
     return;
   }
 

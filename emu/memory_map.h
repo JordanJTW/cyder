@@ -11,29 +11,38 @@ extern core::MemoryRegion kSystemMemory;
 const size_t kSystemMemorySize = 512_kb;
 const size_t kDefaultStackSize = 4_kb;
 
-// Defines the memory map exposed to the emulated m68k:
+// Defines the memory map exposed to the emulated m68k; it should
+// be noted that when there are multiple "correct" locations (depending
+// on the model of Macintosh) the _largest_ option is always used below
+// to try to catch reads/writes in those locations.
+// Link: http://www.mac.linux-m68k.org/devel/macalmanac.php
 //
 //  [ HIGH MEMORY ]
 //  Exception Return Addr: 'RTE'
-//   ... Buffer (~4KB)
 //
-//  Interrupt Stack
-//   ... Default Stack Size
-//  End of Interrupt Stack
-//   ... Buffer (~24KB assuming Default Stack Size is 4KB)
+//    ... 4 KB Buffer for A5 World to grow up into
+//  Jump Table (above A5)
+//  A5 World (A5)
+//  Application & QuickDraw Globals (below A5)
 //
-//  A5 World Addr (Above/Below relative to here)
-//   ... Buffer (32KB)
-//
-//  Stack
+//  Stack (A7)
 //   ... Default Stack Size
 //  End of Stack
 //  End of Application Heap
-//   ... Heap size depends on Default Stack Size
-//  Application Heap
-//   ... Buffer (~32KB)
 //
-//  0x100 End of Interrupt Vector Table
+//  Application Heap (ApplZone)
+//
+//  0x1C00 System Heap (SysZone)
+//
+//  0x0C00 Toolbox A-Trap Table
+//
+//  0x0800 System Globals
+//
+//  0x0400 System A-Trap Table
+//
+//  0x0100 System Globals
+//
+//  0x00FF End of Interrupt Vector Table
 //  [ LOW MEMORY ]
 
 // Enough room to store a single 'RTE' instruction (this address is
@@ -43,15 +52,36 @@ const size_t kExceptionReturnAddr = kSystemMemorySize - sizeof(uint16_t);
 // A5 World
 
 // User Stack
-const size_t kStackStart = kSystemMemorySize - 32_kb;
+const size_t kStackStart = kSystemMemorySize - 4_kb;
 const size_t kStackEnd = kStackStart - kDefaultStackSize;
 
+// System Heap
+const size_t kSystemHeapStart = 0x1C00;
+const size_t kSystemHeapEnd = kSystemHeapStart + 4_kb;
+
 // Application Heap
-const size_t kHeapStart = 32_kb;
+const size_t kHeapStart = kSystemHeapEnd;
 const size_t kHeapEnd = kStackEnd;
 
+// Toolbox A-Trap Table
+const size_t kToolboxTrapTableEnd = 0x1C00;
+const size_t kToolboxTrapTableStart = 0x0C00;
+
+// System Globals
+const size_t kSystemGlobalsHighEnd = 0x0C00;
+const size_t kSystemGlobalsHighStart = 0x0800;
+
+// System A-Trap Table
+const size_t kSystemTrapTableEnd = 0x07FF;
+const size_t kSystemTrapTableStart = 0x0400;
+
+// System Globals
+const size_t kSystemGlobalsLowEnd = 0x0400;
+const size_t kSystemGlobalsLowStart = 0x0100;
+
 // Interrupt Vector Table
-const size_t kInterruptVectorTableEnd = 0x100;
+const size_t kInterruptVectorTableEnd = 0x0100;
+const size_t kInterruptVectorTableStart = 0x0000;
 
 // Logs and/or CHECK fails if access to `address` is unexpected such as
 // reading/writing in "buffer" regions or reading uninitialized memory.
