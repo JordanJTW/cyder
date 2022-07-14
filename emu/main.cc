@@ -31,7 +31,10 @@ enum GlobalVars {
   StackBase = 0x908,
 };
 
+constexpr size_t break_on_line = 0x7F73A;
+
 bool single_step = false;
+bool breakpoint = false;
 
 extern core::MemoryRegion kSystemMemory;
 
@@ -435,8 +438,13 @@ void m68k_write_memory_32(unsigned int address, unsigned int value) {
 MemoryManager* memory_manager_ptr;
 
 void cpu_instr_callback(unsigned int pc) {
+  if (pc == break_on_line) {
+    LOG(INFO) << "Breakpoint!";
+    breakpoint = true;
+  }
+
   CHECK(pc != 0) << "Reset";
-  if (disassemble_log) {
+  if (disassemble_log || breakpoint) {
 #define REG(name) " " << #name << ": 0x" << m68k_get_reg(NULL, M68K_REG_##name)
 
     LOG(INFO) << "\u001b[38;5;240m" << std::hex << REG(A0) << REG(A1) << REG(A2)
@@ -457,6 +465,9 @@ void cpu_instr_callback(unsigned int pc) {
     LOG(INFO) << std::hex << pc << " (" << tag << "): " << buffer;
   }
   CHECK(m68k_get_reg(NULL, M68K_REG_ISP) <= kStackStart);
+
+  single_step = breakpoint;
+
   if (single_step)
     m68k_end_timeslice();
 }
