@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <set>
 
 #include "core/literal_helpers.h"
 #include "core/memory_region.h"

@@ -1,7 +1,8 @@
 #include <SDL2/SDL.h>
 
+#include <chrono>
+#include <cstdint>
 #include <iomanip>
-#include <tuple>
 
 #include "absl/status/status.h"
 #include "core/endian_helpers.h"
@@ -10,18 +11,10 @@
 #include "core/status_main.h"
 #include "memory_manager.h"
 #include "memory_map.h"
-#include "resource.h"
 #include "resource_file.h"
 #include "segment_loader.h"
-#include "stack_helpers.h"
-#include "system_types.h"
 #include "third_party/musashi/src/m68k.h"
-#include "trap_helpers.h"
-#include "trap_names.h"
-
-using rsrcloader::GetTypeName;
-using rsrcloader::ResId;
-using rsrcloader::ResType;
+#include "trap_manager.h"
 
 constexpr bool disassemble_log = false;
 constexpr bool memory_write_log = false;
@@ -42,325 +35,7 @@ typedef std::function<void(uint32_t)> on_exception_callback_t;
 
 on_exception_callback_t on_exception_callback = nullptr;
 
-SDL_Renderer* renderer;
-
-void DrawRect(const Rect& rect,
-              const std::tuple<uint8_t, uint8_t, uint8_t>& color) {
-  SDL_SetRenderDrawColor(renderer, std::get<0>(color), std::get<1>(color),
-                         std::get<2>(color), 255);
-
-  int width = (rect.right - rect.left);
-  int height = (rect.bottom - rect.top);
-
-  if (width < 0 || height < 0)
-    return;
-
-  SDL_Rect sdl_rect = {
-      .x = rect.left,
-      .y = rect.top,
-      .w = width,
-      .h = height,
-  };
-  SDL_RenderFillRect(renderer, &sdl_rect);
-}
-
-// RAII class to capture the return address on the stack while processing an
-// exception, modify it, then push it back on to the stack.
-class ExceptionReturn {
- public:
-  ExceptionReturn()
-      : status_(MUST(Pop<uint16_t>())),
-        return_address_(MUST(Pop<uint32_t>())) {}
-
-  ~ExceptionReturn() {
-    CHECK(Push<uint32_t>(return_address_ + return_offset_).ok());
-    CHECK(Push<uint16_t>(status_).ok());
-  }
-
-  void SetReturnOffset(int16_t return_offset) {
-    return_offset_ = return_offset;
-  }
-
- private:
-  // By default skip past the instruction that triggered the exception when
-  // returning (the instruction should be 2-bytes wide).
-  int16_t return_offset_{2};
-
-  uint16_t status_;
-  uint32_t return_address_;
-};
-
-absl::Status HandleALineTrap(SegmentLoader& segment_loader,
-                             rsrcloader::ResourceFile& current_rsrc,
-                             MemoryManager& memory_manager,
-                             uint16_t trap,
-                             ExceptionReturn& stack_return) {
-  LOG(INFO) << "\u001b[38;5;160m"
-            << "A-Line Exception " << (trap::IsToolbox(trap) ? "Toolbox" : "OS")
-            << "::" << GetTrapName(trap) << " (0x" << std::hex << trap
-            << ") Index: " << std::dec << trap::ExtractIndex(trap)
-            << "\u001b[0m";
-
-  CHECK(!trap::IsAutoPopSet(trap));
-  if (trap::IsSystem(trap))
-    LOG(INFO) << "Should return A0? "
-              << (trap::IsReturnA0(trap) ? "true" : "false")
-              << " Flags: " << trap::ExtractFlags(trap);
-
-  switch (trap) {
-    case Trap::LoadSeg: {
-      uint16_t load_segment = TRY(Pop<uint16_t>());
-      LOG(INFO) << "TRAP LoadSeg(" << load_segment << ")";
-      RETURN_IF_ERROR(segment_loader.Load(load_segment));
-      // The segment loader modifies the six byte entry for this segment in the
-      // table so return to the begining of the entry (4 bytes behind the 2 byte
-      // trap being executed):
-      stack_return.SetReturnOffset(-4);
-      return absl::OkStatus();
-    }
-    case Trap::Get1NamedResource: {
-      auto name = TRY(PopRef<absl::string_view>());
-      ResType type = TRY(Pop<ResType>());
-
-      LOG(INFO) << "TRAP Get1NamedResource(theType: '"
-                << rsrcloader::GetTypeName(type) << "', name: \"" << name
-                << "\")";
-      return absl::UnimplementedError("");
-    }
-    case Trap::GetResource: {
-      auto id = TRY(Pop<ResId>());
-      auto type = TRY(Pop<ResType>());
-      LOG(INFO) << "TRAP GetResource(theType: '" << GetTypeName(type)
-                << "', theID: " << id << ")";
-
-      auto* resource = current_rsrc.FindByTypeAndId(type, id);
-      // FIXME: Set ResError in D0 and call ResErrorProc
-      // http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-35.html#MARKER-9-220
-      CHECK(resource) << "Resource not found";
-
-      LOG(INFO) << "Attributes: "
-                << static_cast<int>(resource->GetAttributes());
-      auto handle = memory_manager.AllocateHandleForRegion(
-          resource->GetData(),
-          absl::StrCat("Resource[", GetTypeName(type), ":", id, "]"));
-
-      return TrapReturn<uint32_t>(handle);
-    }
-    case Trap::LoadResource: {
-      auto handle = TRY(Pop<uint32_t>());
-      LOG(INFO) << "TRAP LoadResource(theResource: 0x" << std::hex << handle
-                << ")";
-      return absl::OkStatus();
-    }
-    case Trap::ReleaseResource: {
-      auto handle = TRY(Pop<uint32_t>());
-      LOG(INFO) << "TRAP ReleaseResource(theResource: 0x" << std::hex << handle
-                << ")";
-      return absl::OkStatus();
-    }
-    case Trap::SizeRsrc: {
-      auto handle = TRY(Pop<uint32_t>());
-      LOG(INFO) << "TRAP GetResourceSizeOnDisk(theResource: 0x" << std::hex
-                << handle << ")";
-      // FIXME: This should read the size from disk not memory i.e. from
-      // ResourceManager
-      // http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-82.html
-      auto handle_size = memory_manager.GetHandleSize(handle);
-      LOG(INFO) << "Handle size: " << handle_size;
-      return TrapReturn<uint32_t>(handle_size);
-    }
-    case Trap::GetResAttrs: {
-      auto handle = TRY(Pop<uint32_t>());
-      LOG(INFO) << "TRAP GetResAttrs(theResource: 0x" << std::hex << handle
-                << ")";
-      // FIXME: Load the actual attributes from the resource...
-      uint16_t attrs = 8;
-      return TrapReturn<uint16_t>(attrs);
-    }
-    // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-75.html
-    case Trap::NewPtr:
-    // FIXME: Should "SYS" pointers be allocated differently?
-    case Trap::NewPtrSys: {
-      // D0 seems to contain the argument in a sample program...
-      // but the documentation says it should be in A0.
-      uint32_t logical_size = m68k_get_reg(NULL, M68K_REG_D0);
-      LOG(INFO) << "TRAP NewPtr(logicalSize: " << logical_size << ")";
-      auto ptr = memory_manager.Allocate(logical_size);
-      m68k_set_reg(M68K_REG_A0, ptr);
-      return absl::OkStatus();
-    }
-    // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-103.html
-    case Trap::BlockMove: {
-      uint32_t source_ptr = m68k_get_reg(NULL, M68K_REG_A0);
-      uint32_t dest_ptr = m68k_get_reg(NULL, M68K_REG_A1);
-      uint32_t byte_count = m68k_get_reg(NULL, M68K_REG_D0);
-
-      LOG(INFO) << "TRAP BlockMove(sourcePtr: 0x" << std::hex << source_ptr
-                << ", destPtr: 0x" << dest_ptr << ", byteCount: " << byte_count
-                << ")";
-
-      // FIXME: Allow for more efficient copies in system memory (memcpy)?
-      for (size_t i = 0; i < byte_count; ++i) {
-        RETURN_IF_ERROR(kSystemMemory.Write<uint8_t>(
-            dest_ptr + i, TRY(kSystemMemory.Copy<uint8_t>(source_ptr + i))));
-      }
-      // Return result code "noErr"
-      m68k_set_reg(M68K_REG_D0, 0);
-      return absl::OkStatus();
-    }
-    case Trap::GetHandleSize: {
-      uint32_t handle = m68k_get_reg(NULL, M68K_REG_A0);
-      LOG(INFO) << "TRAP GetHandleSize(handle: 0x" << std::hex << handle << ")";
-      m68k_set_reg(M68K_REG_D0, memory_manager.GetHandleSize(handle));
-      return absl::OkStatus();
-    }
-    case Trap::GetOSTrapAddress: {
-      uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
-      LOG(INFO) << "TRAP GetOSTrapAddress(trap: '"
-                << GetTrapNameBySystemIndex(trap_index) << "')";
-      m68k_set_reg(M68K_REG_A0, 0x3000);
-      return absl::OkStatus();
-    }
-    case Trap::GetToolBoxTrapAddress: {
-      uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
-      LOG(INFO) << "TRAP GetToolBoxTrapAddress(trap: '"
-                << GetTrapNameByToolboxIndex(trap_index) << "')";
-      m68k_set_reg(M68K_REG_A0, 0x3000);
-      return absl::OkStatus();
-    }
-    case Trap::GetTrapAddress: {
-      uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
-      LOG(INFO) << "TRAP GetTrapAddress(trap: '" << GetTrapName(trap_index)
-                << "')";
-      m68k_set_reg(M68K_REG_A0, 0x3000);
-      return absl::OkStatus();
-    }
-    case Trap::SetTrapAddress: {
-      uint32_t trap_addr = m68k_get_reg(NULL, M68K_REG_A0);
-      uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
-      LOG(INFO) << "TRAP SetTrapAddress(trapAddr: 0x" << std::hex << trap_addr
-                << ", trap: '" << GetTrapName(trap_index) << "')";
-      return absl::OkStatus();
-    }
-    // Link: https://dev.os9.ca/techpubs/mac/Files/Files-232.html#HEADING232-0
-    case Trap::Open: {
-      // Link:
-      // https://dev.os9.ca/techpubs/mac/Files/Files-301A.html#HEADING301-362
-      // typedef struct IOParam {
-      //  QElemPtr   qLink;         /* next queue entry */
-      //  short      qType;         /* queue type */
-      //  short      ioTrap;        /* routine trap */
-      //  Ptr        ioCmdAddr;     /* routine address */
-      //  ProcPtr    ioCompletion;  /* completion routine address */
-      //  OSErr      ioResult;      /* result code */
-      //  StringPtr  ioNamePtr;     /* pointer to driver name */
-      //  short      ioVRefNum;     /* volume reference or drive number * /
-      //  short      ioRefNum;      /* driver reference number */
-      //  char       ioVersNum;     /* not used by the Device Manager * /
-      //  char       ioPermssn;     /* read/write permission */
-      //  Ptr        ioMisc;        /* not used by the Device Manager * /
-      //  Ptr        ioBuffer;      /* pointer to data buffer */
-      //  long       ioReqCount;    /* requested number of bytes */
-      //  long       ioActCount;    /* actual number of bytes completed * /
-      //  short      ioPosMode;     /* positioning mode */
-      //  long       ioPosOffset;   /* positioning offset */
-      // } IOParam;
-      uint32_t ptr = m68k_get_reg(NULL, M68K_REG_A0);
-      LOG(INFO) << "TRAP Open(ptr: 0x" << std::hex << ptr << ")";
-      auto qLink = TRY(kSystemMemory.Copy<Ptr>(ptr));
-      auto qType = TRY(kSystemMemory.Copy<uint8_t>(ptr + 4));
-      auto ioTrap = TRY(kSystemMemory.Copy<uint8_t>(ptr + 5));
-      auto ioCmdAddr = TRY(kSystemMemory.Copy<Ptr>(ptr + 6));
-      auto ioCompletion = TRY(kSystemMemory.Copy<Ptr>(ptr + 10));
-      auto ioResult = TRY(kSystemMemory.Copy<int16_t>(ptr + 14));
-      auto ioNamePtr = TRY(kSystemMemory.Copy<Ptr>(ptr + 16));
-      auto ioVRefNum = TRY(kSystemMemory.Copy<uint8_t>(ptr + 20));
-      auto ioRefNum = TRY(kSystemMemory.Copy<uint8_t>(ptr + 21));
-      auto ioVersNum = TRY(kSystemMemory.Copy<char>(ptr + 22));
-      auto ioPermssn = TRY(kSystemMemory.Copy<char>(ptr + 23));
-      auto ioMisc = TRY(kSystemMemory.Copy<Ptr>(ptr + 24));
-      auto ioBuffer = TRY(kSystemMemory.Copy<Ptr>(ptr + 28));
-      auto ioReqCount = TRY(kSystemMemory.Copy<uint16_t>(ptr + 32));
-      auto ioActCount = TRY(kSystemMemory.Copy<uint16_t>(ptr + 34));
-      auto ioPosMode = TRY(kSystemMemory.Copy<uint8_t>(ptr + 36));
-      auto ioPosOffset = TRY(kSystemMemory.Copy<uint16_t>(ptr + 37));
-
-#define FIELD(name) "\n\t" << #name << ": " << (static_cast<int>(name)) << ", "
-      LOG(INFO) << "IOParam: {" << FIELD(qLink) << FIELD(qType) << FIELD(ioTrap)
-                << FIELD(ioCmdAddr) << FIELD(ioCompletion) << FIELD(ioResult)
-                << FIELD(ioNamePtr) << FIELD(ioVRefNum) << FIELD(ioRefNum)
-                << FIELD(ioVersNum) << FIELD(ioPermssn) << FIELD(ioMisc)
-                << FIELD(ioBuffer) << FIELD(ioReqCount) << FIELD(ioActCount)
-                << FIELD(ioPosMode) << FIELD(ioPosOffset) << "\n}";
-#undef FIELD
-      return absl::OkStatus();
-    }
-    case Trap::InitGraf: {
-      auto globalPtr = TRY(Pop<Ptr>());
-      LOG(INFO) << "TRAP InitGraf(globalPtr: 0x" << std::hex << globalPtr
-                << ")";
-      return absl::OkStatus();
-    }
-    case Trap::OpenPort: {
-      auto thePortPtr = TRY(Pop<GrafPtr>());
-      LOG(INFO) << "TRAP OpenPort(port: 0x" << std::hex << thePortPtr << ")";
-      return absl::OkStatus();
-    }
-    case Trap::HideCursor: {
-      LOG(INFO) << "TRAP HideCursor()";
-      return absl::OkStatus();
-    }
-    case Trap::PaintRect: {
-      auto rect = TRY(PopRef<Rect>());
-      LOG(INFO) << "TRAP PaintRect(rect: " << rect << ")";
-      // FIXME: Paint with the color set for QuickDraw (A5 World?)
-      DrawRect(rect, {0, 0, 0});
-      return absl::OkStatus();
-    }
-    case Trap::Random: {
-      LOG(INFO) << "TRAP Random()";
-      // FIXME: Use the same algorithm used in Mac OS to generate rand()
-      RETURN_IF_ERROR(TrapReturn<int16_t>(0xFFFF * rand()));
-      return absl::OkStatus();
-    }
-    case Trap::Button: {
-      LOG(INFO) << "TRAP Button()";
-      RETURN_IF_ERROR(TrapReturn<uint16_t>(0x0000));
-      return absl::OkStatus();
-    }
-    case Trap::PaintOval: {
-      auto rect = TRY(PopRef<Rect>());
-      LOG(INFO) << "TRAP PaintOval(rect: " << rect << ")";
-      // FIXME: Paint with the color set for QuickDraw (A5 World?)
-      DrawRect(rect, {0, 0, 0});
-      return absl::OkStatus();
-    }
-    case Trap::EraseOval: {
-      auto rect = TRY(PopRef<Rect>());
-      LOG(INFO) << "TRAP EraseOval(rect: " << rect << ")";
-      // FIXME: Clear with the color set for QuickDraw (A5 World?)
-      DrawRect(rect, {0xFF, 0xBF, 0x00});
-      return absl::OkStatus();
-    }
-    case Trap::SysBeep: {
-      uint16_t duration = TRY(Pop<Integer>());
-      LOG(INFO) << "TRAP SysBeep(duration: " << duration << ")";
-      return absl::OkStatus();
-    }
-    case Trap::ExitToShell:
-      LOG(INFO) << "TRAP ExitToShell()";
-      exit(0);
-      return absl::OkStatus();
-    default:
-      return absl::UnimplementedError(absl::StrCat(
-          "Reached unimplemented trap: '", GetTrapName(trap), "'"));
-  }
-}
-
-absl::Status HandleException(SegmentLoader& segment_loader,
-                             rsrcloader::ResourceFile& current_rsrc,
-                             MemoryManager& memory_manager,
-                             unsigned int address) {
+absl::Status HandleException(TrapManager& trap_manager, unsigned int address) {
   CHECK_LT(address, 0x100) << "Address 0x" << std::hex << address
                            << " is outside of the IVT";
 
@@ -370,10 +45,7 @@ absl::Status HandleException(SegmentLoader& segment_loader,
       uint16_t trap_op = be16toh(
           TRY(kSystemMemory.Copy<uint16_t>(m68k_get_reg(NULL, M68K_REG_PPC))));
 
-      ExceptionReturn exception_return;
-      RETURN_IF_ERROR(HandleALineTrap(segment_loader, current_rsrc,
-                                      memory_manager, trap_op,
-                                      exception_return));
+      RETURN_IF_ERROR(trap_manager.HandleALineTrap(trap_op));
       return absl::OkStatus();
     }
     default:
@@ -506,9 +178,17 @@ absl::Status Main(const core::Args& args) {
   LOG(INFO) << "Initialize PC: " << std::hex << pc;
   LOG(INFO) << "Memory Map: " << MemoryMapToStr();
 
+  SDL_Init(SDL_INIT_VIDEO);
+  SDL_Window* window = SDL_CreateWindow("Cyder", SDL_WINDOWPOS_UNDEFINED,
+                                        SDL_WINDOWPOS_UNDEFINED, 512, 384, 0);
+
+  SDL_Renderer* renderer =
+      SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+  TrapManager trap_manager(memory_manager, *file, segment_loader, renderer);
+
   on_exception_callback = [&](uint32_t address) {
-    auto status =
-        HandleException(segment_loader, *file, memory_manager, address);
+    auto status = HandleException(trap_manager, address);
     CHECK(status.ok()) << std::move(status).message();
   };
 
@@ -535,12 +215,6 @@ absl::Status Main(const core::Args& args) {
 
   RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(GlobalVars::StackBase,
                                                 htobe32(kStackStart)));
-
-  SDL_Init(SDL_INIT_VIDEO);
-  SDL_Window* window = SDL_CreateWindow("Cyder", SDL_WINDOWPOS_UNDEFINED,
-                                        SDL_WINDOWPOS_UNDEFINED, 512, 384, 0);
-
-  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
   SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
                                            SDL_TEXTUREACCESS_TARGET, 512, 384);
