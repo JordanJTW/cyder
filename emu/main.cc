@@ -31,23 +31,17 @@ bool breakpoint = false;
 
 extern core::MemoryRegion kSystemMemory;
 
-typedef std::function<void(uint32_t)> on_exception_callback_t;
+typedef std::function<absl::Status(uint32_t)> on_address_callback_t;
 
-on_exception_callback_t on_exception_callback = nullptr;
+on_address_callback_t on_emulated_subroutine = nullptr;
 
-absl::Status HandleException(TrapManager& trap_manager, unsigned int address) {
+absl::Status HandleException(unsigned int address) {
   CHECK_LT(address, 0x100) << "Address 0x" << std::hex << address
                            << " is outside of the IVT";
 
   switch (address) {
-    // 1010 Instruction Trap Handler
-    case 0x28: {
-      uint16_t trap_op = be16toh(
-          TRY(kSystemMemory.Copy<uint16_t>(m68k_get_reg(NULL, M68K_REG_PPC))));
-
-      RETURN_IF_ERROR(trap_manager.HandleALineTrap(trap_op));
+    case 0x28:
       return absl::OkStatus();
-    }
     default:
       return absl::UnimplementedError(
           absl::StrCat("Exception occured with no handler: ", address));
@@ -70,16 +64,22 @@ unsigned int m68k_read_memory_8(unsigned int address) {
 }
 unsigned int m68k_read_memory_16(unsigned int address) {
   CheckReadAccess(address);
+
+  if (address > kLastEmulatedSubroutineAddress) {
+    CHECK(on_emulated_subroutine)
+        << "No emulated subroutine callback registered";
+    auto status = on_emulated_subroutine(address);
+    CHECK(status.ok()) << std::move(status).message();
+  }
+
   return be16toh(MUST(kSystemMemory.Copy<uint16_t>(address)));
 }
 unsigned int m68k_read_memory_32(unsigned int address) {
   CheckReadAccess(address);
 
   if (address < kInterruptVectorTableEnd) {
-    if (on_exception_callback) {
-      on_exception_callback(address);
-    }
-    return kExceptionReturnAddr;
+    auto status = HandleException(address);
+    CHECK(status.ok()) << std::move(status).message();
   }
 
   return be32toh(MUST(kSystemMemory.Copy<uint32_t>(address)));
@@ -186,11 +186,8 @@ absl::Status Main(const core::Args& args) {
       SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
   TrapManager trap_manager(memory_manager, *file, segment_loader, renderer);
-
-  on_exception_callback = [&](uint32_t address) {
-    auto status = HandleException(trap_manager, address);
-    CHECK(status.ok()) << std::move(status).message();
-  };
+  on_emulated_subroutine = std::bind(&TrapManager::DispatchEmulatedSubroutine,
+                                     &trap_manager, std::placeholders::_1);
 
   m68k_init();
   m68k_set_instr_hook_callback(cpu_instr_callback);
@@ -208,10 +205,13 @@ absl::Status Main(const core::Args& args) {
   // Sets the size of the name to 0 so it is not read:
   // TODO: Store the application name here as a Pascal string
   RETURN_IF_ERROR(kSystemMemory.Write<uint8_t>(GlobalVars::AppName, 0));
-  // Stores the 'RTE' op-code at the exception return address to
-  // jump back from the exception handler back to user code:
+
   RETURN_IF_ERROR(
-      kSystemMemory.Write<uint16_t>(kExceptionReturnAddr, htobe16(0x4E73)));
+      kSystemMemory.Write<uint16_t>(kTrapManagerEntryAddress, htobe16(0x4E75)));
+  RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(kTrapManagerDispatchAddress,
+                                                htobe16(0x4E75)));
+  RETURN_IF_ERROR(
+      kSystemMemory.Write<uint32_t>(0x28, htobe32(kTrapManagerEntryAddress)));
 
   RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(GlobalVars::StackBase,
                                                 htobe32(kStackStart)));

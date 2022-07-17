@@ -21,32 +21,6 @@ using rsrcloader::GetTypeName;
 using rsrcloader::ResId;
 using rsrcloader::ResType;
 
-// RAII class to capture the return address on the stack while processing an
-// exception, modify it, then push it back on to the stack.
-class ExceptionReturn {
- public:
-  ExceptionReturn()
-      : status_(MUST(Pop<uint16_t>())),
-        return_address_(MUST(Pop<uint32_t>())) {}
-
-  ~ExceptionReturn() {
-    CHECK(Push<uint32_t>(return_address_ + return_offset_).ok());
-    CHECK(Push<uint16_t>(status_).ok());
-  }
-
-  void SetReturnOffset(int16_t return_offset) {
-    return_offset_ = return_offset;
-  }
-
- private:
-  // By default skip past the instruction that triggered the exception when
-  // returning (the instruction should be 2-bytes wide).
-  int16_t return_offset_{2};
-
-  uint16_t status_;
-  uint32_t return_address_;
-};
-
 void DrawRect(SDL_Renderer* renderer,
               const Rect& rect,
               const std::tuple<uint8_t, uint8_t, uint8_t>& color) {
@@ -68,6 +42,15 @@ void DrawRect(SDL_Renderer* renderer,
   SDL_RenderFillRect(renderer, &sdl_rect);
 }
 
+template <typename T>
+class RestorePop {
+ public:
+  RestorePop() : value(MUST(Pop<T>())) {}
+  ~RestorePop() { CHECK(Push<T>(value).ok()); }
+
+  T value;
+};
+
 TrapManager::TrapManager(MemoryManager& memory_manager,
                          rsrcloader::ResourceFile& resource_file,
                          SegmentLoader& segment_loader,
@@ -79,7 +62,45 @@ TrapManager::TrapManager(MemoryManager& memory_manager,
   CHECK(renderer);
 }
 
-absl::Status TrapManager::HandleALineTrap(uint16_t trap) {
+absl::Status TrapManager::DispatchEmulatedSubroutine(uint32_t address) {
+  switch (address) {
+    case kTrapManagerEntryAddress:
+      return PerformTrapEntry();
+    case kTrapManagerDispatchAddress:
+      return PerformTrapDispatch();
+    default:
+      return absl::UnimplementedError(
+          absl::StrCat("No subroutine registered for address: ", address));
+  }
+}
+
+absl::Status TrapManager::PerformTrapEntry() {
+  auto status_register = TRY(Pop<uint16_t>());
+  auto instruction_ptr = TRY(Pop<uint32_t>());
+
+  // `instruction_ptr` points to the address of the instruction that triggered
+  // the trap. When we return from handling the trap return to the instruction
+  // past the 16-bit A-Line Trap (i.e. + 2).
+  RETURN_IF_ERROR(Push<uint32_t>(instruction_ptr + 2));
+  RETURN_IF_ERROR(Push<uint32_t>(kTrapManagerDispatchAddress));
+  return absl::OkStatus();
+}
+
+absl::Status TrapManager::PerformTrapExit() {
+  return absl::OkStatus();
+}
+
+absl::Status TrapManager::PerformTrapDispatch() {
+  // The return address should be at the top of the stack which is +2 past the
+  // address of the instruction that caused the trap (see above).
+  auto return_address = TRY(Peek<Ptr>());
+  Ptr trap_address = return_address - 2;
+
+  auto trap_op = be16toh(TRY(kSystemMemory.Copy<uint16_t>(trap_address)));
+  return DispatchTrap(trap_op);
+}
+
+absl::Status TrapManager::DispatchTrap(uint16_t trap) {
   LOG(INFO) << "\u001b[38;5;160m"
             << "A-Line Exception " << (trap::IsToolbox(trap) ? "Toolbox" : "OS")
             << "::" << GetTrapName(trap) << " (0x" << std::hex << trap
@@ -92,7 +113,7 @@ absl::Status TrapManager::HandleALineTrap(uint16_t trap) {
               << (trap::IsReturnA0(trap) ? "true" : "false")
               << " Flags: " << trap::ExtractFlags(trap);
 
-  ExceptionReturn stack_return;
+  RestorePop<Ptr> return_address;
 
   switch (trap) {
     case Trap::LoadSeg: {
@@ -102,7 +123,7 @@ absl::Status TrapManager::HandleALineTrap(uint16_t trap) {
       // The segment loader modifies the six byte entry for this segment in the
       // table so return to the begining of the entry (4 bytes behind the 2 byte
       // trap being executed):
-      stack_return.SetReturnOffset(-4);
+      return_address.value -= 6;
       return absl::OkStatus();
     }
     case Trap::Get1NamedResource: {

@@ -113,10 +113,9 @@ void CheckReadAccess(uint32_t address) {
     return;
   }
 
-  // RTE
-  if (address == kExceptionReturnAddr) {
+  if (address > kLastEmulatedSubroutineAddress) {
     return;
-  }
+  } 
 
   LOG(FATAL) << "Untracked read: 0x" << std::hex << address;
 }
@@ -202,10 +201,6 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
                  << (address - a5_world) << ")";
     return;
   }
-
-  // RTE
-  CHECK(address != kExceptionReturnAddr)
-      << "Interrupt return instruction is read-only";
 
   LOG(FATAL) << "Untracked write: 0x" << std::hex << address;
 }

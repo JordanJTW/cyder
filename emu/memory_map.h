@@ -44,9 +44,9 @@ const size_t kDefaultStackSize = 4_kb;
 //  0x00FF End of Interrupt Vector Table
 //  [ LOW MEMORY ]
 
-// Enough room to store a single 'RTE' instruction (this address is
-// used in Interrupt Vector Table entries to return to user mode).
-const size_t kExceptionReturnAddr = kSystemMemorySize - sizeof(uint16_t);
+const size_t kTrapManagerEntryAddress = kSystemMemorySize - sizeof(uint16_t);
+const size_t kTrapManagerDispatchAddress = kTrapManagerEntryAddress - sizeof(uint16_t);
+const size_t kLastEmulatedSubroutineAddress = kTrapManagerDispatchAddress - sizeof(uint16_t);
 
 // A5 World
 

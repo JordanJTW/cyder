@@ -22,6 +22,15 @@ absl::StatusOr<T> Pop() {
   return betoh<T>(value);
 }
 
+// Peek `T` at `offset` index of the stack
+template <typename T>
+absl::StatusOr<T> Peek(size_t offset = 0) {
+  static_assert(std::is_integral<T>::value,
+                "Only integers are stored on the stack");
+  Ptr current_stack = m68k_get_reg(NULL, M68K_REG_SP);
+  return betoh<T>(TRY(kSystemMemory.Copy<T>(current_stack + offset)));
+}
+
 // Pops pointer to `T` off of the stack and returns the dereferenced value
 template <typename T>
 absl::StatusOr<T> PopRef();
