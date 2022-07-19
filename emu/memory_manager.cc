@@ -53,6 +53,19 @@ Handle MemoryManager::AllocateHandleForRegion(const core::MemoryRegion& region,
   return handle;
 }
 
+core::MemoryRegion MemoryManager::GetRegionForHandle(Handle handle) {
+  auto entry = handle_to_metadata_.find(handle);
+  CHECK(entry != handle_to_metadata_.cend())
+      << "Handle (0x" << std::hex << handle << ") can not be found.";
+
+  const HandleMetadata& metadata = entry->second;
+  auto current_ptr = be32toh(MUST(kSystemMemory.Copy<uint32_t>(entry->first)));
+  CHECK_EQ(current_ptr, metadata.start);
+
+  return MUST(kSystemMemory.Create(absl::StrCat("Handle[", metadata.tag, "]"),
+                                   metadata.start, metadata.size));
+}
+
 bool MemoryManager::Deallocate(Handle handle) {
   auto entry = handle_to_metadata_.find(handle);
   if (entry == handle_to_metadata_.cend()) {

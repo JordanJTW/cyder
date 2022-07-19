@@ -3,8 +3,8 @@
 #include <cstdint>
 #include <ostream>
 
-typedef size_t Handle;
 typedef uint32_t Ptr;
+typedef Ptr Handle;
 typedef uint16_t Integer;
 
 typedef Ptr GrafPtr;

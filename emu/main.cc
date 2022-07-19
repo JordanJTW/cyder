@@ -12,9 +12,12 @@
 #include "memory_manager.h"
 #include "memory_map.h"
 #include "resource_file.h"
+#include "resource_manager.h"
 #include "segment_loader.h"
 #include "third_party/musashi/src/m68k.h"
 #include "trap_manager.h"
+
+using rsrcloader::ResourceManager;
 
 constexpr bool disassemble_log = false;
 constexpr bool memory_write_log = false;
@@ -171,10 +174,12 @@ absl::Status Main(const core::Args& args) {
   MemoryManager memory_manager;
   memory_manager_ptr = &memory_manager;
 
-  auto segment_loader = TRY(SegmentLoader::Create(*file, memory_manager));
-  RETURN_IF_ERROR(segment_loader.Load(1));
+  ResourceManager resource_manager(memory_manager, *file);
 
-  size_t pc = segment_loader.entry_point();
+  auto segment_loader =
+      TRY(SegmentLoader::Create(resource_manager, memory_manager));
+
+  size_t pc = TRY(segment_loader.Load(1));
   LOG(INFO) << "Initialize PC: " << std::hex << pc;
   LOG(INFO) << "Memory Map: " << MemoryMapToStr();
 
@@ -185,7 +190,8 @@ absl::Status Main(const core::Args& args) {
   SDL_Renderer* renderer =
       SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-  TrapManager trap_manager(memory_manager, *file, segment_loader, renderer);
+  TrapManager trap_manager(memory_manager, resource_manager, segment_loader,
+                           renderer);
   on_emulated_subroutine = std::bind(&TrapManager::DispatchEmulatedSubroutine,
                                      &trap_manager, std::placeholders::_1);
 

@@ -52,11 +52,11 @@ class RestorePop {
 };
 
 TrapManager::TrapManager(MemoryManager& memory_manager,
-                         rsrcloader::ResourceFile& resource_file,
+                         rsrcloader::ResourceManager& resource_manager,
                          SegmentLoader& segment_loader,
                          SDL_Renderer* renderer)
     : memory_manager_(memory_manager),
-      resource_file_(resource_file),
+      resource_manager_(resource_manager),
       segment_loader_(segment_loader),
       renderer_(renderer) {
   CHECK(renderer);
@@ -119,7 +119,7 @@ absl::Status TrapManager::DispatchTrap(uint16_t trap) {
     case Trap::LoadSeg: {
       uint16_t load_segment = TRY(Pop<uint16_t>());
       LOG(INFO) << "TRAP LoadSeg(" << load_segment << ")";
-      RETURN_IF_ERROR(segment_loader_.Load(load_segment));
+      TRY(segment_loader_.Load(load_segment));
       // The segment loader modifies the six byte entry for this segment in the
       // table so return to the begining of the entry (4 bytes behind the 2 byte
       // trap being executed):
@@ -138,20 +138,11 @@ absl::Status TrapManager::DispatchTrap(uint16_t trap) {
     case Trap::GetResource: {
       auto id = TRY(Pop<ResId>());
       auto type = TRY(Pop<ResType>());
+
       LOG(INFO) << "TRAP GetResource(theType: '" << GetTypeName(type)
                 << "', theID: " << id << ")";
 
-      auto* resource = resource_file_.FindByTypeAndId(type, id);
-      // FIXME: Set ResError in D0 and call ResErrorProc
-      // http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-35.html#MARKER-9-220
-      CHECK(resource) << "Resource not found";
-
-      LOG(INFO) << "Attributes: "
-                << static_cast<int>(resource->GetAttributes());
-      auto handle = memory_manager_.AllocateHandleForRegion(
-          resource->GetData(),
-          absl::StrCat("Resource[", GetTypeName(type), ":", id, "]"));
-
+      Handle handle = resource_manager_.GetResource(type, id);
       return TrapReturn<uint32_t>(handle);
     }
     case Trap::LoadResource: {

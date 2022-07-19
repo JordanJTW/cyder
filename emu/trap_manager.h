@@ -13,7 +13,7 @@ struct SDL_Renderer;
 class TrapManager {
  public:
   TrapManager(MemoryManager& memory_manager,
-              rsrcloader::ResourceFile& resource_file,
+              rsrcloader::ResourceManager& resource_manager,
               SegmentLoader& segment_loader,
               SDL_Renderer* renderer);
 
@@ -27,7 +27,7 @@ class TrapManager {
   absl::Status DispatchTrap(uint16_t trap);
 
   MemoryManager& memory_manager_;
-  rsrcloader::ResourceFile& resource_file_;
+  rsrcloader::ResourceManager& resource_manager_;
   SegmentLoader& segment_loader_;
   SDL_Renderer* renderer_;
 };

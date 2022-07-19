@@ -2,10 +2,10 @@
 
 #include <cstdint>
 
-#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "memory_manager.h"
-#include "resource_file.h"
 #include "resource_group.h"
+#include "resource_manager.h"
 
 // The in memory representation of the jump-table header structure from:
 // http://mirror.informatimago.com/next/developer.apple.com/documentation/mac/runtimehtml/RTArch-118.html#MARKER-9-35
@@ -22,24 +22,20 @@ class SegmentLoader final {
   // Parses 'CODE' segment 0 and loads the jump-table into kSystemMemory,
   // calculating the initial program counter (the first subroutine offset of the
   // first 'CODE' segment), and creates a new SegmentLoader.
-  static absl::StatusOr<SegmentLoader> Create(rsrcloader::ResourceFile&,
+  static absl::StatusOr<SegmentLoader> Create(rsrcloader::ResourceManager&,
                                               MemoryManager&);
 
   // Loads the segment with the given ID into the heap in kSystemMemory and
   // updates the jump-table entries to point to the newly loaded code.
-  absl::Status Load(uint16_t);
-
-  // The initial program counter to jump to the entry point:
-  size_t entry_point() const { return initial_program_counter_; }
+  absl::StatusOr<Ptr> Load(uint16_t);
 
  private:
   SegmentLoader(MemoryManager&,
-                InMemoryTableHeader,
-                rsrcloader::ResourceGroup&,
-                uint32_t initial_program_counter);
+                rsrcloader::ResourceManager&,
+                InMemoryTableHeader);
 
   MemoryManager& memory_manager_;
+  rsrcloader::ResourceManager& resource_manager_;
+
   const InMemoryTableHeader table_header_;
-  rsrcloader::ResourceGroup& code_resources_;
-  const uint32_t initial_program_counter_;
 };

@@ -21,6 +21,8 @@ class MemoryManager {
   std::string GetTag(Handle handle);
   Handle GetHandleThatContains(uint32_t address);
 
+  core::MemoryRegion GetRegionForHandle(Handle handle);
+
   uint32_t GetHandleSize(Handle handle);
 
   std::string LogHandles() {
