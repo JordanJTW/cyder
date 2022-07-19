@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "in_memory_types.h"
 #include "resource.h"
 #include "resource_group.h"
@@ -20,6 +21,7 @@ class ResourceFile {
   absl::Status Save(const std::string&) const;
 
   Resource* FindByTypeAndId(ResType, ResId) const;
+  Resource* FindByTypeAndName(ResType, absl::string_view) const;
 
   ResourceGroup* FindGroupByType(ResType theType) const;
 

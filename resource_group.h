@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "core/memory_region.h"
 #include "in_memory_types.h"
 #include "resource.h"
@@ -25,6 +26,7 @@ class ResourceGroup {
   InMemoryTypeItem Save(size_t reference_offset) const;
 
   Resource* FindById(ResId) const;
+  Resource* FindByName(absl::string_view) const;
 
   ResType GetType() const { return type_item_.type; }
   size_t GetSize() const { return resources_.size(); }

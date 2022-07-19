@@ -58,6 +58,15 @@ Resource* ResourceGroup::FindById(ResId theId) const {
   return nullptr;
 }
 
+Resource* ResourceGroup::FindByName(absl::string_view theName) const {
+  for (const auto& resource : resources_) {
+    if (resource->GetName() == theName) {
+      return resource.get();
+    }
+  }
+  return nullptr;
+}
+
 std::ostream& operator<<(std::ostream& out, const ResourceGroup& value) {
   out << "Group(type: '" << GetTypeName(value.GetType()) << "'):\n";
   for (const auto& resource : value.resources_) {

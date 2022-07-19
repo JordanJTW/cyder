@@ -179,6 +179,15 @@ Resource* ResourceFile::FindByTypeAndId(ResType theType, ResId theId) const {
   return nullptr;
 }
 
+Resource* ResourceFile::FindByTypeAndName(ResType theType, absl::string_view theName) const {
+  for (const auto& group : resource_groups_) {
+    if (group->GetType() == theType) {
+      return group->FindByName(theName);
+    }
+  }
+  return nullptr;
+}
+
 ResourceGroup* ResourceFile::FindGroupByType(ResType theType) const {
   for (const auto& group : resource_groups_) {
     if (group->GetType() == theType) {
