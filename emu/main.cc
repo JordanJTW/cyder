@@ -27,7 +27,7 @@ enum GlobalVars {
   StackBase = 0x908,
 };
 
-constexpr size_t break_on_line = 0x7F73A;
+constexpr size_t break_on_line = 0;
 
 bool single_step = false;
 bool breakpoint = false;
