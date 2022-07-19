@@ -78,11 +78,31 @@ absl::Status TrapManager::PerformTrapEntry() {
   auto status_register = TRY(Pop<uint16_t>());
   auto instruction_ptr = TRY(Pop<uint32_t>());
 
+  uint16_t trap_op =
+      be16toh(TRY(kSystemMemory.Copy<uint16_t>(instruction_ptr)));
+
+  LOG(INFO) << "\u001b[38;5;160m"
+            << "A-Line Exception "
+            << (trap::IsToolbox(trap_op) ? "Toolbox" : "OS")
+            << "::" << GetTrapName(trap_op) << " (0x" << std::hex << trap_op
+            << ") Index: " << std::dec << trap::ExtractIndex(trap_op)
+            << "\u001b[0m";
+
+  CHECK(!trap::IsAutoPopSet(trap_op));
+  if (trap::IsSystem(trap_op))
+    LOG(INFO) << "Should return A0? "
+              << (trap::IsReturnA0(trap_op) ? "true" : "false")
+              << " Flags: " << trap::ExtractFlags(trap_op);
+
   // `instruction_ptr` points to the address of the instruction that triggered
   // the trap. When we return from handling the trap return to the instruction
   // past the 16-bit A-Line Trap (i.e. + 2).
   RETURN_IF_ERROR(Push<uint32_t>(instruction_ptr + 2));
-  RETURN_IF_ERROR(Push<uint32_t>(kTrapManagerDispatchAddress));
+  LOG(INFO) << "Coming from 0x" << std::hex << instruction_ptr;
+
+  uint32_t dispatch_address = GetTrapAddress(trap_op);
+  LOG(INFO) << "Dispatch to 0x" << std::hex << dispatch_address;
+  RETURN_IF_ERROR(Push<uint32_t>(dispatch_address));
   return absl::OkStatus();
 }
 
@@ -100,19 +120,20 @@ absl::Status TrapManager::PerformTrapDispatch() {
   return DispatchTrap(trap_op);
 }
 
+uint32_t TrapManager::GetTrapAddress(uint16_t trap) {
+  if (trap == Trap::Unimplemented) {
+    return 0;
+  }
+
+  auto patch_address = patch_trap_addresses_.find(trap);
+  if (patch_address != patch_trap_addresses_.cend()) {
+    return patch_address->second;
+  } else {
+    return kTrapManagerDispatchAddress;
+  }
+}
+
 absl::Status TrapManager::DispatchTrap(uint16_t trap) {
-  LOG(INFO) << "\u001b[38;5;160m"
-            << "A-Line Exception " << (trap::IsToolbox(trap) ? "Toolbox" : "OS")
-            << "::" << GetTrapName(trap) << " (0x" << std::hex << trap
-            << ") Index: " << std::dec << trap::ExtractIndex(trap)
-            << "\u001b[0m";
-
-  CHECK(!trap::IsAutoPopSet(trap));
-  if (trap::IsSystem(trap))
-    LOG(INFO) << "Should return A0? "
-              << (trap::IsReturnA0(trap) ? "true" : "false")
-              << " Flags: " << trap::ExtractFlags(trap);
-
   RestorePop<Ptr> return_address;
 
   switch (trap) {
@@ -217,28 +238,35 @@ absl::Status TrapManager::DispatchTrap(uint16_t trap) {
       uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
       LOG(INFO) << "TRAP GetOSTrapAddress(trap: '"
                 << GetTrapNameBySystemIndex(trap_index) << "')";
-      m68k_set_reg(M68K_REG_A0, 0x3000);
+      m68k_set_reg(M68K_REG_A0, GetTrapAddress(trap_index));
       return absl::OkStatus();
     }
     case Trap::GetToolBoxTrapAddress: {
       uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
       LOG(INFO) << "TRAP GetToolBoxTrapAddress(trap: '"
                 << GetTrapNameByToolboxIndex(trap_index) << "')";
-      m68k_set_reg(M68K_REG_A0, 0x3000);
+      m68k_set_reg(M68K_REG_A0, GetTrapAddress(trap_index));
       return absl::OkStatus();
     }
     case Trap::GetTrapAddress: {
       uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
       LOG(INFO) << "TRAP GetTrapAddress(trap: '" << GetTrapName(trap_index)
                 << "')";
-      m68k_set_reg(M68K_REG_A0, 0x3000);
+      m68k_set_reg(M68K_REG_A0, GetTrapAddress(trap_index));
       return absl::OkStatus();
     }
     case Trap::SetTrapAddress: {
-      uint32_t trap_addr = m68k_get_reg(NULL, M68K_REG_A0);
-      uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
-      LOG(INFO) << "TRAP SetTrapAddress(trapAddr: 0x" << std::hex << trap_addr
-                << ", trap: '" << GetTrapName(trap_index) << "')";
+      uint32_t trap_address = m68k_get_reg(NULL, M68K_REG_A0);
+      uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF;
+      LOG(INFO) << "TRAP SetTrapAddress(trapAddr: 0x" << std::hex
+                << trap_address << ", trap: '" << GetTrapName(trap_index)
+                << "')";
+      patch_trap_addresses_[trap_index] = trap_address;
+
+      for (const auto& pair : patch_trap_addresses_) {
+        LOG(INFO) << "Patch trap: 0x" << std::hex << pair.first << " -> 0x"
+                  << pair.second;
+      }
       return absl::OkStatus();
     }
     // Link: https://dev.os9.ca/techpubs/mac/Files/Files-232.html#HEADING232-0

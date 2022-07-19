@@ -25,9 +25,12 @@ class TrapManager {
 
  private:
   absl::Status DispatchTrap(uint16_t trap);
+  uint32_t GetTrapAddress(uint16_t trap);
 
   MemoryManager& memory_manager_;
   rsrcloader::ResourceManager& resource_manager_;
   SegmentLoader& segment_loader_;
   SDL_Renderer* renderer_;
+
+  std::map<uint16_t, uint32_t> patch_trap_addresses_;
 };
