@@ -51,7 +51,7 @@ const size_t kLastEmulatedSubroutineAddress = kTrapManagerDispatchAddress - size
 // A5 World
 
 // User Stack
-const size_t kStackStart = kSystemMemorySize - 4_kb;
+const size_t kStackStart = kSystemMemorySize - 32_kb;
 const size_t kStackEnd = kStackStart - kDefaultStackSize;
 
 // System Heap
