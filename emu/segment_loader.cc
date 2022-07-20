@@ -61,8 +61,8 @@ absl::StatusOr<Ptr> SegmentLoader::Load(uint16_t segment_id) {
       GetA5WorldPosition() + table_header_.table_offset + offset_in_table;
 
   Ptr absolute_address = 0;
-  for (int i = table_entry_count; i >= 0; --i) {
-    uint32_t offset = segment_table_offset + i * 8;
+  for (int i = table_entry_count; i > 0; --i) {
+    uint32_t offset = segment_table_offset + (i - 1) * 8;
     uint16_t routine_offset =
         be16toh(TRY(kSystemMemory.Copy<uint16_t>(offset)));
 
