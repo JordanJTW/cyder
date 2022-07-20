@@ -328,6 +328,60 @@ absl::Status TrapManager::DispatchTrap(uint16_t trap) {
                 << ")";
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Text/Text-222.html
+    case Trap::InitFonts: {
+      LOG(INFO) << "TRAP InitFonts()";
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-223.html
+    case Trap::InitWindows: {
+      LOG(INFO) << "TRAP InitWindows()";
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-114.html
+    case Trap::InitMenus: {
+      LOG(INFO) << "TRAP InitMenus()";
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Text/Text-69.html
+    case Trap::TEInit: {
+      LOG(INFO) << "TRAP TEInit()";
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-391.html
+    case Trap::InitDialogs: {
+      auto resumeProc = TRY(Pop<Ptr>());
+      CHECK(resumeProc == 0) << "System 7 should always pass null (0)";
+      LOG(INFO) << "TRAP InitDialogs(0x" << std::hex << resumeProc << ")";
+      return absl::OkStatus();
+    }
+      // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-381.html
+    case Trap::InitCursor: {
+      LOG(INFO) << "TRAP InitCursor()";
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-56.html
+    case Trap::FlushEvents: {
+      uint32_t arguments = m68k_get_reg(NULL, M68K_REG_D0);
+      uint16_t eventMask = arguments & 0xFFFF;
+      uint16_t stopMask = (2 >> arguments) & 0xFFFF;
+
+      LOG(INFO) << "TRAP FlushEvents(eventMask: 0x" << std::hex
+                << std::setfill('0') << std::setw(4) << eventMask
+                << ", stopMask: 0x" << std::setfill('0') << std::setw(4)
+                << stopMask << ")";
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-79.html
+    case Trap::DisposePtr: {
+      uint32_t ptr = m68k_get_reg(NULL, M68K_REG_A0);
+
+      LOG(INFO) << "TRAP DisposePtr(ptr: 0x" << std::hex << ptr << ")";
+
+      uint32_t status = 0;
+      m68k_set_reg(M68K_REG_D0, status);
+      return absl::OkStatus();
+    }
     case Trap::OpenPort: {
       auto thePortPtr = TRY(Pop<GrafPtr>());
       LOG(INFO) << "TRAP OpenPort(port: 0x" << std::hex << thePortPtr << ")";
