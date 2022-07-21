@@ -4,6 +4,7 @@
 #include <sstream>
 
 #include "core/logging.h"
+#include "global_names.h"
 
 uint8_t kSystemMemoryRaw[kSystemMemorySize];
 core::MemoryRegion kSystemMemory(&kSystemMemoryRaw, kSystemMemorySize);
@@ -46,8 +47,8 @@ void CheckReadAccess(uint32_t address) {
   // System Globals
   if (within_region(kSystemGlobalsLowStart, kSystemGlobalsLowEnd) ||
       within_region(kSystemGlobalsHighStart, kSystemGlobalsHighEnd)) {
-    LOG(WARNING) << "Read uninitialized system global at: 0x" << std::hex
-                 << address;
+    LOG(WARNING) << "Read system global at 0x" << std::hex << address << ": "
+                 << GetGlobalVarName(address);
     return;
   }
 
@@ -115,7 +116,7 @@ void CheckReadAccess(uint32_t address) {
 
   if (address > kLastEmulatedSubroutineAddress) {
     return;
-  } 
+  }
 
   LOG(FATAL) << "Untracked read: 0x" << std::hex << address;
 }
@@ -132,8 +133,8 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
   // System Globals
   if (within_region(kSystemGlobalsLowStart, kSystemGlobalsLowEnd) ||
       within_region(kSystemGlobalsHighStart, kSystemGlobalsHighEnd)) {
-    LOG(WARNING) << "Write system global at: 0x" << std::hex << address
-                 << " = 0x" << value;
+    LOG(WARNING) << "Write system global at 0x" << std::hex << address << ": "
+                 << GetGlobalVarName(address) << " = 0x" << value;
     return;
   }
 
