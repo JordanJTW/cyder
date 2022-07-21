@@ -89,19 +89,13 @@ absl::Status TrapManager::PerformTrapEntry() {
             << "\u001b[0m";
 
   CHECK(!trap::IsAutoPopSet(trap_op));
-  if (trap::IsSystem(trap_op))
-    LOG(INFO) << "Should return A0? "
-              << (trap::IsReturnA0(trap_op) ? "true" : "false")
-              << " Flags: " << trap::ExtractFlags(trap_op);
 
   // `instruction_ptr` points to the address of the instruction that triggered
   // the trap. When we return from handling the trap return to the instruction
   // past the 16-bit A-Line Trap (i.e. + 2).
   RETURN_IF_ERROR(Push<uint32_t>(instruction_ptr + 2));
-  LOG(INFO) << "Coming from 0x" << std::hex << instruction_ptr;
 
   uint32_t dispatch_address = GetTrapAddress(trap_op);
-  LOG(INFO) << "Dispatch to 0x" << std::hex << dispatch_address;
   RETURN_IF_ERROR(Push<uint32_t>(dispatch_address));
   return absl::OkStatus();
 }
@@ -186,7 +180,6 @@ absl::Status TrapManager::DispatchTrap(uint16_t trap) {
       // ResourceManager
       // http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-82.html
       auto handle_size = memory_manager_.GetHandleSize(handle);
-      LOG(INFO) << "Handle size: " << handle_size;
       return TrapReturn<uint32_t>(handle_size);
     }
     case Trap::GetResAttrs: {
@@ -261,6 +254,12 @@ absl::Status TrapManager::DispatchTrap(uint16_t trap) {
       LOG(INFO) << "TRAP SetTrapAddress(trapAddr: 0x" << std::hex
                 << trap_address << ", trap: '" << GetTrapName(trap_index)
                 << "')";
+
+      if (trap_address == kTrapManagerDispatchAddress) {
+        patch_trap_addresses_.erase(trap_index);
+        return absl::OkStatus();
+      }
+
       patch_trap_addresses_[trap_index] = trap_address;
 
       for (const auto& pair : patch_trap_addresses_) {
