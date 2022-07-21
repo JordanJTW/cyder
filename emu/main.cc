@@ -16,16 +16,12 @@
 #include "segment_loader.h"
 #include "third_party/musashi/src/m68k.h"
 #include "trap_manager.h"
+#include "global_names.h"
 
 using rsrcloader::ResourceManager;
 
 constexpr bool disassemble_log = false;
 constexpr bool memory_write_log = false;
-
-enum GlobalVars {
-  AppName = 0x910,
-  StackBase = 0x908,
-};
 
 constexpr size_t break_on_line = 0;
 
@@ -210,7 +206,7 @@ absl::Status Main(const core::Args& args) {
 
   // Sets the size of the name to 0 so it is not read:
   // TODO: Store the application name here as a Pascal string
-  RETURN_IF_ERROR(kSystemMemory.Write<uint8_t>(GlobalVars::AppName, 0));
+  RETURN_IF_ERROR(kSystemMemory.Write<uint8_t>(GlobalVars::CurApName, 0));
 
   RETURN_IF_ERROR(
       kSystemMemory.Write<uint16_t>(kTrapManagerEntryAddress, htobe16(0x4E75)));
@@ -219,7 +215,7 @@ absl::Status Main(const core::Args& args) {
   RETURN_IF_ERROR(
       kSystemMemory.Write<uint32_t>(0x28, htobe32(kTrapManagerEntryAddress)));
 
-  RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(GlobalVars::StackBase,
+  RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(GlobalVars::CurStackBase,
                                                 htobe32(kStackStart)));
 
   SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
