@@ -45,6 +45,11 @@ def parse_args():
     h_path = '{}.h'.format(output)
     return (cc_path, h_path)
 
+def removeprefix(str, prefix):
+  if str[0] == prefix:
+    return str[len(prefix):]
+  return str
+
 
 def main():
     (cc_path, h_path) = parse_args()
@@ -92,7 +97,7 @@ def main():
 
         f.write('enum GlobalVars {')
         for address, metadata in address_to_metadata.items():
-            names = set((item['name'].removeprefix('*')
+            names = set((removeprefix(item['name'], '*')
                         for item in metadata if item['name'] != '[????]'))
             for name in names:
                 f.write(f"\n  {name} = 0x{address:X},")
@@ -109,7 +114,7 @@ const char* GetGlobalVarName(uint32_t address) {
   switch (address) {""")
 
         for address, metadata in address_to_metadata.items():
-            names = set((f"{item['name'].removeprefix('*')}[{item['size']}]"
+            names = set((f"{removeprefix(item['name'], '*')}[{item['size']}]"
                         for item in metadata if item['name'] != '[????]'))
 
             if not names:
