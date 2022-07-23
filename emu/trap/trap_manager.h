@@ -26,7 +26,9 @@ class TrapManager {
   absl::Status PerformTrapExit();
 
  private:
-  absl::Status DispatchTrap(uint16_t trap);
+  absl::Status DispatchNativeSystemTrap(uint16_t trap);
+  absl::Status DispatchNativeToolboxTrap(uint16_t trap);
+
   uint32_t GetTrapAddress(uint16_t trap);
 
   memory::MemoryManager& memory_manager_;
