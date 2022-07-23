@@ -2,18 +2,20 @@
 #include <tuple>
 
 #include "absl/status/status.h"
-#include "memory_manager.h"
+#include "emu/memory/memory_manager.h"
+#include "emu/segment_loader.h"
 #include "resource_file.h"
-#include "segment_loader.h"
-#include "stack_helpers.h"
 
 struct SDL_Renderer;
+
+namespace cyder {
+namespace trap {
 
 // Handles dispatching from emulated A-Traps to native code
 class TrapManager {
  public:
-  TrapManager(MemoryManager& memory_manager,
-              rsrcloader::ResourceManager& resource_manager,
+  TrapManager(memory::MemoryManager& memory_manager,
+              ResourceManager& resource_manager,
               SegmentLoader& segment_loader,
               SDL_Renderer* renderer);
 
@@ -27,10 +29,13 @@ class TrapManager {
   absl::Status DispatchTrap(uint16_t trap);
   uint32_t GetTrapAddress(uint16_t trap);
 
-  MemoryManager& memory_manager_;
-  rsrcloader::ResourceManager& resource_manager_;
+  memory::MemoryManager& memory_manager_;
+  ResourceManager& resource_manager_;
   SegmentLoader& segment_loader_;
   SDL_Renderer* renderer_;
 
   std::map<uint16_t, uint32_t> patch_trap_addresses_;
 };
+
+}  // namespace trap
+}  // namespace cyder

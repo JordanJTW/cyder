@@ -6,7 +6,10 @@
 #include <string>
 
 #include "core/memory_region.h"
-#include "system_types.h"
+#include "emu/system_types.h"
+
+namespace cyder {
+namespace memory {
 
 class MemoryManager {
  public:
@@ -47,3 +50,6 @@ class MemoryManager {
 
   std::map<Handle, HandleMetadata> handle_to_metadata_;
 };
+
+}  // namespace memory
+}  // namespace cyder

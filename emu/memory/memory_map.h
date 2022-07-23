@@ -5,6 +5,9 @@
 #include "core/literal_helpers.h"
 #include "core/memory_region.h"
 
+namespace cyder {
+namespace memory {
+
 extern core::MemoryRegion kSystemMemory;
 
 const size_t kSystemMemorySize = 512_kb;
@@ -45,8 +48,10 @@ const size_t kDefaultStackSize = 4_kb;
 //  [ LOW MEMORY ]
 
 const size_t kTrapManagerEntryAddress = kSystemMemorySize - sizeof(uint16_t);
-const size_t kTrapManagerDispatchAddress = kTrapManagerEntryAddress - sizeof(uint16_t);
-const size_t kLastEmulatedSubroutineAddress = kTrapManagerDispatchAddress - sizeof(uint16_t);
+const size_t kTrapManagerDispatchAddress =
+    kTrapManagerEntryAddress - sizeof(uint16_t);
+const size_t kLastEmulatedSubroutineAddress =
+    kTrapManagerDispatchAddress - sizeof(uint16_t);
 
 // A5 World
 
@@ -93,3 +98,6 @@ uint32_t GetA5WorldPosition();
 
 // Returns a string representation of the memory map (for debugging).
 std::string MemoryMapToStr();
+
+}  // namespace memory
+}  // namespace cyder

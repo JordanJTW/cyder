@@ -9,13 +9,16 @@
 #include "absl/strings/string_view.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
-#include "memory_map.h"
+#include "emu/memory/memory_map.h"
+#include "emu/system_types.h"
+#include "emu/trap/stack_helpers.h"
+#include "emu/trap/trap_helpers.h"
 #include "resource.h"
-#include "stack_helpers.h"
-#include "system_types.h"
 #include "third_party/musashi/src/m68k.h"
-#include "trap_helpers.h"
 #include "trap_names.h"
+
+namespace cyder {
+namespace trap {
 
 using rsrcloader::GetTypeName;
 using rsrcloader::ResId;
@@ -51,8 +54,8 @@ class RestorePop {
   T value;
 };
 
-TrapManager::TrapManager(MemoryManager& memory_manager,
-                         rsrcloader::ResourceManager& resource_manager,
+TrapManager::TrapManager(memory::MemoryManager& memory_manager,
+                         ResourceManager& resource_manager,
                          SegmentLoader& segment_loader,
                          SDL_Renderer* renderer)
     : memory_manager_(memory_manager),
@@ -64,9 +67,9 @@ TrapManager::TrapManager(MemoryManager& memory_manager,
 
 absl::Status TrapManager::DispatchEmulatedSubroutine(uint32_t address) {
   switch (address) {
-    case kTrapManagerEntryAddress:
+    case memory::kTrapManagerEntryAddress:
       return PerformTrapEntry();
-    case kTrapManagerDispatchAddress:
+    case memory::kTrapManagerDispatchAddress:
       return PerformTrapDispatch();
     default:
       return absl::UnimplementedError(
@@ -79,7 +82,7 @@ absl::Status TrapManager::PerformTrapEntry() {
   auto instruction_ptr = TRY(Pop<uint32_t>());
 
   uint16_t trap_op =
-      be16toh(TRY(kSystemMemory.Copy<uint16_t>(instruction_ptr)));
+      be16toh(TRY(memory::kSystemMemory.Copy<uint16_t>(instruction_ptr)));
 
   LOG(INFO) << "\u001b[38;5;160m"
             << "A-Line Exception "
@@ -110,7 +113,8 @@ absl::Status TrapManager::PerformTrapDispatch() {
   auto return_address = TRY(Peek<Ptr>());
   Ptr trap_address = return_address - 2;
 
-  auto trap_op = be16toh(TRY(kSystemMemory.Copy<uint16_t>(trap_address)));
+  auto trap_op =
+      be16toh(TRY(memory::kSystemMemory.Copy<uint16_t>(trap_address)));
   return DispatchTrap(trap_op);
 }
 
@@ -123,7 +127,7 @@ uint32_t TrapManager::GetTrapAddress(uint16_t trap) {
   if (patch_address != patch_trap_addresses_.cend()) {
     return patch_address->second;
   } else {
-    return kTrapManagerDispatchAddress;
+    return memory::kTrapManagerDispatchAddress;
   }
 }
 
@@ -214,8 +218,9 @@ absl::Status TrapManager::DispatchTrap(uint16_t trap) {
 
       // FIXME: Allow for more efficient copies in system memory (memcpy)?
       for (size_t i = 0; i < byte_count; ++i) {
-        RETURN_IF_ERROR(kSystemMemory.Write<uint8_t>(
-            dest_ptr + i, TRY(kSystemMemory.Copy<uint8_t>(source_ptr + i))));
+        RETURN_IF_ERROR(memory::kSystemMemory.Write<uint8_t>(
+            dest_ptr + i,
+            TRY(memory::kSystemMemory.Copy<uint8_t>(source_ptr + i))));
       }
       // Return result code "noErr"
       m68k_set_reg(M68K_REG_D0, 0);
@@ -255,7 +260,7 @@ absl::Status TrapManager::DispatchTrap(uint16_t trap) {
                 << trap_address << ", trap: '" << GetTrapName(trap_index)
                 << "')";
 
-      if (trap_address == kTrapManagerDispatchAddress) {
+      if (trap_address == memory::kTrapManagerDispatchAddress) {
         patch_trap_addresses_.erase(trap_index);
         return absl::OkStatus();
       }
@@ -293,23 +298,23 @@ absl::Status TrapManager::DispatchTrap(uint16_t trap) {
       // } IOParam;
       uint32_t ptr = m68k_get_reg(NULL, M68K_REG_A0);
       LOG(INFO) << "TRAP Open(ptr: 0x" << std::hex << ptr << ")";
-      auto qLink = TRY(kSystemMemory.Copy<Ptr>(ptr));
-      auto qType = TRY(kSystemMemory.Copy<uint8_t>(ptr + 4));
-      auto ioTrap = TRY(kSystemMemory.Copy<uint8_t>(ptr + 5));
-      auto ioCmdAddr = TRY(kSystemMemory.Copy<Ptr>(ptr + 6));
-      auto ioCompletion = TRY(kSystemMemory.Copy<Ptr>(ptr + 10));
-      auto ioResult = TRY(kSystemMemory.Copy<int16_t>(ptr + 14));
-      auto ioNamePtr = TRY(kSystemMemory.Copy<Ptr>(ptr + 16));
-      auto ioVRefNum = TRY(kSystemMemory.Copy<uint8_t>(ptr + 20));
-      auto ioRefNum = TRY(kSystemMemory.Copy<uint8_t>(ptr + 21));
-      auto ioVersNum = TRY(kSystemMemory.Copy<char>(ptr + 22));
-      auto ioPermssn = TRY(kSystemMemory.Copy<char>(ptr + 23));
-      auto ioMisc = TRY(kSystemMemory.Copy<Ptr>(ptr + 24));
-      auto ioBuffer = TRY(kSystemMemory.Copy<Ptr>(ptr + 28));
-      auto ioReqCount = TRY(kSystemMemory.Copy<uint16_t>(ptr + 32));
-      auto ioActCount = TRY(kSystemMemory.Copy<uint16_t>(ptr + 34));
-      auto ioPosMode = TRY(kSystemMemory.Copy<uint8_t>(ptr + 36));
-      auto ioPosOffset = TRY(kSystemMemory.Copy<uint16_t>(ptr + 37));
+      auto qLink = TRY(memory::kSystemMemory.Copy<Ptr>(ptr));
+      auto qType = TRY(memory::kSystemMemory.Copy<uint8_t>(ptr + 4));
+      auto ioTrap = TRY(memory::kSystemMemory.Copy<uint8_t>(ptr + 5));
+      auto ioCmdAddr = TRY(memory::kSystemMemory.Copy<Ptr>(ptr + 6));
+      auto ioCompletion = TRY(memory::kSystemMemory.Copy<Ptr>(ptr + 10));
+      auto ioResult = TRY(memory::kSystemMemory.Copy<int16_t>(ptr + 14));
+      auto ioNamePtr = TRY(memory::kSystemMemory.Copy<Ptr>(ptr + 16));
+      auto ioVRefNum = TRY(memory::kSystemMemory.Copy<uint8_t>(ptr + 20));
+      auto ioRefNum = TRY(memory::kSystemMemory.Copy<uint8_t>(ptr + 21));
+      auto ioVersNum = TRY(memory::kSystemMemory.Copy<char>(ptr + 22));
+      auto ioPermssn = TRY(memory::kSystemMemory.Copy<char>(ptr + 23));
+      auto ioMisc = TRY(memory::kSystemMemory.Copy<Ptr>(ptr + 24));
+      auto ioBuffer = TRY(memory::kSystemMemory.Copy<Ptr>(ptr + 28));
+      auto ioReqCount = TRY(memory::kSystemMemory.Copy<uint16_t>(ptr + 32));
+      auto ioActCount = TRY(memory::kSystemMemory.Copy<uint16_t>(ptr + 34));
+      auto ioPosMode = TRY(memory::kSystemMemory.Copy<uint8_t>(ptr + 36));
+      auto ioPosOffset = TRY(memory::kSystemMemory.Copy<uint16_t>(ptr + 37));
 
 #define FIELD(name) "\n\t" << #name << ": " << (static_cast<int>(name)) << ", "
       LOG(INFO) << "IOParam: {" << FIELD(qLink) << FIELD(qType) << FIELD(ioTrap)
@@ -436,3 +441,6 @@ absl::Status TrapManager::DispatchTrap(uint16_t trap) {
           "Reached unimplemented trap: '", GetTrapName(trap), "'"));
   }
 }
+
+}  // namespace trap
+}  // namespace cyder

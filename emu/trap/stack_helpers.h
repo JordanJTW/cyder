@@ -6,10 +6,15 @@
 #include "absl/strings/string_view.h"
 #include "core/endian_helpers.h"
 #include "core/memory_region.h"
-#include "system_types.h"
+#include "emu/system_types.h"
 #include "third_party/musashi/src/m68k.h"
 
+namespace cyder {
+namespace memory {
 extern core::MemoryRegion kSystemMemory;
+}  // namespace memory
+
+namespace trap {
 
 // Pops `T` off of the stack
 template <typename T>
@@ -17,7 +22,7 @@ absl::StatusOr<T> Pop() {
   static_assert(std::is_integral<T>::value,
                 "Only integers are stored on the stack (see PopRef<>)");
   Ptr current_stack = m68k_get_reg(NULL, M68K_REG_SP);
-  T value = TRY(kSystemMemory.Copy<T>(current_stack));
+  T value = TRY(memory::kSystemMemory.Copy<T>(current_stack));
   m68k_set_reg(M68K_REG_SP, current_stack + sizeof(T));
   return betoh<T>(value);
 }
@@ -28,7 +33,7 @@ absl::StatusOr<T> Peek(size_t offset = 0) {
   static_assert(std::is_integral<T>::value,
                 "Only integers are stored on the stack");
   Ptr current_stack = m68k_get_reg(NULL, M68K_REG_SP);
-  return betoh<T>(TRY(kSystemMemory.Copy<T>(current_stack + offset)));
+  return betoh<T>(TRY(memory::kSystemMemory.Copy<T>(current_stack + offset)));
 }
 
 // Pops pointer to `T` off of the stack and returns the dereferenced value
@@ -45,7 +50,8 @@ absl::Status Push(T value) {
   static_assert(std::is_integral<T>::value,
                 "Only integers are stored on the stack");
   Ptr new_stack_ptr = m68k_get_reg(NULL, M68K_REG_SP) - sizeof(T);
-  RETURN_IF_ERROR(kSystemMemory.Write<T>(new_stack_ptr, htobe<T>(value)));
+  RETURN_IF_ERROR(
+      memory::kSystemMemory.Write<T>(new_stack_ptr, htobe<T>(value)));
   m68k_set_reg(M68K_REG_SP, new_stack_ptr);
   return absl::OkStatus();
 }
@@ -61,6 +67,10 @@ absl::Status TrapReturn(T value) {
   static_assert(std::is_integral<T>::value,
                 "Only integers are stored on the stack");
   Ptr current_stack = m68k_get_reg(NULL, M68K_REG_SP);
-  RETURN_IF_ERROR(kSystemMemory.Write<T>(current_stack, htobe<T>(value)));
+  RETURN_IF_ERROR(
+      memory::kSystemMemory.Write<T>(current_stack, htobe<T>(value)));
   return absl::OkStatus();
 }
+
+}  // namespace trap
+}  // namespace cyder

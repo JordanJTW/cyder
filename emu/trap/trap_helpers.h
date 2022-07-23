@@ -3,6 +3,7 @@
 #include <bitset>
 #include <cstdint>
 
+namespace cyder {
 namespace trap {
 
 // Link: https://dev.os9.ca/techpubs/mac/OSUtilities/OSUtilities-170.html
@@ -62,3 +63,4 @@ constexpr bool IsReturnA0(uint16_t trap) {
 }
 
 }  // namespace trap
+}  // namespace cyder

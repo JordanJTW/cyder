@@ -1,7 +1,15 @@
 #include "resource_manager.h"
 
-namespace rsrcloader {
+#include "emu/memory/memory_map.h"
+#include "global_names.h"
+
+namespace cyder {
 namespace {
+
+using rsrcloader::GetTypeName;
+using rsrcloader::ResId;
+using rsrcloader::Resource;
+using rsrcloader::ResType;
 
 std::string GetUniqueId(ResType theType, ResId theId) {
   return absl::StrCat("Resource[", GetTypeName(theType), ":", theId, "]");
@@ -9,11 +17,11 @@ std::string GetUniqueId(ResType theType, ResId theId) {
 
 }  // namespace
 
-ResourceManager::ResourceManager(MemoryManager& memory_manager,
-                                 ResourceFile& resource_file)
+ResourceManager::ResourceManager(memory::MemoryManager& memory_manager,
+                                 rsrcloader::ResourceFile& resource_file)
     : memory_manager_(memory_manager), resource_file_(resource_file) {}
 
-Resource* ResourceManager::GetSegmentZero() const {
+rsrcloader::Resource* ResourceManager::GetSegmentZero() const {
   return resource_file_.FindByTypeAndId('CODE', 0);
 }
 
@@ -65,4 +73,4 @@ Handle ResourceManager::GetResourseByName(ResType theType,
   return handle;
 }
 
-}  // namespace rsrcloader
+}  // namespace cyder

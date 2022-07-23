@@ -6,9 +6,8 @@
 #include "core/logging.h"
 #include "global_names.h"
 
-uint8_t kSystemMemoryRaw[kSystemMemorySize];
-core::MemoryRegion kSystemMemory(&kSystemMemoryRaw, kSystemMemorySize);
-
+namespace cyder {
+namespace memory {
 namespace {
 
 // TODO: Add proper verbose logging support to core/logging.h
@@ -24,14 +23,17 @@ bool kHasInitializedMemory[kSystemMemorySize];
 
 }  // namespace
 
+uint8_t kSystemMemoryRaw[kSystemMemorySize];
+core::MemoryRegion kSystemMemory(&kSystemMemoryRaw, kSystemMemorySize);
+
+uint32_t GetA5WorldPosition() {
+  return a5_world;
+}
+
 void SetA5WorldBounds(uint32_t above_a5, uint32_t below_a5) {
   above_a5_size = above_a5;
   below_a5_size = below_a5;
   a5_world = kStackStart + below_a5_size;
-}
-
-uint32_t GetA5WorldPosition() {
-  return a5_world;
 }
 
 void CheckReadAccess(uint32_t address) {
@@ -215,3 +217,6 @@ std::string MemoryMapToStr() {
      << below_a5_size << ")";
   return ss.str();
 }
+
+}  // namespace memory
+}  // namespace cyder

@@ -9,16 +9,14 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
-#include "memory_manager.h"
-#include "memory_map.h"
+#include "global_names.h"
+#include "memory/memory_manager.h"
+#include "memory/memory_map.h"
 #include "resource_file.h"
 #include "resource_manager.h"
 #include "segment_loader.h"
 #include "third_party/musashi/src/m68k.h"
-#include "trap_manager.h"
-#include "global_names.h"
-
-using rsrcloader::ResourceManager;
+#include "trap/trap_manager.h"
 
 constexpr bool disassemble_log = false;
 constexpr bool memory_write_log = false;
@@ -27,8 +25,6 @@ constexpr size_t break_on_line = 0;
 
 bool single_step = false;
 bool breakpoint = false;
-
-extern core::MemoryRegion kSystemMemory;
 
 typedef std::function<absl::Status(uint32_t)> on_address_callback_t;
 
@@ -48,65 +44,67 @@ absl::Status HandleException(unsigned int address) {
 }
 
 unsigned int m68k_read_disassembler_8(unsigned int address) {
-  return MUST(kSystemMemory.Copy<uint8_t>(address));
+  return MUST(cyder::memory::kSystemMemory.Copy<uint8_t>(address));
 }
 unsigned int m68k_read_disassembler_16(unsigned int address) {
-  return be16toh(MUST(kSystemMemory.Copy<uint16_t>(address)));
+  return be16toh(MUST(cyder::memory::kSystemMemory.Copy<uint16_t>(address)));
 }
 unsigned int m68k_read_disassembler_32(unsigned int address) {
-  return be32toh(MUST(kSystemMemory.Copy<uint32_t>(address)));
+  return be32toh(MUST(cyder::memory::kSystemMemory.Copy<uint32_t>(address)));
 }
 
 unsigned int m68k_read_memory_8(unsigned int address) {
-  CheckReadAccess(address);
-  return MUST(kSystemMemory.Copy<uint8_t>(address));
+  cyder::memory::CheckReadAccess(address);
+  return MUST(cyder::memory::kSystemMemory.Copy<uint8_t>(address));
 }
 unsigned int m68k_read_memory_16(unsigned int address) {
-  CheckReadAccess(address);
+  cyder::memory::CheckReadAccess(address);
 
-  if (address > kLastEmulatedSubroutineAddress) {
+  if (address > cyder::memory::kLastEmulatedSubroutineAddress) {
     CHECK(on_emulated_subroutine)
         << "No emulated subroutine callback registered";
     auto status = on_emulated_subroutine(address);
     CHECK(status.ok()) << std::move(status).message();
   }
 
-  return be16toh(MUST(kSystemMemory.Copy<uint16_t>(address)));
+  return be16toh(MUST(cyder::memory::kSystemMemory.Copy<uint16_t>(address)));
 }
 unsigned int m68k_read_memory_32(unsigned int address) {
-  CheckReadAccess(address);
+  cyder::memory::CheckReadAccess(address);
 
-  if (address < kInterruptVectorTableEnd) {
+  if (address < cyder::memory::kInterruptVectorTableEnd) {
     auto status = HandleException(address);
     CHECK(status.ok()) << std::move(status).message();
   }
 
-  return be32toh(MUST(kSystemMemory.Copy<uint32_t>(address)));
+  return be32toh(MUST(cyder::memory::kSystemMemory.Copy<uint32_t>(address)));
 }
 
 void m68k_write_memory_8(unsigned int address, unsigned int value) {
-  CheckWriteAccess(address, value);
+  cyder::memory::CheckWriteAccess(address, value);
   LOG_IF(INFO, memory_write_log)
       << std::hex << __func__ << "(" << address << ": " << value << ")";
-  CHECK(kSystemMemory.Write<uint8_t>(address, value).ok())
+  CHECK(cyder::memory::kSystemMemory.Write<uint8_t>(address, value).ok())
       << " unable to write " << std::hex << value << " to " << address;
 }
 void m68k_write_memory_16(unsigned int address, unsigned int value) {
-  CheckWriteAccess(address, value);
+  cyder::memory::CheckWriteAccess(address, value);
   LOG_IF(INFO, memory_write_log)
       << std::hex << __func__ << "(" << address << ": " << value << ")";
-  CHECK(kSystemMemory.Write<uint16_t>(address, htobe16(value)).ok())
+  CHECK(cyder::memory::kSystemMemory.Write<uint16_t>(address, htobe16(value))
+            .ok())
       << " unable to write " << std::hex << value << " to " << address;
 }
 void m68k_write_memory_32(unsigned int address, unsigned int value) {
-  CheckWriteAccess(address, value);
+  cyder::memory::CheckWriteAccess(address, value);
   LOG_IF(INFO, memory_write_log)
       << std::hex << __func__ << "(" << address << ": " << value << ")";
-  CHECK(kSystemMemory.Write<uint32_t>(address, htobe32(value)).ok())
+  CHECK(cyder::memory::kSystemMemory.Write<uint32_t>(address, htobe32(value))
+            .ok())
       << " unable to write " << std::hex << value << " to " << address;
 }
 
-MemoryManager* memory_manager_ptr;
+cyder::memory::MemoryManager* memory_manager_ptr;
 
 void cpu_instr_callback(unsigned int pc) {
   if (pc == break_on_line) {
@@ -135,7 +133,7 @@ void cpu_instr_callback(unsigned int pc) {
     std::string tag = (handle == 0) ? "" : memory_manager_ptr->GetTag(handle);
     LOG(INFO) << std::hex << pc << " (" << tag << "): " << buffer;
   }
-  CHECK(m68k_get_reg(NULL, M68K_REG_ISP) <= kStackStart);
+  CHECK(m68k_get_reg(NULL, M68K_REG_ISP) <= cyder::memory::kStackStart);
 
   single_step = breakpoint;
 
@@ -163,6 +161,12 @@ void PrintFrameTiming(std::ostream& os = std::cout, float period = 2.0f) {
   }
 }
 
+using cyder::ResourceManager;
+using cyder::SegmentLoader;
+using cyder::memory::kSystemMemory;
+using cyder::memory::MemoryManager;
+using cyder::trap::TrapManager;
+
 absl::Status Main(const core::Args& args) {
   auto file =
       TRY(rsrcloader::ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
@@ -173,11 +177,11 @@ absl::Status Main(const core::Args& args) {
   ResourceManager resource_manager(memory_manager, *file);
 
   auto segment_loader =
-      TRY(SegmentLoader::Create(resource_manager, memory_manager));
+      TRY(SegmentLoader::Create(memory_manager, resource_manager));
 
   size_t pc = TRY(segment_loader.Load(1));
   LOG(INFO) << "Initialize PC: " << std::hex << pc;
-  LOG(INFO) << "Memory Map: " << MemoryMapToStr();
+  LOG(INFO) << "Memory Map: " << cyder::memory::MemoryMapToStr();
 
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Window* window = SDL_CreateWindow("Cyder", SDL_WINDOWPOS_UNDEFINED,
@@ -196,8 +200,8 @@ absl::Status Main(const core::Args& args) {
   m68k_set_cpu_type(M68K_CPU_TYPE_68000);
 
   m68k_set_reg(M68K_REG_PC, pc);
-  m68k_set_reg(M68K_REG_A5, GetA5WorldPosition());
-  m68k_set_reg(M68K_REG_SP, kStackStart);
+  m68k_set_reg(M68K_REG_A5, cyder::memory::GetA5WorldPosition());
+  m68k_set_reg(M68K_REG_SP, cyder::memory::kStackStart);
 
   // Mac OS _always_ runs in supervisor mode so set the SR
   // Link: https://en.wikibooks.org/wiki/68000_Assembly/Registers
@@ -208,15 +212,15 @@ absl::Status Main(const core::Args& args) {
   // TODO: Store the application name here as a Pascal string
   RETURN_IF_ERROR(kSystemMemory.Write<uint8_t>(GlobalVars::CurApName, 0));
 
-  RETURN_IF_ERROR(
-      kSystemMemory.Write<uint16_t>(kTrapManagerEntryAddress, htobe16(0x4E75)));
-  RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(kTrapManagerDispatchAddress,
-                                                htobe16(0x4E75)));
-  RETURN_IF_ERROR(
-      kSystemMemory.Write<uint32_t>(0x28, htobe32(kTrapManagerEntryAddress)));
+  RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
+      cyder::memory::kTrapManagerEntryAddress, htobe16(0x4E75)));
+  RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
+      cyder::memory::kTrapManagerDispatchAddress, htobe16(0x4E75)));
+  RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(
+      0x28, htobe32(cyder::memory::kTrapManagerEntryAddress)));
 
-  RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(GlobalVars::CurStackBase,
-                                                htobe32(kStackStart)));
+  RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(
+      GlobalVars::CurStackBase, htobe32(cyder::memory::kStackStart)));
 
   SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
                                            SDL_TEXTUREACCESS_TARGET, 512, 384);

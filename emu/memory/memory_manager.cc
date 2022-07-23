@@ -1,11 +1,14 @@
-#include "memory_manager.h"
+#include "emu/memory/memory_manager.h"
 
 #include <iomanip>
 
 #include "core/endian_helpers.h"
 #include "core/logging.h"
 #include "core/memory_region.h"
-#include "memory_map.h"
+#include "emu/memory/memory_map.h"
+
+namespace cyder {
+namespace memory {
 
 extern core::MemoryRegion kSystemMemory;
 
@@ -102,3 +105,6 @@ uint32_t MemoryManager::GetHandleSize(Handle handle) {
   }
   return entry->second.size;
 }
+
+}  // namespace memory
+}  // namespace cyder
