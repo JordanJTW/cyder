@@ -44,7 +44,12 @@ Handle ResourceManager::GetResourseByName(ResType theType,
       resource_file_.FindByTypeAndName(theType, theName);
   // FIXME: Set ResError in D0 and call ResErrorProc
   // http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-35.html#MARKER-9-220
-  CHECK(resource) << "Resource not found";
+  if (resource == nullptr) {
+    auto status =
+        memory::kSystemMemory.Write<int16_t>(GlobalVars::ResErr, -192);
+    CHECK(status.ok()) << std::move(status).message();
+    return 0;
+  }
 
   const std::string unique_id = GetUniqueId(theType, resource->GetId());
 
