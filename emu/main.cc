@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <iomanip>
 
+#include "absl/flags/flag.h"
 #include "absl/status/status.h"
 #include "core/endian_helpers.h"
 #include "core/memory_region.h"
@@ -18,7 +19,11 @@
 #include "third_party/musashi/src/m68k.h"
 #include "trap/trap_manager.h"
 
-constexpr bool disassemble_log = false;
+ABSL_FLAG(bool,
+          disassemble,
+          /*default_value=*/false,
+          "Disassemble the m68k instructions being executed");
+
 constexpr bool memory_write_log = false;
 
 constexpr size_t break_on_line = 0;
@@ -113,7 +118,7 @@ void cpu_instr_callback(unsigned int pc) {
   }
 
   CHECK(pc != 0) << "Reset";
-  if (disassemble_log || breakpoint) {
+  if (absl::GetFlag(FLAGS_disassemble) || breakpoint) {
 #define REG(name) " " << #name << ": 0x" << m68k_get_reg(NULL, M68K_REG_##name)
 
     LOG(INFO) << "\u001b[38;5;240m" << std::hex << REG(A0) << REG(A1) << REG(A2)
