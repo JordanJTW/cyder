@@ -117,7 +117,10 @@ std::ostream& operator<<(std::ostream& os, const MemoryRegion& region) {
         os << '.';
       }
     }
-    os << "|\n";
+    os << "|";
+    if (line + 1 != line_count) {
+      os << "\n";
+    }
   }
   // Ensure std::hex does not "infect" other streams
   return os << std::dec;
