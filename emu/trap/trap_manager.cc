@@ -406,7 +406,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG(INFO) << "TRAP Get1NamedResource(theType: '"
                 << rsrcloader::GetTypeName(type) << "', name: \"" << name
                 << "\")";
-      return absl::UnimplementedError("");
+
+      Handle handle = resource_manager_.GetResourseByName(type, name);
+      return TrapReturn<uint32_t>(handle);
     }
     // Link: http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-50.html
     case Trap::GetResource: {
