@@ -50,8 +50,7 @@ const size_t kDefaultStackSize = 4_kb;
 const size_t kTrapManagerEntryAddress = kSystemMemorySize - sizeof(uint16_t);
 const size_t kTrapManagerDispatchAddress =
     kTrapManagerEntryAddress - sizeof(uint16_t);
-const size_t kLastEmulatedSubroutineAddress =
-    kTrapManagerDispatchAddress - sizeof(uint16_t);
+const size_t kLastEmulatedSubroutineAddress = kTrapManagerDispatchAddress;
 
 // A5 World
 

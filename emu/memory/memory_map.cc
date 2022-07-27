@@ -116,7 +116,7 @@ void CheckReadAccess(uint32_t address) {
     return;
   }
 
-  if (address > kLastEmulatedSubroutineAddress) {
+  if (address >= kLastEmulatedSubroutineAddress) {
     return;
   }
 

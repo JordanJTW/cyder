@@ -66,7 +66,7 @@ unsigned int m68k_read_memory_8(unsigned int address) {
 unsigned int m68k_read_memory_16(unsigned int address) {
   cyder::memory::CheckReadAccess(address);
 
-  if (address > cyder::memory::kLastEmulatedSubroutineAddress) {
+  if (address >= cyder::memory::kLastEmulatedSubroutineAddress) {
     CHECK(on_emulated_subroutine)
         << "No emulated subroutine callback registered";
     auto status = on_emulated_subroutine(address);
