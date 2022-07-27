@@ -39,7 +39,7 @@ const LogSeverity FATAL = 3;
 #define CHECK_LT(lhs, rhs) CHECK(lhs < rhs)
 
 // Indicates a point which should not be reached in code.
-#define NOTREACHED() LOG(FATAL) << "NOTREACHED() reached..."
+#define NOTREACHED() LOG(FATAL) << "NOTREACHED(): "
 
 }  // namespace logging
 }  // namespace core
