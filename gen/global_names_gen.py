@@ -125,7 +125,7 @@ const char* GetGlobalVarName(uint32_t address) {
 
         f.write("""
     default:
-      NOTREACHED() << "Unknown global variable address: 0x" << std::hex << address;
+      LOG(WARNING) << "Unknown global variable address: 0x" << std::hex << address;
       return nullptr; 
   }
 }""")
