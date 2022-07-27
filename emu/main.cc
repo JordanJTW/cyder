@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 
+#include <bitset>
 #include <chrono>
 #include <cstdint>
 #include <iomanip>
@@ -122,14 +123,25 @@ void cpu_instr_callback(unsigned int pc) {
 #define REG(name) " " << #name << ": 0x" << m68k_get_reg(NULL, M68K_REG_##name)
 
     LOG(INFO) << "\u001b[38;5;240m" << std::hex << REG(A0) << REG(A1) << REG(A2)
-              << REG(A3) << REG(A4) << REG(A5) << REG(A6) << REG(A7) << REG(USP)
-              << REG(ISP) << "\u001b[0m";
+              << REG(A3) << REG(A4) << REG(A5) << REG(A6) << REG(A7)
+              << "\u001b[0m";
     LOG(INFO) << "\u001b[38;5;240m" << std::hex << REG(D0) << REG(D1) << REG(D2)
               << REG(D3) << REG(D4) << REG(D5) << REG(D6) << REG(D7)
               << "\u001b[0m";
 
     LOG(INFO) << "\u001b[38;5;240m"
               << "Handles: " << memory_manager_ptr->LogHandles() << "\u001b[0m";
+
+    Ptr stack_head = m68k_get_reg(NULL, M68K_REG_SP);
+    uint32_t stack_length = cyder::memory::kStackStart - stack_head;
+    LOG(INFO) << "\u001b[38;5;240mStack:\n"
+              << *cyder::memory::kSystemMemory.Create("Stack", stack_head,
+                                                      stack_length)
+              << "\u001b[0m";
+
+    LOG(INFO) << "\u001b[38;5;240mStatus: "
+              << std::bitset<16>(m68k_get_reg(NULL, M68K_REG_SR)) << REG(SP)
+              << "\u001b[0m";
 #undef REG
 
     char buffer[255];
