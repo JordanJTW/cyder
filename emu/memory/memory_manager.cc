@@ -101,6 +101,7 @@ Handle MemoryManager::GetHandleThatContains(uint32_t address) {
 uint32_t MemoryManager::GetHandleSize(Handle handle) {
   auto entry = handle_to_metadata_.find(handle);
   if (entry == handle_to_metadata_.cend()) {
+    NOTREACHED() << "Handle 0x" << std::hex << handle << " does not exist!";
     return {};
   }
   return entry->second.size;
