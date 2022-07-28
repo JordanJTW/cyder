@@ -244,6 +244,19 @@ absl::Status Main(const core::Args& args) {
   // Assembly: RTS
   RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
       cyder::memory::kTrapManagerExitAddress + 2, htobe16(0x4E75)));
+
+  // FIXME: Create a more accurate AppParmHandle for the current application
+  Handle handle = memory_manager.AllocateHandle(10, "AppParam");
+  auto app_param = memory_manager.GetRegionForHandle(handle);
+  RETURN_IF_ERROR(app_param.Write<Integer>(/*offset=*/0, /*vRefNum=*/0));
+  RETURN_IF_ERROR(app_param.Write<uint32_t>(/*offset=*/2,
+                                            /*fType=*/htobe<uint32_t>('ABCD')));
+  RETURN_IF_ERROR(app_param.Write<Integer>(/*offset=*/6, /*versNum=*/0));
+  RETURN_IF_ERROR(app_param.Write<uint8_t>(/*offset=*/8, /*fName=*/1));
+  RETURN_IF_ERROR(app_param.Write<uint8_t>(/*offset=*/9, /*fName=*/'J'));
+  RETURN_IF_ERROR(
+      kSystemMemory.Write<Ptr>(GlobalVars::AppParmHandle, htobe(handle)));
+
   RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(
       GlobalVars::CurStackBase, htobe32(cyder::memory::kStackStart)));
 
