@@ -46,24 +46,15 @@ void DrawRect(SDL_Renderer* renderer,
   SDL_RenderFillRect(renderer, &sdl_rect);
 }
 
-template <typename T>
-class RestorePop {
- public:
-  RestorePop() : value(MUST(Pop<T>())) {}
-  ~RestorePop() { CHECK(Push<T>(value).ok()); }
-
-  T value;
-};
-
 absl::Status HandleLoadSegmentTrap(SegmentLoader& segment_loader,
-                                   RestorePop<Ptr>& return_address) {
+                                   Ptr& return_address) {
   uint16_t load_segment = TRY(Pop<uint16_t>());
   LOG(INFO) << "TRAP LoadSeg(" << load_segment << ")";
   TRY(segment_loader.Load(load_segment));
   // The segment loader modifies the six byte entry for this segment in the
   // table so return to the begining of the entry (4 bytes behind the 2 byte
   // trap being executed):
-  return_address.value -= 6;
+  return_address -= 6;
   return absl::OkStatus();
 }
 
@@ -123,17 +114,23 @@ absl::Status TrapManager::PerformTrapExit() {
 absl::Status TrapManager::PerformTrapDispatch() {
   // The return address should be at the top of the stack which is +2 past the
   // address of the instruction that caused the trap (see above).
-  RestorePop<Ptr> return_address;
-  Ptr trap_address = return_address.value - 2;
+  Ptr return_address = TRY(Pop<Ptr>());
+  Ptr trap_address = return_address - 2;
 
   auto trap = be16toh(TRY(memory::kSystemMemory.Copy<uint16_t>(trap_address)));
 
   // Handle _LoadSeg specially since it needs to modify the return address.
+  absl::Status status = absl::OkStatus();
   if (Trap::LoadSeg == trap) {
-    return HandleLoadSegmentTrap(segment_loader_, return_address);
+    status = HandleLoadSegmentTrap(segment_loader_, return_address);
+  } else {
+    status = IsToolbox(trap) ? DispatchNativeToolboxTrap(trap)
+                             : DispatchNativeSystemTrap(trap);
   }
-  return IsToolbox(trap) ? DispatchNativeToolboxTrap(trap)
-                         : DispatchNativeSystemTrap(trap);
+  RETURN_IF_ERROR(Push<Ptr>(return_address));
+  if (IsSystem(trap))
+    RETURN_IF_ERROR(Push<Ptr>(memory::kTrapManagerExitAddress));
+  return status;
 }
 
 uint32_t TrapManager::GetTrapAddress(uint16_t trap) {

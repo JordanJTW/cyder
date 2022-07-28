@@ -229,13 +229,21 @@ absl::Status Main(const core::Args& args) {
   // TODO: Store the application name here as a Pascal string
   RETURN_IF_ERROR(kSystemMemory.Write<uint8_t>(GlobalVars::CurApName, 0));
 
+  // Assembly: RTS
   RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
       cyder::memory::kTrapManagerEntryAddress, htobe16(0x4E75)));
+  // Assembly: RTS
   RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
       cyder::memory::kTrapManagerDispatchAddress, htobe16(0x4E75)));
   RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(
       0x28, htobe32(cyder::memory::kTrapManagerEntryAddress)));
 
+  // Assembly: TST.W D0
+  RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
+      cyder::memory::kTrapManagerExitAddress, htobe16(0x4A40)));
+  // Assembly: RTS
+  RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
+      cyder::memory::kTrapManagerExitAddress + 2, htobe16(0x4E75)));
   RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(
       GlobalVars::CurStackBase, htobe32(cyder::memory::kStackStart)));
 
