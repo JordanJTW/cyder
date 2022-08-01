@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import List, Tuple
 
 
 def calculate_line_spans(contents: str):
@@ -28,3 +28,9 @@ def print_message_for_token(contents: str, span: Tuple, message: str):
       message_spacing = len(line_leader) + (span_start - line_start)
       print(line_leader, contents[line_start:line_end])
       print(' ' * message_spacing, '^', message)
+
+
+def print_errors(errors: List[Tuple], contents: str):
+  for error in errors:
+    (message, span) = error
+    print_message_for_token(contents, span, message)

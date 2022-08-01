@@ -3,7 +3,8 @@
 import argparse
 import sys
 
-from error_message import print_message_for_token
+from error_message import print_errors
+from parser import Parser
 from tokenizer import Tokenizer
 
 
@@ -15,14 +16,18 @@ def compile(filename):
     (tokens, errors) = tokenizer.generate_tokens()
 
     if errors:
-      for error in errors:
-        (message, span) = error
-        print_message_for_token(contents, span, message)
-
+      print_errors(errors, contents)
       sys.exit(-1)
 
-    for token in tokens:
-      print(token)
+    parser = Parser(tokens)
+    (exprs, errors) = parser.parse()
+
+    if errors:
+      print_errors(errors, contents)
+      sys.exit(-1)
+
+    for expr in exprs:
+      print(expr)
 
 
 def main():
