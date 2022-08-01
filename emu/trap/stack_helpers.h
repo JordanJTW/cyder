@@ -6,7 +6,7 @@
 #include "absl/strings/string_view.h"
 #include "core/endian_helpers.h"
 #include "core/memory_region.h"
-#include "emu/system_types.h"
+#include "generated_types.h"
 #include "third_party/musashi/src/m68k.h"
 
 namespace cyder {
@@ -38,11 +38,10 @@ absl::StatusOr<T> Peek(size_t offset = 0) {
 
 // Pops pointer to `T` off of the stack and returns the dereferenced value
 template <typename T>
-absl::StatusOr<T> PopRef();
-template <>
-absl::StatusOr<absl::string_view> PopRef();
-template <>
-absl::StatusOr<Rect> PopRef();
+absl::StatusOr<T> PopRef() {
+  auto ptr = TRY(Pop<Ptr>());
+  return ReadType<T>(memory::kSystemMemory, ptr);
+}
 
 // Pushes `T` on to the stack
 template <typename T>

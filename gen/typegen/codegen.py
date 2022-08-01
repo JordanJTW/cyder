@@ -99,6 +99,9 @@ class CodeGenerator:
   def _generate_read_type_declare(self, file):
     file.write('template <typename T>\n')
     self._write_read_type_declare(file, 'T')
+    # Implemented in typegen/polyfill.cc but declared here:
+    file.write('template<> ')
+    self._write_read_type_declare(file, 'absl::string_view')
 
     for expr in self._struct_expressions:
       file.write('template<> ')

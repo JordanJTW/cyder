@@ -1,4 +1,6 @@
-find_package (Python3 COMPONENTS Interpreter)
+find_package (Python3 3.8 COMPONENTS Interpreter)
+
+add_subdirectory(typegen)
 
 add_custom_command(
     OUTPUT  trap_names.cc trap_names.h
