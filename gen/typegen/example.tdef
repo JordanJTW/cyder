@@ -16,3 +16,25 @@ struct Rect {
   bottom: Integer; 
   right: Integer; 
 }
+
+// Link:
+// https://dev.os9.ca/techpubs/mac/Files/Files-301A.html#HEADING301-362
+struct IOParam {
+  qLink: Ptr;  // QElemPtr
+  qType: u8;  // short
+  ioTrap: u8;  // short
+  ioCmdAddr: Ptr;
+  ioCompletion: Ptr;  // ProcPtr
+  ioResult: u16;  // OSErr
+  ioNamePtr: Ptr;  // StringPtr
+  ioVRefNum: u8;  // short
+  ioRefNum: u8;  // short
+  ioVersNum: u8;  // char
+  ioPermssn: u8;  // char
+  ioMisc: Ptr;
+  ioBuffer: Ptr;
+  ioReqCount: u32;  // long
+  ioActCount: u32;  // long
+  ioPosMode: u8;  // short
+  ioPosOffset: u32;  // long
+}
