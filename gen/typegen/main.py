@@ -28,13 +28,18 @@ def compile(filename, output_path):
       sys.exit(-1)
 
     codegen = CodeGenerator(exprs)
-    codegen.generate(output_path)
+    if errors := codegen.generate(output_path):
+      for error in errors:
+        print(error)
+      sys.exit(-1)
 
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument('input', type=str, help='Type definition file to compile')
-  parser.add_argument('output', type=str, help='Path to output the C++ code (without extensions)')
+  parser.add_argument(
+    'input', type=str, help='Type definition file to compile')
+  parser.add_argument('output', type=str,
+                      help='Path to output the C++ code (without extensions)')
   args = parser.parse_args()
 
   compile(args.input, args.output)

@@ -1,0 +1,6 @@
+type Interger: u16;
+
+struct Point {
+  x: Interger;
+  y: Interger;
+}

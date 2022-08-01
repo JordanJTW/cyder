@@ -1,4 +1,8 @@
+import functools
+
+from typing import List
 from parser import Expression
+
 
 class CodeGenerator:
   def __init__(self, expressions):
@@ -10,6 +14,27 @@ class CodeGenerator:
         expr.data for expr in expressions
         if expr.type == Expression.Type.STRUCT
     ]
+    self._errors: List[str] = []
+
+  @functools.lru_cache
+  def _get_type_size(self, type):
+    builtin_type_sizes = {
+      'u8': 1,
+      'u16': 2,
+      'i16': 2,
+      'u32': 4,
+      'i32': 4,
+    }
+    if size := builtin_type_sizes.get(type, None):
+      return size
+
+    for expr in reversed(self._type_expressions):
+      if expr['label'] == type:
+        return self._get_type_size(expr['type'])
+
+    # FIXME: Errors should be tagged with the span of the token
+    self._errors.append(f'No size found for type: {type}')
+    return 0
 
   def _write_type(self, file, label, type):
     file.write(f'using {label} = {type};\n')
@@ -29,8 +54,19 @@ class CodeGenerator:
 
       self._write_type(file, expr['label'], get_type())
 
+  def _write_type_offsets(self, file, members):
+    file.write('  enum class Offsets {\n')
+    offset = 0
+    for member in members:
+      (type, name) = (member['type'], member['name'])
+      file.write(f'    {name} = {offset},\n')
+      type_size = self._get_type_size(type)
+      offset = offset + type_size
+    file.write('  };\n')
+
   def _write_struct(self, file, label, members):
     file.write(f'struct {label} {{\n')
+    self._write_type_offsets(file, members)
     for member in members:
       file.write(f'  {member["type"]} {member["name"]};\n')
     file.write('};\n')
@@ -80,3 +116,4 @@ class CodeGenerator:
   def generate(self, output_path):
     self._generate_header(output_path)
     self._generate_source(output_path)
+    return self._errors
