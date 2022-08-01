@@ -4,11 +4,12 @@ import argparse
 import sys
 
 from error_message import print_errors
+from codegen import CodeGenerator
 from parser import Parser
 from tokenizer import Tokenizer
 
 
-def compile(filename):
+def compile(filename, output_path):
   with open(filename, 'r') as f:
     contents = f.read()
 
@@ -26,17 +27,17 @@ def compile(filename):
       print_errors(errors, contents)
       sys.exit(-1)
 
-    for expr in exprs:
-      print(expr)
+    codegen = CodeGenerator(exprs)
+    codegen.generate(output_path)
 
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument('sources', nargs='*')
+  parser.add_argument('input', type=str, help='Type definition file to compile')
+  parser.add_argument('output', type=str, help='Path to output the C++ code (without extensions)')
   args = parser.parse_args()
 
-  for source in args.sources:
-    compile(source)
+  compile(args.input, args.output)
 
 
 if __name__ == '__main__':
