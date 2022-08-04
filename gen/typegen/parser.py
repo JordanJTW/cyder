@@ -10,6 +10,11 @@ class Expression:
     STRUCT = auto()
     GARBAGE = auto()
 
+  class Loop(Enum):
+    VARIABLE = auto()
+    FIXED = auto()
+    NULL_TERMINATED = auto()
+
   def __init__(self, type, span, data=None):
     self._type = type
     self._span = span
@@ -94,16 +99,20 @@ class Parser:
         return self._error('missing ";"')
       self._advance()
 
-      variable_length = False
+      loop_condition = Expression.Loop.FIXED
       if self._current.type == Token.Type.AT_SIGN:
-        variable_length == True
+        loop_condition = Expression.Loop.VARIABLE
         self._advance()
 
-      if self._current.type != Token.Type.IDENTIFIER:
+      array_length = None
+      if self._current.type == Token.Type.IDENTIFIER:
+        array_length = self._current._text
+        self._advance()
+      elif self._current.type == Token.Type.NULL:
+        loop_condition = Expression.Loop.NULL_TERMINATED
+        self._advance()
+      else:
         return self._error('expected length of array')
-
-      array_length_token = self._current
-      self._advance()
 
       if self._current.type != Token.Type.END_SQUARE_BRACKET:
         return self._error('missing "]"')
@@ -115,7 +124,7 @@ class Parser:
       end_span = self._current.span
       self._advance()
 
-      return (label_token._text, {'type': array_type_token._text, 'length': array_length_token._text, 'variable': variable_length}, merge_span(start_span, end_span))
+      return (label_token._text, {'type': array_type_token._text, 'length': array_length, 'condition': loop_condition}, merge_span(start_span, end_span))
 
     if self._current.type != Token.Type.IDENTIFIER:
       return self._error('missing type')

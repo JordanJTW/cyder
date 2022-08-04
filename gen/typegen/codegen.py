@@ -165,12 +165,23 @@ class CodeGenerator:
           f'  obj.{name} = TRY(ReadType<std::string>(region, {offset_str}));\n')
         offset_variables.append(f'{name}.size() + 1')
       elif isinstance(type, dict):
-        (inner_type, length, variable) = (
-          type['type'], type['length'], type['variable'])
+        (inner_type, length, condition) = (
+          type['type'], type['length'], type['condition'])
         (c_type, is_struct) = self._get_c_type(inner_type)
 
         file.write(f'  size_t {name}_offset = 0;\n')
-        file.write(f'  for (size_t i = 0; i < obj.{length}; ++i) {{\n')
+
+        if condition == Expression.Loop.VARIABLE:
+          file.write(f'  for (size_t i = 0; i < obj.{length}; ++i) {{\n')
+        elif condition == Expression.Loop.NULL_TERMINATED:
+          if is_struct:
+            assert False, "Null termination arrays not implemented for structs"
+          else:
+            file.write(
+              f'  while (TRY(region.Copy<{c_type}>({offset_str} + {name}_offset)) != 0) {{\n')
+        else:
+          assert False, "NOTREACHED"
+
         if is_struct:
           file.write(
             f'    auto inner_obj = TRY(ReadType<{c_type}>(region, {offset_str} + {name}_offset));\n')
@@ -201,25 +212,28 @@ class CodeGenerator:
     file.write('}\n\n')
 
     file.write(f'size_t {label}::size() const {{\n')
+    size_variables = []
     for member in members:
       (name, type) = (member['name'], member['type'])
 
       if isinstance(type, dict):
-        (inner_type, length, variable) = (
-          type['type'], type['length'], type['variable'])
+        (inner_type, length, condition) = (
+          type['type'], type['length'], type['condition'])
         (c_type, is_struct) = self._get_c_type(inner_type)
 
-        file.write(f'  size_t {name}_offset = 0;\n')
-        file.write(f'  for (size_t i = 0; i < {length}; ++i) {{\n')
         if is_struct:
+          file.write(f'  size_t {name}_offset = 0;\n')
+          file.write(f'  for (size_t i = 0; i < {length}; ++i) {{\n')
           file.write(f'    {name}_offset += {name}[i].size();\n')
+          file.write('  }\n')
+          size_variables.append(f'{name}_offset')
         else:
-          file.write(f'    {name}_offset += sizeof({c_type});\n')
-        file.write('  }\n')
+          size_variables.append(
+            f'({name}.size() * {self._get_type_size(inner_type)})')
 
     offset_str = generate_offset_str()
-    if local_variables:
-      offset_str = offset_str + ' + ' + ' + '.join(local_variables)
+    if size_variables:
+      offset_str = offset_str + ' + ' + ' + '.join(size_variables)
     file.write(f'  return {offset_str};\n')
     file.write('}\n\n')
 
@@ -237,9 +251,11 @@ class CodeGenerator:
       stream_value = f'obj.{member["name"]}'
       stream_value = f'int({stream_value})' if member['type'] == 'u8' else stream_value
       if isinstance(member['type'], dict):
-        (inner_type, length) = (member['type']
-                                ['type'], member['type']['length'])
-        stream_value = f'"[{inner_type};" << obj.{length} << "]"'
+        type = member['type']
+        (inner_type, length, condition) = (
+          type['type'], type['length'], type['condition'])
+        stream_value = f'"[{inner_type};" << obj.{member["name"]}.size() << "]"'
+
       file.write(f' << "{member["name"]}: " << {stream_value}{line_end}')
     file.write('; }\n')
 
