@@ -106,13 +106,13 @@ class Parser:
     label_token = self._current
     self._advance()
 
-    if self._current.type != Token.Type.START_BRACKET:
+    if self._current.type != Token.Type.START_CURLY_BRACKET:
       return self._error('missing "{"')
     self._advance()
 
     members = []
     while not self._is_eof():
-      if self._current.type == Token.Type.END_BRACKET:
+      if self._current.type == Token.Type.END_CURLY_BRACKET:
         break
 
       result = self._parse_assignement()
@@ -122,7 +122,7 @@ class Parser:
       (label, type, _) = result
       members.append({'name': label, 'type': type})
 
-    if self._current.type != Token.Type.END_BRACKET:
+    if self._current.type != Token.Type.END_CURLY_BRACKET:
       return self._error('missing "}')
 
     end_span = self._current.span

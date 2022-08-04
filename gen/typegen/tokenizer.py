@@ -9,8 +9,11 @@ class Token:
     IDENTIFIER = auto()
     COLON = auto()
     SEMICOLON = auto()
-    START_BRACKET = auto()
-    END_BRACKET = auto()
+    AT_SIGN = auto()
+    START_CURLY_BRACKET = auto()
+    END_CURLY_BRACKET = auto()
+    START_SQUARE_BRACKET = auto()
+    END_SQUARE_BRACKET = auto()
     END_OF_FILE = auto()
     GARBAGE = auto()
 
@@ -114,12 +117,27 @@ class Tokenizer:
         continue
 
       if self._current == '{':
-        tokens.append(Token(Token.Type.START_BRACKET, char_span))
+        tokens.append(Token(Token.Type.START_CURLY_BRACKET, char_span))
         self._advance()
         continue
 
       if self._current == '}':
-        tokens.append(Token(Token.Type.END_BRACKET, char_span))
+        tokens.append(Token(Token.Type.END_CURLY_BRACKET, char_span))
+        self._advance()
+        continue
+
+      if self._current == '[':
+        tokens.append(Token(Token.Type.START_SQUARE_BRACKET, char_span))
+        self._advance()
+        continue
+
+      if self._current == ']':
+        tokens.append(Token(Token.Type.END_SQUARE_BRACKET, char_span))
+        self._advance()
+        continue
+
+      if self._current == '@':
+        tokens.append(Token(Token.Type.AT_SIGN, char_span))
         self._advance()
         continue
 
