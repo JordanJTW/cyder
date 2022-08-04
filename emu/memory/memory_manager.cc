@@ -48,7 +48,7 @@ Handle MemoryManager::AllocateHandleForRegion(const core::MemoryRegion& region,
   Handle handle = AllocateHandle(region.size(), tag);
   size_t load_addr = be32toh(MUST(kSystemMemory.Copy<uint32_t>(handle)));
 
-  for (int i = 0; i < region.size(); ++i) {
+  for (size_t i = 0; i < region.size(); ++i) {
     CHECK(kSystemMemory
               .Write<uint8_t>(load_addr + i, MUST(region.Copy<uint8_t>(i)))
               .ok());

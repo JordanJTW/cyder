@@ -78,7 +78,7 @@ absl::Status ParseJumpTable(const core::MemoryRegion& data) {
 
   // Each entry in the jump table is 8-bytes long (an offset to the subroutine
   // within a segment followed by instructions to _LoadSeg)
-  for (int i = 0; i < header.table_size; i = i + 8) {
+  for (size_t i = 0; i < header.table_size; i = i + 8) {
     size_t entry_offset = sizeof(InMemoryTableHeader) + i;
     printf("Offset (relative to segment): %x\n",
            be16toh(TRY(data.Copy<uint16_t>(entry_offset))));

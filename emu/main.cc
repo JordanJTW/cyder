@@ -145,7 +145,7 @@ void cpu_instr_callback(unsigned int pc) {
 #undef REG
 
     char buffer[255];
-    size_t increment = m68k_disassemble(buffer, pc, M68K_CPU_TYPE_68000);
+    m68k_disassemble(buffer, pc, M68K_CPU_TYPE_68000);
     Handle handle = memory_manager_ptr->GetHandleThatContains(pc);
     std::string tag = (handle == 0) ? "" : memory_manager_ptr->GetTag(handle);
     LOG(INFO) << std::hex << pc << " (" << tag << "): " << buffer;

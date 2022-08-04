@@ -18,14 +18,14 @@ void ParseIcon(const std::string& name,
   std::ofstream icon;
   icon.open(absl::StrCat("/tmp/", name, ".ppm"), std::ios::out);
   auto write_byte = [&](uint8_t byte) {
-    for (int i = 7; i >= 0; --i) {
+    for (size_t i = 7; i >= 0; --i) {
       icon << ((byte & (1 << i)) ? "1 " : "0 ");
     }
   };
 
   icon << "P1 " << size << " " << size << "\n";
-  for (int x = 0; x < size / 8; ++x) {
-    for (int y = 0; y < size; ++y) {
+  for (size_t x = 0; x < size / 8; ++x) {
+    for (size_t y = 0; y < size; ++y) {
       write_byte(data[y + x * size]);
     }
     icon << "\n";
@@ -47,8 +47,8 @@ void ParseIcon8bit(const std::string& name,
   };
 
   icon << "P3 " << size << " " << size << " 255\n";
-  for (int x = 0; x < size; ++x) {
-    for (int y = 0; y < size; ++y) {
+  for (size_t x = 0; x < size; ++x) {
+    for (size_t y = 0; y < size; ++y) {
       write_byte(data[y + x * size]);
     }
   }
@@ -69,8 +69,8 @@ void ParseIcon4bit(const std::string& name,
   };
 
   icon << "P3 " << size << " " << size << " 255\n";
-  for (int x = 0; x < size / 2; ++x) {
-    for (int y = 0; y < size; ++y) {
+  for (size_t x = 0; x < size / 2; ++x) {
+    for (size_t y = 0; y < size; ++y) {
       write_byte((data[y + x * size] & 0xF0) >> 4);
       write_byte(data[y + x * size] & 0x0F);
     }

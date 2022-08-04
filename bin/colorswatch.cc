@@ -42,7 +42,7 @@ void GenerateSection(const std::string& name,
                      size_t count,
                      std::ostream& output) {
   output << absl::StrFormat(HTML_TEMPLATE_SECTION_HEADER, name);
-  for (int index = 0; index < count; ++index) {
+  for (size_t index = 0; index < count; ++index) {
     auto color = colorAtIndex(index);
     output << absl::StrFormat(HTML_TEMPLATE_SWATCH, std::get<0>(color),
                               std::get<1>(color), std::get<2>(color));

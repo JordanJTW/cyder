@@ -84,7 +84,7 @@ absl::Status TrapManager::DispatchEmulatedSubroutine(uint32_t address) {
 }
 
 absl::Status TrapManager::PerformTrapEntry() {
-  auto status_register = TRY(Pop<uint16_t>());
+  /*status_register=*/TRY(Pop<uint16_t>());
   auto instruction_ptr = TRY(Pop<uint32_t>());
 
   uint16_t trap_op =
@@ -271,7 +271,8 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
     case Trap::Open: {
       Ptr ptr = m68k_get_reg(NULL, M68K_REG_A0);
       LOG(INFO) << "TRAP Open(ptr: 0x" << std::hex << ptr << ")";
-      LOG(INFO) << "IOParam: " << TRY(ReadType<IOParam>(memory::kSystemMemory, ptr));
+      LOG(INFO) << "IOParam: "
+                << TRY(ReadType<IOParam>(memory::kSystemMemory, ptr));
       return absl::OkStatus();
     }
     default:

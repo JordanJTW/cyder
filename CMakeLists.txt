@@ -8,10 +8,8 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-  # Clang or AppleClang
-  set(CMAKE_CXX_FLAGS "-Wall")
-endif()
+# Disable warning for non-portable multichars used for resources
+set(CMAKE_CXX_FLAGS "-Wall -Wno-multichar")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/exe)
 

@@ -90,26 +90,26 @@ std::ostream& operator<<(std::ostream& os, const MemoryRegion& region) {
   if (region.size() % bytes_per_line) {
     line_count += 1;
   }
-  for (int line = 0; line < line_count; ++line) {
+  for (size_t line = 0; line < line_count; ++line) {
     size_t start_index = line * bytes_per_line;
     size_t full_line = start_index + bytes_per_line;
     size_t end_index = std::min(full_line, region.size());
 
     os << std::setfill('0') << std::setw(6) << std::hex
        << region.base_offset() + start_index << "\t";
-    for (int index = start_index; index < end_index; ++index) {
+    for (size_t index = start_index; index < end_index; ++index) {
       os << " " << std::setfill('0') << std::setw(2) << std::hex
          << (int)region.raw_ptr()[index];
     }
 
     // Ensure that lines are always printed to the full width so
     // that the ASCII column (below) is aligned when displayed
-    for (int index = end_index; index < full_line; ++index) {
+    for (size_t index = end_index; index < full_line; ++index) {
       os << "   ";
     }
 
     os << "\t|";
-    for (int index = start_index; index < end_index; ++index) {
+    for (size_t index = start_index; index < end_index; ++index) {
       uint8_t character = region.raw_ptr()[index];
       if (std::isprint(character)) {
         os << character;
