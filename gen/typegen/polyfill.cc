@@ -7,9 +7,7 @@
 template <>
 absl::StatusOr<absl::string_view> ReadType(const core::MemoryRegion& region,
                                            size_t ptr) {
-  auto length = TRY(cyder::memory::kSystemMemory.Copy<uint8_t>(ptr));
-  return absl::string_view(
-      reinterpret_cast<const char*>(cyder::memory::kSystemMemory.raw_ptr()) +
-          ptr + 1,
-      length);
+  auto length = TRY(region.Copy<uint8_t>(ptr));
+  auto data = reinterpret_cast<const char*>(region.raw_ptr()) + ptr + 1;
+  return absl::string_view(data, length);
 }
