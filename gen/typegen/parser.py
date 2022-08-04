@@ -81,6 +81,42 @@ class Parser:
       return self._error('missing ":"')
     self._advance()
 
+    if self._current.type == Token.Type.START_SQUARE_BRACKET:
+      self._advance()
+
+      if self._current.type != Token.Type.IDENTIFIER:
+        return self._error('expected type of array')
+
+      array_type_token = self._current
+      self._advance()
+
+      if self._current.type != Token.Type.SEMICOLON:
+        return self._error('missing ";"')
+      self._advance()
+
+      variable_length = False
+      if self._current.type == Token.Type.AT_SIGN:
+        variable_length == True
+        self._advance()
+
+      if self._current.type != Token.Type.IDENTIFIER:
+        return self._error('expected length of array')
+
+      array_length_token = self._current
+      self._advance()
+
+      if self._current.type != Token.Type.END_SQUARE_BRACKET:
+        return self._error('missing "]"')
+      self._advance()
+
+      if self._current.type != Token.Type.SEMICOLON:
+        return self._error('missing ";"')
+
+      end_span = self._current.span
+      self._advance()
+
+      return (label_token._text, {'type': array_type_token._text, 'length': array_length_token._text, 'variable': variable_length}, merge_span(start_span, end_span))
+
     if self._current.type != Token.Type.IDENTIFIER:
       return self._error('missing type')
 
@@ -168,7 +204,7 @@ class Parser:
         expressions.append(self._parse_struct())
         continue
 
-      self._error(('unknown start of expression', self._current.span))
+      self._errors.append(('unknown start of expression', self._current.span))
       self._advance()
 
     return (expressions, self._errors)

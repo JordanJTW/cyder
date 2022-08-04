@@ -11,6 +11,7 @@ _READTYPE_PROTOTYPE = \
 _HEADER_INCLUDES = [
     '<cstdint>',
     '<ostream>',
+    '<string>',
     '"absl/status/statusor.h"',
     '"core/memory_region.h"',
 ]
@@ -20,17 +21,6 @@ _SOURCE_INCLUDES = [
     '"core/status_helpers.h"',
     '"emu/memory/memory_map.h"'
 ]
-
-
-def _get_c_type(type):
-  builtin_types = {
-    'u8': 'uint8_t',
-    'u16': 'uint16_t',
-    'u32': 'uint32_t',
-    'i16': 'int16_t',
-    'i32': 'int32_t'
-  }
-  return builtin_types.get(type, type)
 
 
 class CodeGenerator:
@@ -65,28 +55,42 @@ class CodeGenerator:
     self._errors.append(f'No size found for type: {type}')
     return 0
 
+  def _get_c_type(self, type: dict):
+    builtin_types = {
+      'u8': 'uint8_t',
+      'u16': 'uint16_t',
+      'u32': 'uint32_t',
+      'i16': 'int16_t',
+      'i32': 'int32_t',
+    }
+
+    if isinstance(type, dict):
+      (inner_type, is_struct) = self._get_c_type(type['type'])
+      return (f'std::vector<{inner_type}>', True)
+
+    for struct in self._struct_expressions:
+      if struct['label'] == type:
+        return (type, True)
+
+    if 'str' == type:
+      return ('std::string', True)
+
+    return (builtin_types.get(type, type), False)
+
   def _write_type(self, file, label, type):
     file.write(f'using {label} = {type};\n')
 
   def _generate_type_decls(self, file):
     for expr in self._type_expressions:
-      self._write_type(file, expr['label'], _get_c_type(expr['type']))
-
-  def _write_type_offsets(self, file, members):
-    file.write('  enum class Offsets {\n')
-    offset = 0
-    for member in members:
-      (type, name) = (member['type'], member['name'])
-      file.write(f'    {name} = {offset},\n')
-      type_size = self._get_type_size(type)
-      offset = offset + type_size
-    file.write('  };\n')
+      (type, is_struct) = self._get_c_type(expr['type'])
+      self._write_type(file, expr['label'], type)
 
   def _write_struct(self, file, label, members):
     file.write(f'struct {label} {{\n')
-    self._write_type_offsets(file, members)
     for member in members:
-      file.write(f'  {_get_c_type(member["type"])} {member["name"]};\n')
+      (type, is_struct) = self._get_c_type(member['type'])
+      file.write(f'  {type} {member["name"]};\n')
+    file.write('\n  size_t size() const;\n')
     file.write('};\n')
 
   def _generate_struct_decls(self, file):
@@ -102,6 +106,8 @@ class CodeGenerator:
     # Implemented in typegen/polyfill.cc but declared here:
     file.write('template<> ')
     self._write_read_type_declare(file, 'absl::string_view')
+    file.write('template<> ')
+    self._write_read_type_declare(file, 'std::string')
 
     for expr in self._struct_expressions:
       file.write('template<> ')
@@ -138,14 +144,84 @@ class CodeGenerator:
   def _write_read_type(self, file, label, members):
     file.write(f'template<> {_READTYPE_PROTOTYPE.format(label)} {{\n')
     file.write(f'  {label} obj;\n')
+
+    offset_variables = []
+    local_variables = []
+    offset = 0
+
+    def generate_offset_str(prefix=""):
+      if offset_variables:
+        return f'{offset} + ' + ' + '.join(f'{prefix}{var}' for var in offset_variables)
+      return str(offset)
+
     for member in members:
       (name, type) = (member['name'], member['type'])
-      type = _get_c_type(type)
+      offset_str = 'ptr + ' + generate_offset_str("obj.")
+      if local_variables:
+        offset_str = offset_str + ' + ' + ' + '.join(local_variables)
 
-      file.write(
-        f'  obj.{name} = betoh<{type}>(TRY(cyder::memory::kSystemMemory.Copy<{type}>(ptr + int({label}::Offsets::{name}))));\n')
-    file.write('   return obj;\n')
-    file.write('}\n')
+      if type == 'str':
+        file.write(
+          f'  obj.{name} = TRY(ReadType<std::string>(region, {offset_str}));\n')
+        offset_variables.append(f'{name}.size() + 1')
+      elif isinstance(type, dict):
+        (inner_type, length, variable) = (
+          type['type'], type['length'], type['variable'])
+        (c_type, is_struct) = self._get_c_type(inner_type)
+
+        file.write(f'  size_t {name}_offset = 0;\n')
+        file.write(f'  for (size_t i = 0; i < obj.{length}; ++i) {{\n')
+        if is_struct:
+          file.write(
+            f'    auto inner_obj = TRY(ReadType<{c_type}>(region, {offset_str} + {name}_offset));\n')
+          file.write(
+            f'    obj.{name}.push_back(inner_obj);\n')
+          file.write(f'    {name}_offset += inner_obj.size();\n')
+        else:
+          file.write(
+              f'    obj.{name}.push_back(betoh<{c_type}>(TRY(region.Copy<{c_type}>({offset_str} + {name}_offset))));\n')
+          file.write(f'    {name}_offset += sizeof({c_type});\n')
+        local_variables.append(f'{name}_offset')
+        file.write('  }\n')
+      else:
+        (c_type, is_struct) = self._get_c_type(member['type'])
+
+        if is_struct:
+          file.write(
+              f'  obj.{name} = TRY(ReadType<{c_type}>(region, {offset_str}));\n')
+          offset_variables.append(f'{name}.size()')
+        else:
+          file.write(
+              f'  obj.{name} = betoh<{c_type}>(TRY(region.Copy<{c_type}>({offset_str})));\n')
+
+          type_size = self._get_type_size(type)
+          offset = offset + type_size
+
+    file.write('  return obj;\n')
+    file.write('}\n\n')
+
+    file.write(f'size_t {label}::size() const {{\n')
+    for member in members:
+      (name, type) = (member['name'], member['type'])
+
+      if isinstance(type, dict):
+        (inner_type, length, variable) = (
+          type['type'], type['length'], type['variable'])
+        (c_type, is_struct) = self._get_c_type(inner_type)
+
+        file.write(f'  size_t {name}_offset = 0;\n')
+        file.write(f'  for (size_t i = 0; i < {length}; ++i) {{\n')
+        if is_struct:
+          file.write(f'    {name}_offset += {name}[i].size();\n')
+        else:
+          file.write(f'    {name}_offset += sizeof({c_type});\n')
+        file.write('  }\n')
+
+    offset_str = generate_offset_str()
+    if local_variables:
+      offset_str = offset_str + ' + ' + ' + '.join(local_variables)
+    file.write(f'  return {offset_str};\n')
+    file.write('}\n\n')
 
   def _generate_read_type(self, file):
     for expr in self._struct_expressions:
@@ -158,8 +234,13 @@ class CodeGenerator:
       line_end = ' << ", "' if index + 1 != len(members) else ''
       # Cast value to an int to work around printing u8 and having them appear as char...
       # Without this any u8 set to 0 ends up being interpreted as an \0 for a string.
-      file.write(
-        f' << "{member["name"]}: " << int(obj.{member["name"]}){line_end}')
+      stream_value = f'obj.{member["name"]}'
+      stream_value = f'int({stream_value})' if member['type'] == 'u8' else stream_value
+      if isinstance(member['type'], dict):
+        (inner_type, length) = (member['type']
+                                ['type'], member['type']['length'])
+        stream_value = f'"[{inner_type};" << obj.{length} << "]"'
+      file.write(f' << "{member["name"]}: " << {stream_value}{line_end}')
     file.write('; }\n')
 
   def _generate_struct_stream(self, file):
