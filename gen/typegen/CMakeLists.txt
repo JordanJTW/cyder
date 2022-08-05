@@ -1,3 +1,5 @@
+include(../../cmake/gtest.cmake)
+
 find_package (Python3 3.8 COMPONENTS Interpreter)
 
 file(GLOB TYPEGEN_SRC *.py)
@@ -22,3 +24,7 @@ macro(typegen target_name type_definition)
 endmacro()
 
 typegen(GENERATED_TYPES generated_types.tdef)
+
+typegen(INTEGRATION_TEST_TYPES typegen_test_types.tdef)
+gtest(typegen_integration_tests)
+target_link_libraries(typegen_integration_tests CORE_LIB INTEGRATION_TEST_TYPES)

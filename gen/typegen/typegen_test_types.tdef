@@ -1,0 +1,21 @@
+struct Integers {
+  byte: u8;
+  uword: u16;
+  ulong: u32;
+  sword: i16;
+  slong: i32;
+}
+
+struct String {
+  string: str;
+}
+
+struct ArrayIntegers {
+  count: u8;
+  values: [u16;@count];
+}
+
+struct ArrayStructs {
+  count: u16;
+  values: [ArrayIntegers;@count];
+}
