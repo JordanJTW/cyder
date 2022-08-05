@@ -2,6 +2,7 @@ import functools
 
 from typing import List
 from parser import Expression
+from pathlib import Path
 
 
 _READTYPE_PROTOTYPE = \
@@ -265,8 +266,7 @@ class CodeGenerator:
 
   def _generate_source(self, output_path):
     with open(f'{output_path}.cc', 'w') as source:
-      # FIXME: Use output path to determine the include
-      source.write('#include "generated_types.h"\n')
+      source.write(f'#include "{Path(output_path).name}.h"\n')
       source.write('\n')
 
       self._write_includes(source, _SOURCE_INCLUDES)

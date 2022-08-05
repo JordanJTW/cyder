@@ -4,6 +4,7 @@ type Handle: Ptr;
 type GrafPtr: Ptr;
 
 type Integer: u16;
+type ResourceId: Integer;
 
 struct Point {
   x: Integer;
