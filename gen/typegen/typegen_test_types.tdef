@@ -23,3 +23,12 @@ struct ArrayStructs {
 struct ArrayIntegersNullTerminated {
   values: [u16;@null];
 }
+
+struct SimpleStruct {
+  first: u16;
+  last: u32;
+}
+
+struct ArrayStructsNullTerminated {
+  values: [SimpleStruct;@null];
+}

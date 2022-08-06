@@ -114,3 +114,21 @@ TEST_F(TypegenIntegrationTests, ArrayIntegersNullTerminated) {
   auto obj = ReadFromRegion<ArrayIntegersNullTerminated>();
   ASSERT_THAT(obj.values, ::testing::ElementsAreArray(values));
 }
+
+TEST_F(TypegenIntegrationTests, ArrayStructsNullTerminated) {
+  // SimpleStruct#1:
+  WriteToRegion<uint16_t>(31);
+  WriteToRegion<uint32_t>(41);
+  // SimpleStruct#2:
+  WriteToRegion<uint16_t>(59);
+  WriteToRegion<uint32_t>(26);
+  // Null-termination:
+  WriteToRegion<uint16_t>(0);
+
+  auto obj = ReadFromRegion<ArrayStructsNullTerminated>();
+  EXPECT_EQ(obj.values.size(), 2u);
+  EXPECT_EQ(obj.values[0].first, 31u);
+  EXPECT_EQ(obj.values[0].last, 41u);
+  EXPECT_EQ(obj.values[1].first, 59u);
+  EXPECT_EQ(obj.values[1].last, 26u);
+}
