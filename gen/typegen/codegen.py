@@ -224,7 +224,7 @@ class CodeGenerator:
 
         if is_struct:
           file.write(f'  size_t {name}_offset = 0;\n')
-          file.write(f'  for (size_t i = 0; i < {length}; ++i) {{\n')
+          file.write(f'  for (size_t i = 0; i < {name}.size(); ++i) {{\n')
           file.write(f'    {name}_offset += {name}[i].size();\n')
           file.write('  }\n')
           size_variables.append(f'{name}_offset')
