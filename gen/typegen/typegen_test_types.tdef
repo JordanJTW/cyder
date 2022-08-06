@@ -19,3 +19,7 @@ struct ArrayStructs {
   count: u16;
   values: [ArrayIntegers;@count];
 }
+
+struct ArrayIntegersNullTerminated {
+  values: [u16;@null];
+}

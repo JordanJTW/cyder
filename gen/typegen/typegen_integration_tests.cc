@@ -103,3 +103,14 @@ TEST_F(TypegenIntegrationTests, ArrayStructs) {
   EXPECT_EQ(obj.values[2].count, 2u);
   ASSERT_THAT(obj.values[2].values, ::testing::ElementsAre(123, 456));
 }
+
+TEST_F(TypegenIntegrationTests, ArrayIntegersNullTerminated) {
+  std::vector<uint16_t> values = {1001, 1002, 1004, 1008, 1016, 2048};
+  for (auto value : values) {
+    WriteToRegion<uint16_t>(value);
+  }
+  WriteToRegion<uint16_t>(0);
+
+  auto obj = ReadFromRegion<ArrayIntegersNullTerminated>();
+  ASSERT_THAT(obj.values, ::testing::ElementsAreArray(values));
+}
