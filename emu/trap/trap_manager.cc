@@ -201,6 +201,18 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_A0, ptr);
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-21.html
+    case Trap::NewHandle:
+    case Trap::NewHandleClear: {
+      // D0 seems to contain the argument in a sample program...
+      // but the documentation says it should be in A0.
+      uint32_t logical_size = m68k_get_reg(NULL, M68K_REG_D0);
+      LOG(INFO) << "TRAP NewHandle(logicalSize: " << logical_size << ")";
+      auto handle = memory_manager_.AllocateHandle(logical_size, "NewHandle");
+      m68k_set_reg(M68K_REG_A0, handle);
+      m68k_set_reg(M68K_REG_D0, /*noErr*/ 0);
+      return absl::OkStatus();
+    }
 
     // =======================  Trap Manager  ====================
 
