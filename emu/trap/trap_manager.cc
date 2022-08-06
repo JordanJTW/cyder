@@ -213,6 +213,18 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, /*noErr*/ 0);
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-64.html
+    case Trap::MaxApplZone:
+    // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-65.html
+    case Trap::MoreMasters: {
+      // Memory manager currently assumes max heap already and
+      // heap fragmentation is not a huge concern right now.
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-125.html
+    case Trap::SetGrowZone:
+      m68k_set_reg(M68K_REG_D0, /*noErr*/ 0);
+      return absl::OkStatus();
 
     // =======================  Trap Manager  ====================
 
