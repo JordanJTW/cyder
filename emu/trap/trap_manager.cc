@@ -294,6 +294,31 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       return absl::OkStatus();
     }
 
+    // ===================  Menu Manager  ======================
+
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-124.html
+    case Trap::GetNewMBar: {
+      auto menu_bar_id = TRY(Pop<Integer>());
+      LOG(INFO) << "TRAP GetNewMBar(menuBarID: " << menu_bar_id << ")";
+      Handle handle = resource_manager_.GetResource('MBAR', menu_bar_id);
+
+      auto menu_bar = TRY(ReadType<MenuBarResource>(
+          memory_manager_.GetRegionForHandle(handle), 0));
+
+      for (ResourceId id : menu_bar.menus) {
+        LOG(INFO) << "Menu Resource ID: " << id;
+        Handle menu_handle = resource_manager_.GetResource('MENU', id);
+
+        auto menu = TRY(ReadType<MenuResource>(
+            memory_manager_.GetRegionForHandle(menu_handle), 0));
+
+        LOG(INFO) << "Menu {" << menu << "}";
+        for (const auto& item : menu.items) {
+          LOG(INFO) << "MenuItem {" << item << "}";
+        }
+      }
+      return absl::OkStatus();
+    }
     // =================  Process Manager  ====================
 
     // Link: http://0.0.0.0:8000/docs/mac/Processes/Processes-51.html

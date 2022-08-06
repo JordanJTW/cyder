@@ -18,6 +18,30 @@ struct Rect {
   right: Integer; 
 }
 
+struct MenuItemResource {
+  title: str;
+  icon: u8;
+  keyboard_shortcut: u8;
+  marking_character: u8;
+  style: u8;
+}
+
+struct MenuResource {
+  id: Integer;
+  width: Integer;
+  height: Integer;
+  layout_proc_id: ResourceId;
+  placeholder: Integer;
+  state_bit_field: u32;
+  title: str;
+  items: [MenuItemResource;@null];
+}
+
+struct MenuBarResource {
+  count: Integer;
+  menus: [ResourceId;@count];
+}
+
 // Link:
 // https://dev.os9.ca/techpubs/mac/Files/Files-301A.html#HEADING301-362
 struct IOParam {
