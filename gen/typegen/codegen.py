@@ -142,6 +142,22 @@ class CodeGenerator:
 
       self._generate_struct_stream_declare(header)
 
+  def _get_first_field_type(self, type):
+    assert isinstance(type, str), "loop type must a struct or primitive"
+
+    if type == 'str':
+      return 'uint8_t'
+
+    (c_type, is_struct) = self._get_c_type(type)
+    if not is_struct:
+      return c_type
+
+    for struct in self._struct_expressions:
+      if struct['label'] == c_type and len(struct['members']) > 0:
+        return self._get_first_field_type(struct['members'][0]['type'])
+
+    assert False, f'Type "{type}" not found'
+
   def _write_read_type(self, file, label, members):
     file.write(f'template<> {_READTYPE_PROTOTYPE.format(label)} {{\n')
     file.write(f'  {label} obj;\n')
@@ -175,11 +191,9 @@ class CodeGenerator:
         if condition == Expression.Loop.VARIABLE:
           file.write(f'  for (size_t i = 0; i < obj.{length}; ++i) {{\n')
         elif condition == Expression.Loop.NULL_TERMINATED:
-          if is_struct:
-            assert False, "Null termination arrays not implemented for structs"
-          else:
-            file.write(
-              f'  while (TRY(region.Copy<{c_type}>({offset_str} + {name}_offset)) != 0) {{\n')
+          condition_type = self._get_first_field_type(inner_type)
+          file.write(
+            f'  while (TRY(region.Copy<{condition_type}>({offset_str} + {name}_offset)) != 0) {{\n')
         else:
           assert False, "NOTREACHED"
 
