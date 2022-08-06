@@ -250,7 +250,10 @@ class CodeGenerator:
       # Cast value to an int to work around printing u8 and having them appear as char...
       # Without this any u8 set to 0 ends up being interpreted as an \0 for a string.
       stream_value = f'obj.{member["name"]}'
-      stream_value = f'int({stream_value})' if member['type'] == 'u8' else stream_value
+      if member['type'] == 'u8':
+        stream_value = f'int({stream_value})'
+      if member['type'] == 'str':
+        stream_value = f'\"\\"\" << {stream_value} << \"\\"\"'
       if isinstance(member['type'], dict):
         type = member['type']
         (inner_type, length, condition) = (
