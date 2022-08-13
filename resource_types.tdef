@@ -1,0 +1,30 @@
+type ResType: u32;
+type ResId: u16;
+
+struct ResourceHeader {
+  data_offset: u32;
+  map_offset: u32;
+  data_length: u32;
+  map_length: u32;
+}
+
+struct ResourceMapHeader {
+  file_header: ResourceHeader;
+  next_map_handle: u32;
+  file_ref_number: u16;
+  file_attributes: u16;
+  type_list_offset: u16;
+  name_list_offset: u16;
+  type_list_count: u16;
+}
+
+struct ResourceTypeItem {
+  type_id: ResType;
+  count: u16;
+  offset: u16;
+}
+
+struct ResourceTypeList {
+  count: u16;
+  items: [ResourceTypeItem; @count];
+}

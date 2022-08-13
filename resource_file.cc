@@ -15,6 +15,7 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "in_memory_types.h"
+#include "resource_types.h"
 
 namespace rsrcloader {
 namespace {
@@ -22,26 +23,6 @@ namespace {
 absl::Status LoadFileError(absl::string_view file_path) {
   return absl::InternalError(
       absl::StrCat("Error loading: '", file_path, "': ", strerror(errno)));
-}
-
-absl::StatusOr<InMemoryMapHeader> parseResourceHeader(
-    const core::MemoryRegion& base) {
-  InMemoryHeader header =
-      TRY(base.Copy<InMemoryHeader>(/*offset=*/0), "Failed to parse header");
-  header.data_offset = be32toh(header.data_offset);
-  header.data_length = be32toh(header.data_length);
-  header.map_offset = be32toh(header.map_offset);
-  header.map_length = be32toh(header.map_length);
-
-  InMemoryMapHeader map_header =
-      TRY(base.Copy<InMemoryMapHeader>(header.map_offset),
-          "Failed to parse map header");
-  map_header.header = std::move(header);
-  map_header.file_attributes = be16toh(map_header.file_attributes);
-  map_header.type_list_offset = be16toh(map_header.type_list_offset);
-  map_header.name_list_offset = be16toh(map_header.name_list_offset);
-  map_header.type_list_count = be16toh(map_header.type_list_count);
-  return std::move(map_header);
 }
 
 }  // namespace
@@ -66,22 +47,28 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
   }
 
   core::MemoryRegion base_region(mmap_ptr, size);
-  InMemoryMapHeader map_header = TRY(parseResourceHeader(base_region));
 
-  const InMemoryHeader& header = map_header.header;
-  core::MemoryRegion data_region =
-      TRY(base_region.Create("Data", header.data_offset, header.data_length));
-  core::MemoryRegion map_region =
-      TRY(base_region.Create("Map", header.map_offset, header.map_length));
+  auto file_header = TRY(ReadType<ResourceHeader>(base_region, /*ptr=*/0));
+  LOG(INFO) << "ResourceHeader: " << file_header;
+
+  auto map_header =
+      TRY(ReadType<ResourceMapHeader>(base_region, file_header.map_offset));
+  LOG(INFO) << "ResourceMapHeader: " << map_header;
+
+  core::MemoryRegion data_region = TRY(base_region.Create(
+      "Data", file_header.data_offset, file_header.data_length));
+  core::MemoryRegion map_region = TRY(base_region.Create(
+      "Map", file_header.map_offset, file_header.map_length));
   core::MemoryRegion type_list_region =
       TRY(map_region.Create("TypeList", map_header.type_list_offset));
   core::MemoryRegion name_list_region =
       TRY(map_region.Create("NameList", map_header.name_list_offset));
 
+  auto type_list = TRY(ReadType<ResourceTypeList>(type_list_region, /*ptr=*/0));
   std::vector<std::unique_ptr<ResourceGroup>> resource_groups;
-  for (size_t item = 0; item <= map_header.type_list_count; ++item) {
+  for (const auto& type_item : type_list.items) {
     resource_groups.push_back(TRY(ResourceGroup::Load(
-        type_list_region, name_list_region, data_region, item)));
+        type_list_region, name_list_region, data_region, type_item)));
   }
 
   return std::unique_ptr<ResourceFile>(
@@ -179,7 +166,8 @@ Resource* ResourceFile::FindByTypeAndId(ResType theType, ResId theId) const {
   return nullptr;
 }
 
-Resource* ResourceFile::FindByTypeAndName(ResType theType, absl::string_view theName) const {
+Resource* ResourceFile::FindByTypeAndName(ResType theType,
+                                          absl::string_view theName) const {
   for (const auto& group : resource_groups_) {
     if (group->GetType() == theType) {
       return group->FindByName(theName);

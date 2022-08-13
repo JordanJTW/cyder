@@ -6,7 +6,7 @@
 #include "absl/strings/string_view.h"
 #include "core/endian_helpers.h"
 #include "core/memory_region.h"
-#include "generated_types.h"
+#include "gen/typegen/typegen_prelude.h"
 #include "third_party/musashi/src/m68k.h"
 
 namespace cyder {

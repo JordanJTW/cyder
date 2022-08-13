@@ -1,10 +1,4 @@
-// This file implements pieces of typegen that are difficult to generate
-
-#include "generated_types.h"
-
-#include <string>
-
-#include "emu/memory/memory_map.h"
+#include "typegen_prelude.h"
 
 template <>
 absl::StatusOr<absl::string_view> ReadType(const core::MemoryRegion& region,

@@ -13,6 +13,7 @@ _HEADER_INCLUDES = [
     '<cstdint>',
     '<ostream>',
     '<string>',
+    '"gen/typegen/typegen_prelude.h"',
     '"absl/status/statusor.h"',
     '"core/memory_region.h"',
 ]
@@ -102,14 +103,6 @@ class CodeGenerator:
     file.write(f'{_READTYPE_PROTOTYPE.format(type)};\n')
 
   def _generate_read_type_declare(self, file):
-    file.write('template <typename T>\n')
-    self._write_read_type_declare(file, 'T')
-    # Implemented in typegen/polyfill.cc but declared here:
-    file.write('template<> ')
-    self._write_read_type_declare(file, 'absl::string_view')
-    file.write('template<> ')
-    self._write_read_type_declare(file, 'std::string')
-
     for expr in self._struct_expressions:
       file.write('template<> ')
       self._write_read_type_declare(file, expr['label'])

@@ -7,9 +7,7 @@ namespace cyder {
 namespace {
 
 using rsrcloader::GetTypeName;
-using rsrcloader::ResId;
 using rsrcloader::Resource;
-using rsrcloader::ResType;
 
 std::string GetUniqueId(ResType theType, ResId theId) {
   return absl::StrCat("Resource[", GetTypeName(theType), ":", theId, "]");

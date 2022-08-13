@@ -36,8 +36,12 @@ add_subdirectory(gen)
 add_subdirectory(third_party/musashi)
 add_subdirectory(third_party/imgui)
 
+include(gen/typegen/typegen.cmake)
+
+typegen(RESOURCE_TYPES resource_types.tdef)
+
 add_library(rsrcfork resource_file.cc resource_group.cc resource.cc)
-target_link_libraries(rsrcfork CORE_LIB)
+target_link_libraries(rsrcfork CORE_LIB RESOURCE_TYPES)
 target_link_libraries(rsrcfork absl::statusor)
 
 add_executable(rsrcloader main.cc)

@@ -9,6 +9,7 @@
 #include "generated_types.h"
 #include "resource.h"
 #include "resource_file.h"
+#include "resource_types.h"
 
 namespace cyder {
 
@@ -18,8 +19,8 @@ class ResourceManager {
 
   rsrcloader::Resource* GetSegmentZero() const;
 
-  Handle GetResource(rsrcloader::ResType, rsrcloader::ResId);
-  Handle GetResourseByName(rsrcloader::ResType, absl::string_view);
+  Handle GetResource(ResType, ResId);
+  Handle GetResourseByName(ResType, absl::string_view);
 
  private:
   memory::MemoryManager& memory_manager_;

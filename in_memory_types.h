@@ -19,7 +19,6 @@ struct InMemoryHeader {
   uint32_t data_length;
   uint32_t map_length;
 } __attribute__((packed));
-;
 
 /* Resource Map
     16 bytes - Reserved for a copy of resource header

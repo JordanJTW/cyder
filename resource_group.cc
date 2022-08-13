@@ -9,7 +9,7 @@
 namespace rsrcloader {
 namespace {}  // namespace
 
-ResourceGroup::ResourceGroup(InMemoryTypeItem type_item,
+ResourceGroup::ResourceGroup(ResourceTypeItem type_item,
                              std::vector<std::unique_ptr<Resource>> resources)
     : type_item_(std::move(type_item)), resources_(std::move(resources)) {}
 
@@ -18,19 +18,7 @@ absl::StatusOr<std::unique_ptr<ResourceGroup>> ResourceGroup::Load(
     const core::MemoryRegion& type_list_region,
     const core::MemoryRegion& name_list_region,
     const core::MemoryRegion& data_region,
-    size_t type_item_index) {
-  // The type list begins with a uint16_t count value immediately
-  // preceding the type list items so account for it here
-  size_t type_item_offset =
-      type_item_index * sizeof(InMemoryTypeItem) + sizeof(uint16_t);
-
-  InMemoryTypeItem type_item =
-      TRY(type_list_region.Copy<InMemoryTypeItem>(type_item_offset));
-
-  type_item.type = be32toh(type_item.type);
-  type_item.count = be16toh(type_item.count);
-  type_item.offset = be16toh(type_item.offset);
-
+    const ResourceTypeItem& type_item) {
   std::vector<std::unique_ptr<Resource>> resources;
   for (size_t index = 0; index <= type_item.count; ++index) {
     resources.push_back(TRY(Resource::Load(

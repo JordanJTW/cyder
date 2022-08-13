@@ -26,7 +26,7 @@ absl::StatusOr<std::string> ParseNameFromTable(
 
 // static
 absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
-    const InMemoryTypeItem& type_item,
+    const ResourceTypeItem& type_item,
     const core::MemoryRegion& type_list_region,
     const core::MemoryRegion& name_list_region,
     const core::MemoryRegion& data_region,
@@ -54,8 +54,8 @@ absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
   core::MemoryRegion resource_region = TRY(
       data_region.Create("Resource", offset + sizeof(uint32_t), resource_size));
 
-  return absl::make_unique<Resource>(entry.id, type_item.type, attributes, name,
-                                     resource_region, resource_size);
+  return absl::make_unique<Resource>(entry.id, type_item.type_id, attributes,
+                                     name, resource_region, resource_size);
 }
 
 InMemoryReferenceEntry Resource::Save(std::vector<std::string>& name_entry_list,
