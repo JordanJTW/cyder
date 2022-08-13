@@ -22,8 +22,6 @@ namespace trap {
 namespace {
 
 using rsrcloader::GetTypeName;
-using rsrcloader::ResId;
-using rsrcloader::ResType;
 
 void DrawRect(SDL_Renderer* renderer,
               const Rect& rect,

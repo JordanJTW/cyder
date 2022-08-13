@@ -1,3 +1,6 @@
+type ResType: u32;
+type ResId: u16;
+
 struct ResourceHeader {
   data_offset: u32;
   map_offset: u32;
@@ -16,7 +19,7 @@ struct ResourceMapHeader {
 }
 
 struct ResourceTypeItem {
-  type_id: u32;
+  type_id: ResType;
   count: u16;
   offset: u16;
 }

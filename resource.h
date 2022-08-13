@@ -11,9 +11,6 @@
 
 namespace rsrcloader {
 
-typedef uint32_t ResType;
-typedef uint16_t ResId;
-
 class Resource {
  public:
   Resource(ResId id,
