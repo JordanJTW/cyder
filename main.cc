@@ -18,7 +18,7 @@ void ParseIcon(const std::string& name,
   std::ofstream icon;
   icon.open(absl::StrCat("/tmp/", name, ".ppm"), std::ios::out);
   auto write_byte = [&](uint8_t byte) {
-    for (size_t i = 7; i >= 0; --i) {
+    for (int i = 7; i >= 0; --i) {
       icon << ((byte & (1 << i)) ? "1 " : "0 ");
     }
   };
