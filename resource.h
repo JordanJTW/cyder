@@ -7,6 +7,7 @@
 #include "absl/status/statusor.h"
 #include "core/memory_region.h"
 #include "in_memory_types.h"
+#include "resource_types.h"
 
 namespace rsrcloader {
 
@@ -23,7 +24,7 @@ class Resource {
            uint32_t size);
 
   static absl::StatusOr<std::unique_ptr<Resource>> Load(
-      const InMemoryTypeItem& type_item,
+      const ResourceTypeItem& type_item,
       const core::MemoryRegion& type_list_region,
       const core::MemoryRegion& name_list_region,
       const core::MemoryRegion& data_region,

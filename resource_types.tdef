@@ -14,3 +14,14 @@ struct ResourceMapHeader {
   name_list_offset: u16;
   type_list_count: u16;
 }
+
+struct ResourceTypeItem {
+  type_id: u32;
+  count: u16;
+  offset: u16;
+}
+
+struct ResourceTypeList {
+  count: u16;
+  items: [ResourceTypeItem; @count];
+}

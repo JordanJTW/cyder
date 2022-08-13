@@ -9,26 +9,27 @@
 #include "absl/strings/string_view.h"
 #include "core/memory_region.h"
 #include "in_memory_types.h"
+#include "resource_types.h"
 #include "resource.h"
 
 namespace rsrcloader {
 
 class ResourceGroup {
  public:
-  ResourceGroup(InMemoryTypeItem, std::vector<std::unique_ptr<Resource>>);
+  ResourceGroup(ResourceTypeItem, std::vector<std::unique_ptr<Resource>>);
 
   static absl::StatusOr<std::unique_ptr<ResourceGroup>> Load(
       const core::MemoryRegion& type_list_region,
       const core::MemoryRegion& name_list_region,
       const core::MemoryRegion& data_region,
-      size_t type_item_index);
+      const ResourceTypeItem& type_item);
 
   InMemoryTypeItem Save(size_t reference_offset) const;
 
   Resource* FindById(ResId) const;
   Resource* FindByName(absl::string_view) const;
 
-  ResType GetType() const { return type_item_.type; }
+  ResType GetType() const { return type_item_.type_id; }
   size_t GetSize() const { return resources_.size(); }
   size_t GetCount() const { return GetSize() - 1; }
 
@@ -44,7 +45,7 @@ class ResourceGroup {
  private:
   friend std::ostream& operator<<(std::ostream&, const ResourceGroup&);
 
-  InMemoryTypeItem type_item_;
+  ResourceTypeItem type_item_;
   std::vector<std::unique_ptr<Resource>> resources_;
 };
 

@@ -64,10 +64,11 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
   core::MemoryRegion name_list_region =
       TRY(map_region.Create("NameList", map_header.name_list_offset));
 
+  auto type_list = TRY(ReadType<ResourceTypeList>(type_list_region, /*ptr=*/0));
   std::vector<std::unique_ptr<ResourceGroup>> resource_groups;
-  for (size_t item = 0; item <= map_header.type_list_count; ++item) {
+  for (const auto& type_item : type_list.items) {
     resource_groups.push_back(TRY(ResourceGroup::Load(
-        type_list_region, name_list_region, data_region, item)));
+        type_list_region, name_list_region, data_region, type_item)));
   }
 
   return std::unique_ptr<ResourceFile>(
