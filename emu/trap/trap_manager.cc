@@ -12,7 +12,7 @@
 #include "emu/memory/memory_map.h"
 #include "emu/trap/stack_helpers.h"
 #include "emu/trap/trap_helpers.h"
-#include "generated_types.h"
+#include "gen/typegen/typegen_prelude.h"
 #include "resource.h"
 #include "third_party/musashi/src/m68k.h"
 #include "trap_names.h"

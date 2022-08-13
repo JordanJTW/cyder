@@ -16,6 +16,7 @@ target_link_libraries(
   GLOBAL_NAMES
   TRAP_NAMES
   TRAP_LIB
-  GENERATED_TYPES)
+  GENERATED_TYPES
+  TYPEGEN_PRELUDE)
 target_link_libraries(emu absl::flags absl::statusor absl::strings)
 target_link_libraries(emu ${SDL2_LIBRARIES})
