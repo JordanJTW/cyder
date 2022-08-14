@@ -7,22 +7,6 @@
 #include "core/status_helpers.h"
 
 namespace rsrcloader {
-namespace {
-
-absl::StatusOr<std::string> ParseNameFromTable(
-    const core::MemoryRegion& name_list_region,
-    uint16_t name_offset) {
-  if (name_offset == 0xFFFF) {
-    return std::string{};
-  }
-
-  char str[255];
-  uint8_t length = TRY(name_list_region.Copy<uint8_t>(name_offset));
-  RETURN_IF_ERROR(name_list_region.Copy(&str, name_offset + 1, length));
-  return std::string(str, length);
-}
-
-}  // namespace
 
 // static
 absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
@@ -36,9 +20,11 @@ absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
   uint8_t attributes = (entry.offset & 0xFF000000) >> 24;
   uint32_t offset = entry.offset & 0x00FFFFFF;
 
-  std::string name =
-      TRY(ParseNameFromTable(name_list_region, entry.name_offset),
-          "Failed to parse name from table");
+  std::string name;
+  // If the offset is 0xFFFF then this resource has no name
+  if (entry.name_offset != 0xFFFF) {
+    name = TRY(ReadType<std::string>(name_list_region, entry.name_offset));
+  }
 
   uint32_t resource_size = be32toh(
       TRY(data_region.Copy<uint32_t>(offset), "Failed to parse resource size"));
