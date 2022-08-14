@@ -12,16 +12,16 @@ struct String {
 
 struct ArrayIntegers {
   count: u8;
-  values: [u16;@count];
+  values: [u16;count];
 }
 
 struct ArrayStructs {
   count: u16;
-  values: [ArrayIntegers;@count];
+  values: [ArrayIntegers;count];
 }
 
 struct ArrayIntegersNullTerminated {
-  values: [u16;@null];
+  values: [u16;null];
 }
 
 struct SimpleStruct {
@@ -30,10 +30,10 @@ struct SimpleStruct {
 }
 
 struct ArrayStructsNullTerminated {
-  values: [SimpleStruct;@null];
+  values: [SimpleStruct;null];
 }
 
 struct LessThanOrEqual {
   count: u16;
-  values: [u16;<=@count];
+  values: [u16;<=count];
 }

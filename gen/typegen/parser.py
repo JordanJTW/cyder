@@ -119,9 +119,6 @@ class Parser:
           self._advance()
 
       loop_variable = Expression.Loop.FIXED
-      if self._current.type == Token.Type.AT_SIGN:
-        loop_variable = Expression.Loop.VARIABLE
-        self._advance()
 
       array_length = None
       if self._current.type == Token.Type.IDENTIFIER:
@@ -129,6 +126,7 @@ class Parser:
         if loop_condition == Expression.LoopCondition.NONE:
           loop_condition = Expression.LoopCondition.LESS_THAN
 
+        loop_variable = Expression.Loop.VARIABLE
         array_length = self._current._text
         self._advance()
       elif self._current.type == Token.Type.NULL:

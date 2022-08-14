@@ -48,7 +48,7 @@ struct ResourceTypeItem {
 // Layout at `type_list_offset`
 struct ResourceTypeList {
   count: u16;
-  items: [ResourceTypeItem; <=@count];
+  items: [ResourceTypeItem; <=count];
 }
 
 // Entry in the reference list for a resource type

@@ -34,12 +34,12 @@ struct MenuResource {
   placeholder: Integer;
   state_bit_field: u32;
   title: str;
-  items: [MenuItemResource;@null];
+  items: [MenuItemResource;null];
 }
 
 struct MenuBarResource {
   count: Integer;
-  menus: [ResourceId;@count];
+  menus: [ResourceId;count];
 }
 
 // Link:

@@ -142,11 +142,6 @@ class Tokenizer:
         self._advance()
         continue
 
-      if self._current == '@':
-        tokens.append(Token(Token.Type.AT_SIGN, char_span))
-        self._advance()
-        continue
-
       if self._current == '<':
         tokens.append(Token(Token.Type.LESS_THAN, char_span))
         self._advance()
