@@ -32,3 +32,8 @@ struct SimpleStruct {
 struct ArrayStructsNullTerminated {
   values: [SimpleStruct;@null];
 }
+
+struct LessThanOrEqual {
+  count: u16;
+  values: [u16;<=@count];
+}

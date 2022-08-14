@@ -10,6 +10,8 @@ class Token:
     COLON = auto()
     SEMICOLON = auto()
     AT_SIGN = auto()
+    LESS_THAN = auto()
+    EQUAL_TO = auto()
     START_CURLY_BRACKET = auto()
     END_CURLY_BRACKET = auto()
     START_SQUARE_BRACKET = auto()
@@ -142,6 +144,16 @@ class Tokenizer:
 
       if self._current == '@':
         tokens.append(Token(Token.Type.AT_SIGN, char_span))
+        self._advance()
+        continue
+
+      if self._current == '<':
+        tokens.append(Token(Token.Type.LESS_THAN, char_span))
+        self._advance()
+        continue
+
+      if self._current == '=':
+        tokens.append(Token(Token.Type.EQUAL_TO, char_span))
         self._advance()
         continue
 

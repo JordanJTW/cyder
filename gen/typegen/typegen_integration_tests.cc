@@ -132,3 +132,15 @@ TEST_F(TypegenIntegrationTests, ArrayStructsNullTerminated) {
   EXPECT_EQ(obj.values[1].first, 59u);
   EXPECT_EQ(obj.values[1].last, 26u);
 }
+
+TEST_F(TypegenIntegrationTests, LessThanOrEqual) {
+  std::vector<uint16_t> values = {1001};
+  WriteToRegion<uint16_t>(0);
+  for (auto value : values) {
+    WriteToRegion<uint16_t>(value);
+  }
+
+  auto obj = ReadFromRegion<LessThanOrEqual>();
+  EXPECT_EQ(obj.count, 0);
+  ASSERT_THAT(obj.values, ::testing::ElementsAreArray(values));
+}

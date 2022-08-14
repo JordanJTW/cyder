@@ -175,15 +175,24 @@ class CodeGenerator:
           f'  obj.{name} = TRY(ReadType<std::string>(region, {offset_str}));\n')
         offset_variables.append(f'{name}.size() + 1')
       elif isinstance(type, dict):
-        (inner_type, length, condition) = (
-          type['type'], type['length'], type['condition'])
+        (inner_type, length, variable, condition) = (
+          type['type'], type['length'], type['variable'], type['condition'])
+
         (c_type, is_struct) = self._get_c_type(inner_type)
 
         file.write(f'  size_t {name}_offset = 0;\n')
 
-        if condition == Expression.Loop.VARIABLE:
-          file.write(f'  for (size_t i = 0; i < obj.{length}; ++i) {{\n')
-        elif condition == Expression.Loop.NULL_TERMINATED:
+        if variable == Expression.Loop.VARIABLE:
+          loop_sign = None
+          if condition == Expression.LoopCondition.LESS_THAN:
+            loop_sign = '<'
+          elif condition == Expression.LoopCondition.LESS_THAN_OR_EQUAL_TO:
+            loop_sign = '<='
+          else:
+            assert False, 'NOTREACHED'
+
+          file.write(f'  for (size_t i = 0; i {loop_sign} obj.{length}; ++i) {{\n')
+        elif variable == Expression.Loop.NULL_TERMINATED:
           condition_type = self._get_first_field_type(inner_type)
           file.write(
             f'  while (TRY(region.Copy<{condition_type}>({offset_str} + {name}_offset)) != 0) {{\n')
@@ -225,8 +234,8 @@ class CodeGenerator:
       (name, type) = (member['name'], member['type'])
 
       if isinstance(type, dict):
-        (inner_type, length, condition) = (
-          type['type'], type['length'], type['condition'])
+        (inner_type, length, variable) = (
+          type['type'], type['length'], type['variable'])
         (c_type, is_struct) = self._get_c_type(inner_type)
 
         if is_struct:
@@ -263,8 +272,8 @@ class CodeGenerator:
         stream_value = f'\"\\"\" << {stream_value} << \"\\"\"'
       if isinstance(member['type'], dict):
         type = member['type']
-        (inner_type, length, condition) = (
-          type['type'], type['length'], type['condition'])
+        (inner_type, length, variable) = (
+          type['type'], type['length'], type['variable'])
         stream_value = f'"[{inner_type};" << obj.{member["name"]}.size() << "]"'
 
       file.write(f' << "{member["name"]}: " << {stream_value}{line_end}')

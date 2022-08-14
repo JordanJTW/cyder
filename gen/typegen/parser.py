@@ -15,6 +15,11 @@ class Expression:
     FIXED = auto()
     NULL_TERMINATED = auto()
 
+  class LoopCondition(Enum):
+    NONE = auto()
+    LESS_THAN = auto()
+    LESS_THAN_OR_EQUAL_TO = auto()
+
   def __init__(self, type, span, data=None):
     self._type = type
     self._span = span
@@ -99,17 +104,39 @@ class Parser:
         return self._error('missing ";"')
       self._advance()
 
-      loop_condition = Expression.Loop.FIXED
+      loop_condition = Expression.LoopCondition.NONE
+      loop_condition_span = None
+
+      if self._current.type == Token.Type.LESS_THAN:
+        loop_condition_span = self._current.span
+        loop_condition = Expression.LoopCondition.LESS_THAN
+        self._advance()
+
+        if self._current.type == Token.Type.EQUAL_TO:
+          loop_condition_span = merge_span(
+            loop_condition_span, self._current.span)
+          loop_condition = Expression.LoopCondition.LESS_THAN_OR_EQUAL_TO
+          self._advance()
+
+      loop_variable = Expression.Loop.FIXED
       if self._current.type == Token.Type.AT_SIGN:
-        loop_condition = Expression.Loop.VARIABLE
+        loop_variable = Expression.Loop.VARIABLE
         self._advance()
 
       array_length = None
       if self._current.type == Token.Type.IDENTIFIER:
+        # If not specified assume a '<' loop condition
+        if loop_condition == Expression.LoopCondition.NONE:
+          loop_condition = Expression.LoopCondition.LESS_THAN
+
         array_length = self._current._text
         self._advance()
       elif self._current.type == Token.Type.NULL:
-        loop_condition = Expression.Loop.NULL_TERMINATED
+        if loop_condition != Expression.LoopCondition.NONE:
+          self._errors.append(
+            ('Loop condition not applicable with |null|', loop_condition_span))
+
+        loop_variable = Expression.Loop.NULL_TERMINATED
         self._advance()
       else:
         return self._error('expected length of array')
@@ -124,7 +151,7 @@ class Parser:
       end_span = self._current.span
       self._advance()
 
-      return (label_token._text, {'type': array_type_token._text, 'length': array_length, 'condition': loop_condition}, merge_span(start_span, end_span))
+      return (label_token._text, {'type': array_type_token._text, 'length': array_length, 'variable': loop_variable, 'condition': loop_condition}, merge_span(start_span, end_span))
 
     if self._current.type != Token.Type.IDENTIFIER:
       return self._error('missing type')
