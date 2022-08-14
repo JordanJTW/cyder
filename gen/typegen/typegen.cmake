@@ -1,6 +1,6 @@
 find_package(Python3 3.8 COMPONENTS Interpreter)
 
-file(GLOB TYPEGEN_SRC *.py)
+file(GLOB TYPEGEN_SRC ${CMAKE_SOURCE_DIR}/gen/typegen/*.py)
 
 # ! typegen: generates types based on a defintion file
 macro(typegen target_name type_definition)
