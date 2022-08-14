@@ -14,7 +14,6 @@
 #include "core/logging.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
-#include "in_memory_types.h"
 #include "resource_types.h"
 
 namespace rsrcloader {

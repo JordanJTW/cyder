@@ -8,7 +8,6 @@
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "in_memory_types.h"
 #include "resource.h"
 #include "resource_group.h"
 

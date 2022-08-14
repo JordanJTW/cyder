@@ -6,7 +6,6 @@
 
 #include "absl/status/statusor.h"
 #include "core/memory_region.h"
-#include "in_memory_types.h"
 #include "resource_types.h"
 
 namespace rsrcloader {
