@@ -30,15 +30,7 @@ absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
     const core::MemoryRegion& type_list_region,
     const core::MemoryRegion& name_list_region,
     const core::MemoryRegion& data_region,
-    size_t index) {
-  InMemoryReferenceEntry entry =
-      TRY(type_list_region.Copy<InMemoryReferenceEntry>(
-              type_item.offset + sizeof(InMemoryReferenceEntry) * index),
-          absl::StrCat("Failed to parse reference entry at ", index));
-
-  entry.id = be16toh(entry.id);
-  entry.offset = be32toh(entry.offset);
-  entry.name_offset = be16toh(entry.name_offset);
+    const ResourceEntry& entry) {
   // The attributes (1 byte) and offset (3 bytes) are packed
   // together so we separate both fields here
   uint8_t attributes = (entry.offset & 0xFF000000) >> 24;

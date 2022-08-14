@@ -20,9 +20,16 @@ absl::StatusOr<std::unique_ptr<ResourceGroup>> ResourceGroup::Load(
     const core::MemoryRegion& data_region,
     const ResourceTypeItem& type_item) {
   std::vector<std::unique_ptr<Resource>> resources;
+  size_t relative_offset = 0;
   for (size_t index = 0; index <= type_item.count; ++index) {
+    auto entry =
+        TRY(ReadType<ResourceEntry>(type_list_region,
+                                    type_item.offset + relative_offset),
+            absl::StrCat("Failed to parse reference entry at ", index));
+    relative_offset += entry.size();
+
     resources.push_back(TRY(Resource::Load(
-        type_item, type_list_region, name_list_region, data_region, index)));
+        type_item, type_list_region, name_list_region, data_region, entry)));
   }
 
   return std::unique_ptr<ResourceGroup>(

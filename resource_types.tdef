@@ -28,3 +28,10 @@ struct ResourceTypeList {
   count: u16;
   items: [ResourceTypeItem; @count];
 }
+
+struct ResourceEntry {
+  id: u16;
+  name_offset: u16;
+  offset: u32;
+  handle: u32;
+}
