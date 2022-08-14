@@ -125,6 +125,5 @@ absl::Status Main(const core::Args& args) {
     }
   }
   std::cout << *file;
-  RETURN_IF_ERROR(file->Save("/tmp/output.rsrc"));
   return absl::OkStatus();
 }

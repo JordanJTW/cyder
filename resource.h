@@ -27,9 +27,6 @@ class Resource {
       const core::MemoryRegion& data_region,
       const ResourceEntry& entry);
 
-  InMemoryReferenceEntry Save(std::vector<std::string>& name_entry_list,
-                              size_t& current_name_offset,
-                              size_t& current_data_offset) const;
 
   ResId GetId() const { return id_; }
   ResType GetType() const { return type_; }

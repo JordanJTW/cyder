@@ -50,30 +50,6 @@ absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
                                      name, resource_region, resource_size);
 }
 
-InMemoryReferenceEntry Resource::Save(std::vector<std::string>& name_entry_list,
-                                      size_t& current_name_offset,
-                                      size_t& current_data_offset) const {
-  auto calculate_name_offset = [&](const std::string& name) -> uint16_t {
-    if (!name.empty()) {
-      uint16_t last_name_offset = current_name_offset;
-      current_name_offset += sizeof(uint8_t) + name.size();
-      name_entry_list.push_back(name);
-      return last_name_offset;
-    }
-    return 0xFFFF;
-  };
-
-  uint32_t attributes_and_offset =
-      (GetAttributes() << 24) | (current_data_offset & 0x00FFFFFF);
-
-  InMemoryReferenceEntry entry;
-  entry.id = htobe16(GetId());
-  entry.offset = htobe32(attributes_and_offset);
-  entry.name_offset = htobe16(calculate_name_offset(GetName()));
-  current_data_offset += GetSize() + sizeof(uint32_t);
-  return entry;
-}
-
 Resource::Resource(uint16_t id,
                    uint32_t type,
                    uint8_t attributes,

@@ -24,8 +24,6 @@ class ResourceGroup {
       const core::MemoryRegion& data_region,
       const ResourceTypeItem& type_item);
 
-  InMemoryTypeItem Save(size_t reference_offset) const;
-
   Resource* FindById(ResId) const;
   Resource* FindByName(absl::string_view) const;
 

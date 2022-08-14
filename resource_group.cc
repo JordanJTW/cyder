@@ -36,14 +36,6 @@ absl::StatusOr<std::unique_ptr<ResourceGroup>> ResourceGroup::Load(
       new ResourceGroup(std::move(type_item), std::move(resources)));
 }
 
-InMemoryTypeItem ResourceGroup::Save(size_t reference_offset) const {
-  InMemoryTypeItem type_item;
-  type_item.type = htobe32(GetType());
-  type_item.count = htobe16(static_cast<uint16_t>(GetCount()));
-  type_item.offset = htobe16(reference_offset);
-  return type_item;
-}
-
 Resource* ResourceGroup::FindById(ResId theId) const {
   for (const auto& resource : resources_) {
     if (resource->GetId() == theId) {
