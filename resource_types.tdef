@@ -1,6 +1,14 @@
 type ResType: u32;
 type ResId: u16;
 
+// The in memory representation of resource fork structures from:
+// https://dev.os9.ca/techpubs/mac/MoreToolbox/MoreToolbox-99.html
+
+// Resource File Header
+//    4 bytes: Offset from beginning of resource fork to resource data
+//    4 bytes: Offset from beginning of resource fork to resource map
+//    4 bytes: Length of resource data
+//    4 bytes: Length of resource map
 struct ResourceHeader {
   data_offset: u32;
   map_offset: u32;
@@ -8,6 +16,14 @@ struct ResourceHeader {
   map_length: u32;
 }
 
+// Resource Map
+//   16 bytes: Reserved for a copy of resource header
+//    4 bytes: Reserved for handle to next resource map
+//    2 bytes: Reserved for file reference number
+//    2 bytes: Resource fork attributes
+//    2 bytes: Offset from beginning of map to type list
+//    2 bytes: Offset from beginning of map to name list
+//    2 bytes: Number of types in the map minus 1
 struct ResourceMapHeader {
   file_header: ResourceHeader;
   next_map_handle: u32;
@@ -18,17 +34,29 @@ struct ResourceMapHeader {
   type_list_count: u16;
 }
 
+// Item in ResourceTypeList
+//    4 bytes: Resource type
+//    2 bytes: Number of resources of this type in map minus 1
+//    2 bytes: Offset from beginning of `type_list_offset` to reference list
+//                for this type
 struct ResourceTypeItem {
   type_id: ResType;
   count: u16;
   offset: u16;
 }
 
+// Layout at `type_list_offset`
 struct ResourceTypeList {
   count: u16;
   items: [ResourceTypeItem; @count];
 }
 
+// Entry in the reference list for a resource type
+//    2 bytes: Resource ID
+//    2 bytes: Offset from beginning of `name_list_offset` to resource name
+//    1 byte : Resource attributes
+//    3 bytes: Offset from beginning of `data_offset` to resource data
+//    4 bytes: Reserved for handle to resource
 struct ResourceEntry {
   id: u16;
   name_offset: u16;
