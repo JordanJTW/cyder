@@ -10,8 +10,6 @@ namespace rsrcloader {
 
 // static
 absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
-    const ResourceTypeItem& type_item,
-    const core::MemoryRegion& type_list_region,
     const core::MemoryRegion& name_list_region,
     const core::MemoryRegion& data_region,
     const ResourceEntry& entry) {
@@ -28,23 +26,13 @@ absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
   core::MemoryRegion resource_region = TRY(data_region.Create(
       "Resource", entry.data_offset + sizeof(uint32_t), resource_size));
 
-  return absl::make_unique<Resource>(entry.id, type_item.type_id,
-                                     entry.attributes, name, resource_region,
-                                     resource_size);
+  return absl::make_unique<Resource>(entry, resource_region, name);
 }
 
-Resource::Resource(uint16_t id,
-                   uint32_t type,
-                   uint8_t attributes,
-                   std::string name,
+Resource::Resource(const ResourceEntry& entry,
                    const core::MemoryRegion& data,
-                   uint32_t size)
-    : id_(id),
-      type_(type),
-      attributes_(attributes),
-      name_(std::move(name)),
-      data_(data),
-      size_(size) {}
+                   std::string name)
+    : entry_(entry), data_(data), name_(std::move(name)) {}
 
 std::ostream& operator<<(std::ostream& out, const Resource& value) {
   out << "Resource(id: " << value.GetId();

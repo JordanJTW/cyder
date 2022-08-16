@@ -12,26 +12,19 @@ namespace rsrcloader {
 
 class Resource {
  public:
-  Resource(ResId id,
-           ResType type,
-           uint8_t attributes,
-           std::string name,
+  Resource(const ResourceEntry& entry,
            const core::MemoryRegion& data,
-           uint32_t size);
+           std::string name);
 
   static absl::StatusOr<std::unique_ptr<Resource>> Load(
-      const ResourceTypeItem& type_item,
-      const core::MemoryRegion& type_list_region,
       const core::MemoryRegion& name_list_region,
       const core::MemoryRegion& data_region,
       const ResourceEntry& entry);
 
-
-  ResId GetId() const { return id_; }
-  ResType GetType() const { return type_; }
+  ResId GetId() const { return entry_.id; }
   const std::string& GetName() const { return name_; }
-  uint8_t GetAttributes() const { return attributes_; }
-  uint32_t GetSize() const { return size_; }
+  uint8_t GetAttributes() const { return entry_.attributes; }
+  uint32_t GetSize() const { return data_.size(); }
   const core::MemoryRegion& GetData() const { return data_; }
 
  protected:
@@ -42,12 +35,9 @@ class Resource {
  private:
   friend std::ostream& operator<<(std::ostream&, const Resource&);
 
-  const ResId id_;
-  const ResType type_;
-  const uint8_t attributes_;
-  const std::string name_;
+  const ResourceEntry entry_;
   const core::MemoryRegion data_;
-  const uint32_t size_;
+  const std::string name_;
 };
 
 std::ostream& operator<<(std::ostream&, const Resource&);

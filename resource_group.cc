@@ -28,8 +28,8 @@ absl::StatusOr<std::unique_ptr<ResourceGroup>> ResourceGroup::Load(
             absl::StrCat("Failed to parse reference entry at ", index));
     relative_offset += entry.size();
 
-    resources.push_back(TRY(Resource::Load(
-        type_item, type_list_region, name_list_region, data_region, entry)));
+    resources.push_back(
+        TRY(Resource::Load(name_list_region, data_region, entry)));
   }
 
   return std::unique_ptr<ResourceGroup>(
