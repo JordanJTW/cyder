@@ -20,6 +20,10 @@ class Expression:
     LESS_THAN = auto()
     LESS_THAN_OR_EQUAL_TO = auto()
 
+  class TypeVariant(Enum):
+    VALUE = auto()
+    ARRAY = auto()
+
   def __init__(self, type, span, data=None):
     self._type = type
     self._span = span
@@ -127,7 +131,7 @@ class Parser:
           loop_condition = Expression.LoopCondition.LESS_THAN
 
         loop_variable = Expression.Loop.VARIABLE
-        array_length = self._current._text
+        array_length = self._current.label
         self._advance()
       elif self._current.type == Token.Type.NULL:
         if loop_condition != Expression.LoopCondition.NONE:
@@ -149,7 +153,17 @@ class Parser:
       end_span = self._current.span
       self._advance()
 
-      return (label_token._text, {'type': array_type_token._text, 'length': array_length, 'variable': loop_variable, 'condition': loop_condition}, merge_span(start_span, end_span))
+      return (label_token.label, {
+        'variant': Expression.TypeVariant.ARRAY,
+        # FIXME: Get type by parsing type expression again
+        'inner_type': {
+          'variant': Expression.TypeVariant.VALUE,
+          'label': array_type_token.label,
+        },
+        'length': array_length,
+        'variable': loop_variable,
+        'condition': loop_condition
+      }, merge_span(start_span, end_span))
 
     if self._current.type != Token.Type.IDENTIFIER:
       return self._error('missing type')
@@ -162,7 +176,10 @@ class Parser:
 
     end_span = self._current.span
     self._advance()
-    return (label_token._text, type_token._text, merge_span(start_span, end_span))
+    return (label_token.label, {
+      'variant': Expression.TypeVariant.VALUE,
+      'label': type_token.label,
+    }, merge_span(start_span, end_span))
 
   def _parse_struct(self):
     start_span = self._current.span
@@ -202,7 +219,7 @@ class Parser:
       Expression.Type.STRUCT,
       merge_span(start_span, end_span),
       data={
-        'label': label_token._text,
+        'label': label_token.label,
         'members': members
       }
     )

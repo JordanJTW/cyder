@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 
 class Token:
@@ -21,21 +21,37 @@ class Token:
     GARBAGE = auto()
 
   @property
+  def type(self):
+    return self._type
+
+  @property
   def span(self):
     return self._span
 
   @property
-  def type(self):
-    return self._type
+  def number(self) -> int:
+    assert self.type == Token.Type.NUMBER, 'number is only valid for DIGITS'
+    assert self._number != None, 'number must not be None'
+    return self._number
 
-  def __init__(self, type: Type, span: Tuple, text: str = None):
+  @property
+  def label(self) -> str:
+    assert self.type == Token.Type.IDENTIFIER, 'label is only valid for IDENTIFIER'
+    assert self._label != None, 'label must not be None'
+    return self._label
+
+  def __init__(self, type: Type, span: Tuple, label: Optional[str] = None, number: Optional[int] = None):
     self._type = type
     self._span = span
-    self._text = text
+    self._label = label
+    self._number = number
 
   def __str__(self) -> str:
-    if self._text:
-      return f'Token(\n  type: {self._type}\n  span: {self._span}\n  text: "{self._text}"\n)'
+    if self.type == Token.Type.IDENTIFIER:
+      return f'Token(\n  type: {self.type}\n  span: {self.span}\n  label: "{self.label}"\n)'
+
+    if self.type == Token.Type.NUMBER:
+      return f'Token(\n  type: {self.type}\n  span: {self.span}\n  number: "{self.number}"\n)'
 
     return f'Token(\n  type: {self._type}\n  span: {self._span}\n)'
 
@@ -80,7 +96,7 @@ class Tokenizer:
 
       self._advance()
 
-  def _parse_name(self):
+  def _parse_label(self):
     type_name = ''
     start_index = self._index
     while not self._is_eof():
@@ -107,7 +123,7 @@ class Tokenizer:
         continue
 
       if self._current.isalpha():
-        tokens.append(self._parse_name())
+        tokens.append(self._parse_label())
         continue
 
       char_span = (self._index, self._index + 1)

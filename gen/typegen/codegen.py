@@ -51,7 +51,7 @@ class CodeGenerator:
 
     for expr in reversed(self._type_expressions):
       if expr['label'] == type:
-        return self._get_type_size(expr['type'])
+        return self._get_type_size(expr['type']['label'])
 
     # FIXME: Errors should be tagged with the span of the token
     self._errors.append(f'No size found for type: {type}')
@@ -66,18 +66,20 @@ class CodeGenerator:
       'i32': 'int32_t',
     }
 
-    if isinstance(type, dict):
-      (inner_type, is_struct) = self._get_c_type(type['type'])
+    if type['variant'] == Expression.TypeVariant.ARRAY:
+      (inner_type, is_struct) = self._get_c_type(type['inner_type'])
       return (f'std::vector<{inner_type}>', True)
 
-    for struct in self._struct_expressions:
-      if struct['label'] == type:
-        return (type, True)
+    assert type['variant'] == Expression.TypeVariant.VALUE
 
-    if 'str' == type:
+    for struct in self._struct_expressions:
+      if struct['label'] == type['label']:
+        return (type['label'], True)
+
+    if 'str' == type['label']:
       return ('std::string', True)
 
-    return (builtin_types.get(type, type), False)
+    return (builtin_types.get(type['label'], type['label']), False)
 
   def _write_type(self, file, label, type):
     file.write(f'using {label} = {type};\n')
@@ -136,9 +138,9 @@ class CodeGenerator:
       self._generate_struct_stream_declare(header)
 
   def _get_first_field_type(self, type):
-    assert isinstance(type, str), "loop type must a struct or primitive"
+    assert type['variant'] == Expression.TypeVariant.VALUE, "loop type must be a struct or primitive"
 
-    if type == 'str':
+    if type['label'] == 'str':
       return 'uint8_t'
 
     (c_type, is_struct) = self._get_c_type(type)
@@ -165,20 +167,37 @@ class CodeGenerator:
       return str(offset)
 
     for member in members:
-      (name, type) = (member['name'], member['type'])
+      (name, type_definition) = (member['name'], member['type'])
       offset_str = 'ptr + ' + generate_offset_str("obj.")
       if local_variables:
         offset_str = offset_str + ' + ' + ' + '.join(local_variables)
 
-      if type == 'str':
-        file.write(
-          f'  obj.{name} = TRY(ReadType<std::string>(region, {offset_str}));\n')
-        offset_variables.append(f'{name}.size() + 1')
-      elif isinstance(type, dict):
-        (inner_type, length, variable, condition) = (
-          type['type'], type['length'], type['variable'], type['condition'])
+      if type_definition['variant'] == Expression.TypeVariant.VALUE:
+        if type_definition['label'] == 'str':
+          file.write(
+            f'  obj.{name} = TRY(ReadType<std::string>(region, {offset_str}));\n')
+          offset_variables.append(f'{name}.size() + 1')
+        else:
+          (c_type, is_struct) = self._get_c_type(type_definition)
 
-        (c_type, is_struct) = self._get_c_type(inner_type)
+          if is_struct:
+            file.write(
+                f'  obj.{name} = TRY(ReadType<{c_type}>(region, {offset_str}));\n')
+            offset_variables.append(f'{name}.size()')
+          else:
+            file.write(
+                f'  obj.{name} = betoh<{c_type}>(TRY(region.Copy<{c_type}>({offset_str})));\n')
+
+            type_size = self._get_type_size(type_definition['label'])
+            offset = offset + type_size
+      elif type_definition['variant'] == Expression.TypeVariant.ARRAY:
+        (inner_type_definition, length, variable, condition) = (
+          type_definition['inner_type'], type_definition['length'], type_definition['variable'], type_definition['condition'])
+
+        assert inner_type_definition['variant'] == Expression.TypeVariant.VALUE
+        inner_type = inner_type_definition['label']
+
+        (c_type, is_struct) = self._get_c_type(inner_type_definition)
 
         file.write(f'  size_t {name}_offset = 0;\n')
 
@@ -191,9 +210,10 @@ class CodeGenerator:
           else:
             assert False, 'NOTREACHED'
 
-          file.write(f'  for (size_t i = 0; i {loop_sign} obj.{length}; ++i) {{\n')
+          file.write(
+            f'  for (size_t i = 0; i {loop_sign} obj.{length}; ++i) {{\n')
         elif variable == Expression.Loop.NULL_TERMINATED:
-          condition_type = self._get_first_field_type(inner_type)
+          condition_type = self._get_first_field_type(inner_type_definition)
           file.write(
             f'  while (TRY(region.Copy<{condition_type}>({offset_str} + {name}_offset)) != 0) {{\n')
         else:
@@ -211,19 +231,6 @@ class CodeGenerator:
           file.write(f'    {name}_offset += sizeof({c_type});\n')
         local_variables.append(f'{name}_offset')
         file.write('  }\n')
-      else:
-        (c_type, is_struct) = self._get_c_type(member['type'])
-
-        if is_struct:
-          file.write(
-              f'  obj.{name} = TRY(ReadType<{c_type}>(region, {offset_str}));\n')
-          offset_variables.append(f'{name}.size()')
-        else:
-          file.write(
-              f'  obj.{name} = betoh<{c_type}>(TRY(region.Copy<{c_type}>({offset_str})));\n')
-
-          type_size = self._get_type_size(type)
-          offset = offset + type_size
 
     file.write('  return obj;\n')
     file.write('}\n\n')
@@ -231,11 +238,11 @@ class CodeGenerator:
     file.write(f'size_t {label}::size() const {{\n')
     size_variables = []
     for member in members:
-      (name, type) = (member['name'], member['type'])
+      (name, type_definition) = (member['name'], member['type'])
 
-      if isinstance(type, dict):
+      if type_definition['variant'] == Expression.TypeVariant.ARRAY:
         (inner_type, length, variable) = (
-          type['type'], type['length'], type['variable'])
+          type_definition['inner_type'], type['length'], type['variable'])
         (c_type, is_struct) = self._get_c_type(inner_type)
 
         if is_struct:
@@ -246,7 +253,7 @@ class CodeGenerator:
           size_variables.append(f'{name}_offset')
         else:
           size_variables.append(
-            f'({name}.size() * {self._get_type_size(inner_type)})')
+            f'({name}.size() * {self._get_type_size(inner_type["label"])})')
 
     offset_str = generate_offset_str()
     if size_variables:
@@ -263,18 +270,17 @@ class CodeGenerator:
       f'std::ostream& operator<<(std::ostream& os, const {label}& obj) {{ return os')
     for index, member in enumerate(members):
       line_end = ' << ", "' if index + 1 != len(members) else ''
+      stream_value = f'obj.{member["name"]}'
+      if member['type']['variant'] == Expression.TypeVariant.ARRAY:
+        type = member['type']
+        inner_type = type['inner_type']['label']
+        stream_value = f'"[{inner_type};" << obj.{member["name"]}.size() << "]"'
       # Cast value to an int to work around printing u8 and having them appear as char...
       # Without this any u8 set to 0 ends up being interpreted as an \0 for a string.
-      stream_value = f'obj.{member["name"]}'
-      if member['type'] == 'u8':
+      elif member['type']['label'] == 'u8':
         stream_value = f'int({stream_value})'
-      if member['type'] == 'str':
+      elif member['type']['label'] == 'str':
         stream_value = f'\"\\"\" << {stream_value} << \"\\"\"'
-      if isinstance(member['type'], dict):
-        type = member['type']
-        (inner_type, length, variable) = (
-          type['type'], type['length'], type['variable'])
-        stream_value = f'"[{inner_type};" << obj.{member["name"]}.size() << "]"'
 
       file.write(f' << "{member["name"]}: " << {stream_value}{line_end}')
     file.write('; }\n')
