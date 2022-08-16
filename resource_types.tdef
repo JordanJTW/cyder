@@ -60,6 +60,7 @@ struct ResourceTypeList {
 struct ResourceEntry {
   id: u16;
   name_offset: u16;
-  offset: u32;
+  attributes: u8;
+  data_offset: u32#3;
   handle: u32;
 }

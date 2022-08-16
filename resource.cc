@@ -15,25 +15,22 @@ absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
     const core::MemoryRegion& name_list_region,
     const core::MemoryRegion& data_region,
     const ResourceEntry& entry) {
-  // The attributes (1 byte) and offset (3 bytes) are packed
-  // together so we separate both fields here
-  uint8_t attributes = (entry.offset & 0xFF000000) >> 24;
-  uint32_t offset = entry.offset & 0x00FFFFFF;
-
   std::string name;
   // If the offset is 0xFFFF then this resource has no name
   if (entry.name_offset != 0xFFFF) {
     name = TRY(ReadType<std::string>(name_list_region, entry.name_offset));
   }
 
-  uint32_t resource_size = be32toh(
-      TRY(data_region.Copy<uint32_t>(offset), "Failed to parse resource size"));
+  uint32_t resource_size =
+      be32toh(TRY(data_region.Copy<uint32_t>(entry.data_offset),
+                  "Failed to parse resource size"));
 
-  core::MemoryRegion resource_region = TRY(
-      data_region.Create("Resource", offset + sizeof(uint32_t), resource_size));
+  core::MemoryRegion resource_region = TRY(data_region.Create(
+      "Resource", entry.data_offset + sizeof(uint32_t), resource_size));
 
-  return absl::make_unique<Resource>(entry.id, type_item.type_id, attributes,
-                                     name, resource_region, resource_size);
+  return absl::make_unique<Resource>(entry.id, type_item.type_id,
+                                     entry.attributes, name, resource_region,
+                                     resource_size);
 }
 
 Resource::Resource(uint16_t id,
