@@ -37,3 +37,10 @@ struct LessThanOrEqual {
   count: u16;
   values: [u16;<=count];
 }
+
+struct ByteWidth {
+  twotofour: u32#2;
+  threetofour: u32#3;
+  byte: u8;
+  last: u32#3;
+}

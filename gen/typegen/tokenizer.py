@@ -7,11 +7,13 @@ class Token:
     TYPE = auto()
     STRUCT = auto()
     IDENTIFIER = auto()
+    NUMBER = auto()
     COLON = auto()
     SEMICOLON = auto()
     AT_SIGN = auto()
     LESS_THAN = auto()
     EQUAL_TO = auto()
+    HASHTAG = auto()
     START_CURLY_BRACKET = auto()
     END_CURLY_BRACKET = auto()
     START_SQUARE_BRACKET = auto()
@@ -108,6 +110,18 @@ class Tokenizer:
 
     return self._get_token_for_type_name(type_name, (start_index, self._index))
 
+  def _parse_number(self):
+    number = ''
+    start_index = self._index
+    while not self._is_eof():
+      if not self._current.isdigit():
+        break
+
+      number = number + self._current
+      self._advance()
+
+    return Token(Token.Type.NUMBER, (start_index, self._index), number=int(number))
+
   def generate_tokens(self):
     tokens: List[Token] = []
     errors: List[Tuple] = []
@@ -124,6 +138,10 @@ class Tokenizer:
 
       if self._current.isalpha():
         tokens.append(self._parse_label())
+        continue
+
+      if self._current.isdigit():
+        tokens.append(self._parse_number())
         continue
 
       char_span = (self._index, self._index + 1)
@@ -165,6 +183,11 @@ class Tokenizer:
 
       if self._current == '=':
         tokens.append(Token(Token.Type.EQUAL_TO, char_span))
+        self._advance()
+        continue
+
+      if self._current == '#':
+        tokens.append(Token(Token.Type.HASHTAG, char_span))
         self._advance()
         continue
 

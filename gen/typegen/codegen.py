@@ -185,10 +185,13 @@ class CodeGenerator:
                 f'  obj.{name} = TRY(ReadType<{c_type}>(region, {offset_str}));\n')
             offset_variables.append(f'{name}.size()')
           else:
-            file.write(
+            if type_definition['byte_width'] != None:
+              type_size = type_definition['byte_width']
+              file.write(f'  obj.{name} = TRY(CopyWithWidth<{c_type}>(region, {offset_str}, {type_size}));\n')
+            else:
+              file.write(
                 f'  obj.{name} = betoh<{c_type}>(TRY(region.Copy<{c_type}>({offset_str})));\n')
-
-            type_size = self._get_type_size(type_definition['label'])
+              type_size = self._get_type_size(type_definition['label'])
             offset = offset + type_size
       elif type_definition['variant'] == Expression.TypeVariant.ARRAY:
         (inner_type_definition, length, variable, condition) = (

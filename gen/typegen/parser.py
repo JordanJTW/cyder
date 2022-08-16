@@ -171,6 +171,16 @@ class Parser:
     type_token = self._current
     self._advance()
 
+    byte_width = None
+    if self._current.type == Token.Type.HASHTAG:
+      self._advance()
+
+      if self._current.type == Token.Type.NUMBER:
+        byte_width = self._current.number
+        self._advance()
+      else:
+        self._error('missing byte width for type')
+
     if self._current.type != Token.Type.SEMICOLON:
       return self._error('missing ";"')
 
@@ -179,6 +189,7 @@ class Parser:
     return (label_token.label, {
       'variant': Expression.TypeVariant.VALUE,
       'label': type_token.label,
+      'byte_width': byte_width,
     }, merge_span(start_span, end_span))
 
   def _parse_struct(self):
