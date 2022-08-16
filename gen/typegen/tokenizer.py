@@ -84,7 +84,7 @@ class Tokenizer:
     if name == 'null':
       return Token(Token.Type.NULL, span)
 
-    return Token(Token.Type.IDENTIFIER, span, name)
+    return Token(Token.Type.IDENTIFIER, span, label=name)
 
   def _consume_comment(self):
     # Consume '//'
@@ -171,7 +171,7 @@ class Tokenizer:
       if self._current == '/':
         if self._contents[self._index + 1] != '/':
           tokens.append(
-            Token(Token.Type.GARBAGE, char_span, text=self._current))
+            Token(Token.Type.GARBAGE, char_span, label=self._current))
           errors.append(('Should this be // for a comment?', char_span))
           self._advance()
           continue
@@ -179,7 +179,7 @@ class Tokenizer:
         self._consume_comment()
         continue
 
-      tokens.append(Token(Token.Type.GARBAGE, char_span, text=self._current))
+      tokens.append(Token(Token.Type.GARBAGE, char_span, label=self._current))
       errors.append(('Unknown character found in file', char_span))
       self._advance()
 
