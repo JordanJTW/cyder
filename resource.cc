@@ -13,18 +13,18 @@ absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
     const core::MemoryRegion& name_list_region,
     const core::MemoryRegion& data_region,
     const ResourceEntry& entry) {
-  std::string name;
-  // If the offset is 0xFFFF then this resource has no name
-  if (entry.name_offset != 0xFFFF) {
-    name = TRY(ReadType<std::string>(name_list_region, entry.name_offset));
-  }
-
   uint32_t resource_size =
       be32toh(TRY(data_region.Copy<uint32_t>(entry.data_offset),
                   "Failed to parse resource size"));
 
   core::MemoryRegion resource_region = TRY(data_region.Create(
       "Resource", entry.data_offset + sizeof(uint32_t), resource_size));
+
+  std::string name;
+  // If the offset is 0xFFFF then this resource has no name
+  if (entry.name_offset != 0xFFFF) {
+    name = TRY(ReadType<std::string>(name_list_region, entry.name_offset));
+  }
 
   return absl::make_unique<Resource>(entry, resource_region, name);
 }
