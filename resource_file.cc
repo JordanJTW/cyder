@@ -47,7 +47,7 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
 
   core::MemoryRegion base_region(mmap_ptr, size);
 
-  auto file_header = TRY(ReadType<ResourceHeader>(base_region, /*ptr=*/0));
+  auto file_header = TRY(ReadType<ResourceHeader>(base_region, /*offset=*/0));
   LOG(INFO) << "ResourceHeader: " << file_header;
 
   auto map_header =
@@ -63,7 +63,8 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
   core::MemoryRegion name_list_region =
       TRY(map_region.Create("NameList", map_header.name_list_offset));
 
-  auto type_list = TRY(ReadType<ResourceTypeList>(type_list_region, /*ptr=*/0));
+  auto type_list =
+      TRY(ReadType<ResourceTypeList>(type_list_region, /*offset=*/0));
   std::vector<std::unique_ptr<ResourceGroup>> resource_groups;
   for (const auto& type_item : type_list.items) {
     resource_groups.push_back(TRY(ResourceGroup::Load(

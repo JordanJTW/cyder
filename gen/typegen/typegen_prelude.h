@@ -12,13 +12,13 @@
 using uint24_t = uint32_t;
 
 template <typename Type>
-absl::StatusOr<Type> ReadType(const core::MemoryRegion& region, size_t ptr);
+absl::StatusOr<Type> ReadType(const core::MemoryRegion& region, size_t offset);
 template <>
 absl::StatusOr<absl::string_view> ReadType(const core::MemoryRegion& region,
-                                           size_t ptr);
+                                           size_t offset);
 template <>
 absl::StatusOr<std::string> ReadType(const core::MemoryRegion& region,
-                                     size_t ptr);
+                                     size_t offset);
 
 template <typename Type>
 absl::StatusOr<Type> CopyWithWidth(const core::MemoryRegion& region,
@@ -29,3 +29,8 @@ absl::StatusOr<Type> CopyWithWidth(const core::MemoryRegion& region,
   return_value <<= ((sizeof(Type) - width) * 8);
   return betoh(return_value);
 }
+
+template <typename Type>
+absl::Status WriteType(const Type& type,
+                       const core::MemoryRegion& region,
+                       size_t offset);

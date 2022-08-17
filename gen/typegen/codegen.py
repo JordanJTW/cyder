@@ -1,4 +1,5 @@
 import functools
+import textwrap
 
 from typing import List
 from parser import Expression
@@ -6,8 +7,10 @@ from pathlib import Path
 
 
 _READTYPE_PROTOTYPE = \
-    "absl::StatusOr<{}> ReadType(const core::MemoryRegion& region, size_t ptr)"
+    "template<> absl::StatusOr<{}> ReadType(const core::MemoryRegion& region, size_t offset)"
 
+_WRITETYPE_PROTOTYPE = \
+    "template<> absl::Status WriteType(const {}& type, const core::MemoryRegion& region, size_t offset)"
 
 _HEADER_INCLUDES = [
     '<cstdint>',
@@ -23,6 +26,22 @@ _SOURCE_INCLUDES = [
     '"core/status_helpers.h"',
     '"emu/memory/memory_map.h"'
 ]
+
+
+def write(file, contents: str, indent: int = 0):
+  if contents.startswith('\n'):
+    contents = contents[1:]
+  file.write(textwrap.indent(
+    textwrap.dedent(contents), ' ' * indent))
+
+
+def _get_loop_sign(condition):
+  if condition == Expression.LoopCondition.LESS_THAN:
+    return '<'
+  elif condition == Expression.LoopCondition.LESS_THAN_OR_EQUAL_TO:
+    return '<='
+  else:
+    assert False, 'NOTREACHED'
 
 
 class CodeGenerator:
@@ -96,27 +115,30 @@ class CodeGenerator:
     for member in members:
       (type, is_struct) = self._get_c_type(member['type'])
       file.write(f'  {type} {member["name"]};\n')
-    file.write('\n  size_t size() const;\n')
-    file.write('};\n')
+    write(file, """
+
+        size_t size() const;
+      };\n
+    """)
 
   def _generate_struct_decls(self, file):
     for expr in self._struct_expressions:
       self._write_struct(file, expr['label'], expr['members'])
 
-  def _write_read_type_declare(self, file, type):
+  def _write_read_write_type_decls(self, file, type):
     file.write(f'{_READTYPE_PROTOTYPE.format(type)};\n')
+    file.write(f'{_WRITETYPE_PROTOTYPE.format(type)};\n')
 
-  def _generate_read_type_declare(self, file):
+  def _generate_read_write_type_decls(self, file):
     for expr in self._struct_expressions:
-      file.write('template<> ')
-      self._write_read_type_declare(file, expr['label'])
+      self._write_read_write_type_decls(file, expr['label'])
 
-  def _write_struct_stream_declare(self, file, label):
+  def _write_struct_stream_decl(self, file, label):
     file.write(f'std::ostream& operator<<(std::ostream&, const {label}&);\n')
 
-  def _generate_struct_stream_declare(self, file):
+  def _generate_struct_stream_decls(self, file):
     for expr in self._struct_expressions:
-      self._write_struct_stream_declare(file, expr['label'])
+      self._write_struct_stream_decl(file, expr['label'])
 
   def _write_includes(self, file, includes):
     for include in includes:
@@ -134,10 +156,10 @@ class CodeGenerator:
       self._generate_struct_decls(header)
       header.write('\n')
 
-      self._generate_read_type_declare(header)
+      self._generate_read_write_type_decls(header)
       header.write('\n')
 
-      self._generate_struct_stream_declare(header)
+      self._generate_struct_stream_decls(header)
 
   def _get_first_field_type(self, type):
     assert type['variant'] == Expression.TypeVariant.VALUE, "loop type must be a struct or primitive"
@@ -156,8 +178,10 @@ class CodeGenerator:
     assert False, f'Type "{type}" not found'
 
   def _write_read_type(self, file, label, members):
-    file.write(f'template<> {_READTYPE_PROTOTYPE.format(label)} {{\n')
-    file.write(f'  {label} obj;\n')
+    write(file, f"""
+      {_READTYPE_PROTOTYPE.format(label)} {{
+        struct {label} obj;
+    """)
 
     offset_variables = []
     local_variables = []
@@ -170,7 +194,7 @@ class CodeGenerator:
 
     for member in members:
       (name, type_definition) = (member['name'], member['type'])
-      offset_str = 'ptr + ' + generate_offset_str("obj.")
+      offset_str = 'offset + ' + generate_offset_str("obj.")
       if local_variables:
         offset_str = offset_str + ' + ' + ' + '.join(local_variables)
 
@@ -205,38 +229,34 @@ class CodeGenerator:
 
         (c_type, is_struct) = self._get_c_type(inner_type_definition)
 
-        file.write(f'  size_t {name}_offset = 0;\n')
-
         if variable == Expression.Loop.VARIABLE:
-          loop_sign = None
-          if condition == Expression.LoopCondition.LESS_THAN:
-            loop_sign = '<'
-          elif condition == Expression.LoopCondition.LESS_THAN_OR_EQUAL_TO:
-            loop_sign = '<='
-          else:
-            assert False, 'NOTREACHED'
-
-          file.write(
-            f'  for (size_t i = 0; i {loop_sign} obj.{length}; ++i) {{\n')
+          write(file, f"""
+            size_t {name}_offset = 0;
+            for (size_t i = 0; i {_get_loop_sign(condition)} obj.{length}; ++i) {{
+          """, indent=2)
         elif variable == Expression.Loop.NULL_TERMINATED:
           condition_type = self._get_first_field_type(inner_type_definition)
-          file.write(
-            f'  while (TRY(region.Copy<{condition_type}>({offset_str} + {name}_offset)) != 0) {{\n')
+          write(file, f"""
+            size_t {name}_offset = 0;
+            while (TRY(region.Copy<{condition_type}>({offset_str} + {name}_offset)) != 0) {{
+          """, indent=2)
         else:
           assert False, "NOTREACHED"
 
         if is_struct:
-          file.write(
-            f'    auto inner_obj = TRY(ReadType<{c_type}>(region, {offset_str} + {name}_offset));\n')
-          file.write(
-            f'    obj.{name}.push_back(inner_obj);\n')
-          file.write(f'    {name}_offset += inner_obj.size();\n')
+          write(file, f"""
+            auto inner_obj = TRY(ReadType<{c_type}>(region, {offset_str} + {name}_offset));
+            obj.{name}.push_back(inner_obj);
+            {name}_offset += inner_obj.size();
+          }}
+        """, indent=2)
         else:
-          file.write(
-              f'    obj.{name}.push_back(betoh<{c_type}>(TRY(region.Copy<{c_type}>({offset_str} + {name}_offset))));\n')
-          file.write(f'    {name}_offset += sizeof({c_type});\n')
+          write(file, f"""
+            obj.{name}.push_back(betoh<{c_type}>(TRY(region.Copy<{c_type}>({offset_str} + {name}_offset))));
+            {name}_offset += sizeof({c_type});
+          }}
+        """, indent=2)
         local_variables.append(f'{name}_offset')
-        file.write('  }\n')
 
     file.write('  return obj;\n')
     file.write('}\n\n')
@@ -252,10 +272,12 @@ class CodeGenerator:
         (c_type, is_struct) = self._get_c_type(inner_type)
 
         if is_struct:
-          file.write(f'  size_t {name}_offset = 0;\n')
-          file.write(f'  for (size_t i = 0; i < {name}.size(); ++i) {{\n')
-          file.write(f'    {name}_offset += {name}[i].size();\n')
-          file.write('  }\n')
+          write(file, f"""
+            size_t {name}_offset = 0;
+            for (size_t i = 0; i < {name}.size(); ++i) {{
+              {name}_offset += {name}[i].size();
+            }}
+          """, indent=2)
           size_variables.append(f'{name}_offset')
         else:
           size_variables.append(
@@ -267,9 +289,17 @@ class CodeGenerator:
     file.write(f'  return {offset_str};\n')
     file.write('}\n\n')
 
-  def _generate_read_type(self, file):
+  def _write_write_type(self, file, label, members):
+    file.write(textwrap.dedent(f"""
+      {_WRITETYPE_PROTOTYPE.format(label)} {{
+        return absl::OkStatus();
+      }}
+    """))
+
+  def _generate_read_write_type(self, file):
     for expr in self._struct_expressions:
       self._write_read_type(file, expr['label'], expr['members'])
+      self._write_write_type(file, expr['label'], expr['members'])
 
   def _write_struct_stream(self, file, label, members):
     file.write(
@@ -303,7 +333,7 @@ class CodeGenerator:
       self._write_includes(source, _SOURCE_INCLUDES)
       source.write('\n')
 
-      self._generate_read_type(source)
+      self._generate_read_write_type(source)
       source.write('\n')
 
       self._generate_struct_stream(source)
