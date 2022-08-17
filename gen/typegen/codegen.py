@@ -10,7 +10,7 @@ _READTYPE_PROTOTYPE = \
     "template<> absl::StatusOr<{}> ReadType(const core::MemoryRegion& region, size_t offset)"
 
 _WRITETYPE_PROTOTYPE = \
-    "template<> absl::Status WriteType(const {}& type, const core::MemoryRegion& region, size_t offset)"
+    "template<> absl::Status WriteType(const {}& obj, core::MemoryRegion& region, size_t offset)"
 
 _HEADER_INCLUDES = [
     '<cstdint>',
@@ -289,12 +289,46 @@ class CodeGenerator:
     file.write(f'  return {offset_str};\n')
     file.write('}\n\n')
 
+  def _write_write_type_value(self, file, type_definition, name, indent):
+    (c_type, is_struct) = self._get_c_type(type_definition)
+
+    # FIXME: Add support for properly writing packed `u24` values
+    # assert c_type != 'uint24_t', 'u24 not yet supported for WriteType<>'
+
+    if is_struct:
+      # If the struct is a 'str' we must account for the proceeding length byte
+      is_string = type_definition['label'] == 'str'
+      write(file, f"""
+        RETURN_IF_ERROR(WriteType<{c_type}>({name}, region, total_offset));
+        total_offset += {('1 + ' if is_string else '') + f'{name}.size()' };
+      """, indent=indent)
+    else:
+      write(file, f"""
+        RETURN_IF_ERROR(region.Write<{c_type}>(total_offset, {name}));
+        total_offset += sizeof({c_type});
+      """, indent=indent)
+
   def _write_write_type(self, file, label, members):
-    file.write(textwrap.dedent(f"""
+    write(file, f"""
       {_WRITETYPE_PROTOTYPE.format(label)} {{
+        size_t total_offset = offset;
+    """)
+
+    for member in members:
+      (name, type_definition) = (member['name'], member['type'])
+
+      if type_definition['variant'] == Expression.TypeVariant.VALUE:
+        self._write_write_type_value(
+          file, type_definition, f'obj.{name}', indent=2)
+      elif type_definition['variant'] == Expression.TypeVariant.ARRAY:
+        write(file, f'for (const auto& item : obj.{name}) {{\n', indent=2)
+        self._write_write_type_value(
+          file, type_definition['inner_type'], 'item', indent=4)
+        write(file, '}\n', indent=2)
+    write(file, """
         return absl::OkStatus();
-      }}
-    """))
+      }\n
+    """)
 
   def _generate_read_write_type(self, file):
     for expr in self._struct_expressions:

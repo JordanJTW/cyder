@@ -32,5 +32,13 @@ absl::StatusOr<Type> CopyWithWidth(const core::MemoryRegion& region,
 
 template <typename Type>
 absl::Status WriteType(const Type& type,
-                       const core::MemoryRegion& region,
+                       core::MemoryRegion& region,
+                       size_t offset);
+template <>
+absl::Status WriteType(const std::string& type,
+                       core::MemoryRegion& region,
+                       size_t offset);
+template <>
+absl::Status WriteType(const absl::string_view& type,
+                       core::MemoryRegion& region,
                        size_t offset);
