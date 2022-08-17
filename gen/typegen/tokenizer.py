@@ -13,7 +13,6 @@ class Token:
     AT_SIGN = auto()
     LESS_THAN = auto()
     EQUAL_TO = auto()
-    HASHTAG = auto()
     START_CURLY_BRACKET = auto()
     END_CURLY_BRACKET = auto()
     START_SQUARE_BRACKET = auto()
@@ -183,11 +182,6 @@ class Tokenizer:
 
       if self._current == '=':
         tokens.append(Token(Token.Type.EQUAL_TO, char_span))
-        self._advance()
-        continue
-
-      if self._current == '#':
-        tokens.append(Token(Token.Type.HASHTAG, char_span))
         self._advance()
         continue
 

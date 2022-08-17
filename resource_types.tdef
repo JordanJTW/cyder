@@ -61,6 +61,6 @@ struct ResourceEntry {
   id: u16;
   name_offset: u16;
   attributes: u8;
-  data_offset: u32#3;
+  data_offset: u24;
   handle: u32;
 }

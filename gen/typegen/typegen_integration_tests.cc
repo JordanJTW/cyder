@@ -146,14 +146,13 @@ TEST_F(TypegenIntegrationTests, LessThanOrEqual) {
 }
 
 TEST_F(TypegenIntegrationTests, ByteWidth) {
-  WriteToRegion<uint16_t>(3087);
   WriteToRegion<uint32_t>((90210 << 8) | 66);
-  WriteToRegion<uint32_t>(407788 << 8);
+  WriteToRegion<uint32_t>(407788 | (37 << 24));
 
   auto obj = ReadFromRegion<ByteWidth>();
 
-  EXPECT_EQ(obj.twotofour, 3087u);
-  EXPECT_EQ(obj.threetofour, 90210u);
-  EXPECT_EQ(obj.byte, 66u);
+  EXPECT_EQ(obj.first, 90210u);
+  EXPECT_EQ(obj.byte_one, 66u);
+  EXPECT_EQ(obj.byte_two, 37u);
   EXPECT_EQ(obj.last, 407788u);
 }
