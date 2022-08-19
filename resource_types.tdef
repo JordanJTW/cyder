@@ -23,7 +23,6 @@ struct ResourceHeader {
 //    2 bytes: Resource fork attributes
 //    2 bytes: Offset from beginning of map to type list
 //    2 bytes: Offset from beginning of map to name list
-//    2 bytes: Number of types in the map minus 1
 struct ResourceMapHeader {
   file_header: ResourceHeader;
   next_map_handle: u32;
@@ -31,7 +30,6 @@ struct ResourceMapHeader {
   file_attributes: u16;
   type_list_offset: u16;
   name_list_offset: u16;
-  type_list_count: u16;
 }
 
 // Item in ResourceTypeList
@@ -46,6 +44,7 @@ struct ResourceTypeItem {
 }
 
 // Layout at `type_list_offset`
+//    2 bytes: Number of types in the map minus 1
 struct ResourceTypeList {
   count: u16;
   items: [ResourceTypeItem; <=count];
