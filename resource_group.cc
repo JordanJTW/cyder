@@ -7,7 +7,6 @@
 #include "core/status_helpers.h"
 
 namespace rsrcloader {
-namespace {}  // namespace
 
 ResourceGroup::ResourceGroup(ResourceTypeItem type_item,
                              std::vector<std::unique_ptr<Resource>> resources)

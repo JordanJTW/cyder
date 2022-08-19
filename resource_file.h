@@ -22,6 +22,8 @@ class ResourceFile {
 
   ResourceGroup* FindGroupByType(ResType theType) const;
 
+  absl::Status Save(const std::string&);
+
  protected:
   // Disallow copy and assign:
   ResourceFile(const ResourceFile&) = delete;

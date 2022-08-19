@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <map>
 
@@ -73,6 +74,114 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
 
   return std::unique_ptr<ResourceFile>(
       new ResourceFile(std::move(resource_groups)));
+}
+
+absl::Status ResourceFile::Save(const std::string& path) {
+  ResourceTypeList type_list;
+  type_list.count = resource_groups_.size() - 1;
+
+  std::vector<ResourceEntry> resource_entries;
+  std::vector<core::MemoryRegion> resource_data;
+  std::vector<std::string> resource_names;
+
+  uint16_t entry_offset = 0;
+  uint32_t data_offset = 0;
+  uint16_t name_offset = 0;
+
+  for (const auto& group : resource_groups_) {
+    ResourceTypeItem resource_type_item;
+    resource_type_item.type_id = group->GetType();
+    resource_type_item.count = group->GetCount();
+    resource_type_item.offset = entry_offset;
+    type_list.items.push_back(resource_type_item);
+
+    for (const auto& resource : group->GetResources()) {
+      ResourceEntry resource_entry;
+      resource_entry.id = resource->GetId();
+      resource_entry.attributes = resource->GetAttributes();
+      resource_entry.data_offset = data_offset;
+
+      entry_offset += resource_entry.size();
+      data_offset += resource->GetSize() + sizeof(uint32_t);
+      resource_data.push_back(resource->GetData());
+
+      if (!resource->GetName().empty()) {
+        resource_entry.name_offset = name_offset;
+        name_offset += resource->GetName().size() + sizeof(uint8_t);
+        resource_names.push_back(resource->GetName());
+      } else {
+        resource_entry.name_offset = 0xFFFF;
+      }
+
+      resource_entries.push_back(resource_entry);
+    }
+  }
+
+  // Adjust the offsets to account for `type_list` now that it is filled
+  // FIXME: ResourceTypeItems have a fixed size so if we have the `count` filled
+  //        typegen could potentially calculate the size before filling?
+  for (auto& item : type_list.items) {
+    item.offset += type_list.size();
+  }
+
+  ResourceMapHeader map_header;
+  map_header.type_list_offset = map_header.size();
+  map_header.name_list_offset =
+      map_header.type_list_offset + type_list.size() + entry_offset;
+  // FIXME: typegen should initialize all primitive fields to 0
+  map_header.file_attributes = 0;
+  map_header.file_ref_number = 0;
+  map_header.next_map_handle = 0;
+
+  ResourceHeader file_header;
+  file_header.data_offset = 0x100;
+  file_header.data_length = data_offset;
+  file_header.map_offset = file_header.data_offset + file_header.data_length;
+  file_header.map_length =
+      map_header.size() + type_list.size() + entry_offset + name_offset;
+
+  // FIXME: ResourceMapHeader is a static type so its size should be known and
+  //        that would allow the ResourceHeader to be declared first here...
+  map_header.file_header = file_header;
+
+  // Assume that the Resouce Map is the last thing in the file:
+  size_t total_size = file_header.map_offset + file_header.map_length;
+
+  char raw_data[total_size];
+  core::MemoryRegion data(raw_data, total_size);
+  size_t offset = 0;
+
+  RETURN_IF_ERROR(WriteType<ResourceHeader>(file_header, data, offset));
+  offset = 0x100;
+
+  for (const auto& entry : resource_data) {
+    // FIXME: typegen the data entries? This is quite ugly...
+    RETURN_IF_ERROR(
+        data.Write(offset, htobe(static_cast<uint32_t>(entry.size()))));
+    RETURN_IF_ERROR(
+        data.Write(entry.raw_ptr(), offset + sizeof(uint32_t), entry.size()));
+    offset += sizeof(uint32_t) + entry.size();
+  }
+
+  RETURN_IF_ERROR(WriteType<ResourceMapHeader>(map_header, data, offset));
+  offset += map_header.size();
+
+  RETURN_IF_ERROR(WriteType<ResourceTypeList>(type_list, data, offset));
+  offset += type_list.size();
+
+  for (const auto& entry : resource_entries) {
+    RETURN_IF_ERROR(WriteType<ResourceEntry>(entry, data, offset));
+    offset += entry.size();
+  }
+
+  for (const auto& name : resource_names) {
+    RETURN_IF_ERROR(WriteType<std::string>(name, data, offset));
+    offset += sizeof(uint8_t) + name.size();
+  }
+
+  std::ofstream file(path, std::ios::binary);
+  file.write(raw_data, total_size);
+  return absl::OkStatus();
 }
 
 Resource* ResourceFile::FindByTypeAndId(ResType theType, ResId theId) const {
