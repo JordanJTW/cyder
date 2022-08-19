@@ -12,7 +12,8 @@
 
 class TypegenIntegrationTests : public ::testing::Test {
  protected:
-  TypegenIntegrationTests() : region_(&internal_buffer_, 256) {}
+  TypegenIntegrationTests()
+      : region_(&internal_buffer_, 64), test_region_(&test_buffer_, 64) {}
 
   template <typename T>
   void WriteToRegion(T value) {
@@ -22,14 +23,24 @@ class TypegenIntegrationTests : public ::testing::Test {
   }
 
   template <typename T>
+  void CheckWriteType(T value) {
+    auto status = WriteType<T>(value, test_region_, /*offset=*/0);
+    CHECK(status.ok()) << std::move(status).message();
+    ASSERT_THAT(test_buffer_, ::testing::ElementsAreArray(internal_buffer_));
+  }
+
+  template <typename T>
   T ReadFromRegion() {
     return MUST(ReadType<T>(region_, /*offset=*/0));
   }
 
  private:
-  uint8_t internal_buffer_[256];
+  uint8_t internal_buffer_[64];
   core::MemoryRegion region_;
   size_t offset_{0};
+
+  uint8_t test_buffer_[64];
+  core::MemoryRegion test_region_;
 };
 
 // Writes `str` to the memory region as a Pascal string
@@ -53,12 +64,15 @@ TEST_F(TypegenIntegrationTests, Integers) {
   EXPECT_EQ(obj.ulong, 7880110u);
   EXPECT_EQ(obj.sword, -1992);
   EXPECT_EQ(obj.slong, -3237331);
+
+  CheckWriteType<Integers>(obj);
 }
 
 TEST_F(TypegenIntegrationTests, String) {
   WriteToRegion<std::string>("Hello World!");
   auto obj = ReadFromRegion<String>();
   EXPECT_EQ(obj.string, "Hello World!");
+  CheckWriteType<String>(obj);
 }
 
 TEST_F(TypegenIntegrationTests, ArrayIntegers) {
@@ -71,6 +85,7 @@ TEST_F(TypegenIntegrationTests, ArrayIntegers) {
   auto obj = ReadFromRegion<ArrayIntegers>();
   EXPECT_EQ(obj.count, values.size());
   ASSERT_THAT(obj.values, ::testing::ElementsAreArray(values));
+  CheckWriteType<ArrayIntegers>(obj);
 }
 
 TEST_F(TypegenIntegrationTests, ArrayStructs) {
@@ -102,6 +117,8 @@ TEST_F(TypegenIntegrationTests, ArrayStructs) {
 
   EXPECT_EQ(obj.values[2].count, 2u);
   ASSERT_THAT(obj.values[2].values, ::testing::ElementsAre(123, 456));
+
+  CheckWriteType<ArrayStructs>(obj);
 }
 
 TEST_F(TypegenIntegrationTests, ArrayIntegersNullTerminated) {
@@ -113,6 +130,8 @@ TEST_F(TypegenIntegrationTests, ArrayIntegersNullTerminated) {
 
   auto obj = ReadFromRegion<ArrayIntegersNullTerminated>();
   ASSERT_THAT(obj.values, ::testing::ElementsAreArray(values));
+
+  CheckWriteType<ArrayIntegersNullTerminated>(obj);
 }
 
 TEST_F(TypegenIntegrationTests, ArrayStructsNullTerminated) {
@@ -131,6 +150,8 @@ TEST_F(TypegenIntegrationTests, ArrayStructsNullTerminated) {
   EXPECT_EQ(obj.values[0].last, 41u);
   EXPECT_EQ(obj.values[1].first, 59u);
   EXPECT_EQ(obj.values[1].last, 26u);
+
+  CheckWriteType<ArrayStructsNullTerminated>(obj);
 }
 
 TEST_F(TypegenIntegrationTests, LessThanOrEqual) {
@@ -143,6 +164,8 @@ TEST_F(TypegenIntegrationTests, LessThanOrEqual) {
   auto obj = ReadFromRegion<LessThanOrEqual>();
   EXPECT_EQ(obj.count, 0);
   ASSERT_THAT(obj.values, ::testing::ElementsAreArray(values));
+
+  CheckWriteType<LessThanOrEqual>(obj);
 }
 
 TEST_F(TypegenIntegrationTests, ByteWidth) {
@@ -155,4 +178,6 @@ TEST_F(TypegenIntegrationTests, ByteWidth) {
   EXPECT_EQ(obj.byte_one, 66u);
   EXPECT_EQ(obj.byte_two, 37u);
   EXPECT_EQ(obj.last, 407788u);
+
+  CheckWriteType<ByteWidth>(obj);
 }

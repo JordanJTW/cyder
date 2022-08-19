@@ -210,16 +210,14 @@ class CodeGenerator:
             file.write(
                 f'  obj.{name} = TRY(ReadType<{c_type}>(region, {offset_str}));\n')
             offset_variables.append(f'{name}.size()')
+          elif type_definition['label'] == 'u24':
+            file.write(
+              f'  obj.{name} = TRY(CopyU24(region, {offset_str}));\n')
+            offset = offset + 3
           else:
-            type_size = self._get_type_size(type_definition['label'])
-            # Check if |type_size| is word aligned (is a power of two):
-            if type_size in [1, 2, 4, 8]:
-              file.write(
-                  f'  obj.{name} = betoh<{c_type}>(TRY(region.Copy<{c_type}>({offset_str})));\n')
-            else:
-              file.write(
-                f'  obj.{name} = TRY(CopyWithWidth<{c_type}>(region, {offset_str}, {type_size}));\n')
-            offset = offset + type_size
+            file.write(
+                f'  obj.{name} = betoh<{c_type}>(TRY(region.Copy<{c_type}>({offset_str})));\n')
+            offset = offset + self._get_type_size(type_definition['label'])
       elif type_definition['variant'] == Expression.TypeVariant.ARRAY:
         (inner_type_definition, length, variable, condition) = (
           type_definition['inner_type'], type_definition['length'], type_definition['variable'], type_definition['condition'])
@@ -292,9 +290,6 @@ class CodeGenerator:
   def _write_write_type_value(self, file, type_definition, name, indent):
     (c_type, is_struct) = self._get_c_type(type_definition)
 
-    # FIXME: Add support for properly writing packed `u24` values
-    # assert c_type != 'uint24_t', 'u24 not yet supported for WriteType<>'
-
     if is_struct:
       # If the struct is a 'str' we must account for the proceeding length byte
       is_string = type_definition['label'] == 'str'
@@ -302,9 +297,14 @@ class CodeGenerator:
         RETURN_IF_ERROR(WriteType<{c_type}>({name}, region, total_offset));
         total_offset += {('1 + ' if is_string else '') + f'{name}.size()' };
       """, indent=indent)
+    elif type_definition['label'] == 'u24':
+      write(file, f"""
+        RETURN_IF_ERROR(WriteU24({name}, region, total_offset));
+        total_offset += 3;
+      """, indent=indent)
     else:
       write(file, f"""
-        RETURN_IF_ERROR(region.Write<{c_type}>(total_offset, {name}));
+        RETURN_IF_ERROR(region.Write<{c_type}>(total_offset, htobe({name})));
         total_offset += sizeof({c_type});
       """, indent=indent)
 

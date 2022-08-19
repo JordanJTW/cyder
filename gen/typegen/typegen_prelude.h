@@ -20,15 +20,12 @@ template <>
 absl::StatusOr<std::string> ReadType(const core::MemoryRegion& region,
                                      size_t offset);
 
-template <typename Type>
-absl::StatusOr<Type> CopyWithWidth(const core::MemoryRegion& region,
-                                   size_t offset,
-                                   size_t width) {
-  Type return_value;
-  RETURN_IF_ERROR(region.Copy(&return_value, offset, width));
-  return_value <<= ((sizeof(Type) - width) * 8);
-  return betoh(return_value);
-}
+absl::StatusOr<uint32_t> CopyU24(const core::MemoryRegion& region,
+                                 size_t offset);
+
+absl::Status WriteU24(uint24_t value,
+                      core::MemoryRegion& region,
+                      size_t offset);
 
 template <typename Type>
 absl::Status WriteType(const Type& type,
