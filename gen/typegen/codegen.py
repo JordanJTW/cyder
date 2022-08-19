@@ -266,7 +266,7 @@ class CodeGenerator:
 
       if type_definition['variant'] == Expression.TypeVariant.ARRAY:
         (inner_type, length, variable) = (
-          type_definition['inner_type'], type['length'], type['variable'])
+          type_definition['inner_type'], type_definition['length'], type_definition['variable'])
         (c_type, is_struct) = self._get_c_type(inner_type)
 
         if is_struct:
