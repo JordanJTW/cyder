@@ -39,9 +39,8 @@ class ArrayTypeExpression:
   span: Tuple[int, int]
 
 
-@dataclass
-class GarbageExpression:
-  span: Tuple[int, int]
+class ParserException(Exception):
+  pass
 
 
 class Parser:
@@ -60,11 +59,9 @@ class Parser:
   def _current(self) -> Token:
     return self._tokens[self._index]
 
-  def _error(self, message) -> GarbageExpression:
-    error_token = self._current
+  def _error(self, message) -> ParserException:
     self._errors.append((message, self._current.span))
-    self._advance()
-    return GarbageExpression(error_token.span)
+    return ParserException()
 
   def _parse_type_expression(self):
     if self._current.type == Token.Type.START_SQUARE_BRACKET:
@@ -72,19 +69,19 @@ class Parser:
 
     start_span = self._current.span
     if self._current.type != Token.Type.IDENTIFIER:
-      return self._error('missing type')
+      raise self._error('missing type')
 
     label_expr = self._current
     self._advance()
 
     if self._current.type != Token.Type.SEMICOLON:
-      return self._error('missing ";"')
+      raise self._error('missing ";"')
 
     expr_span = merge_span(start_span, self._current.span)
     self._advance()
     return TypeExpression(label_expr.label, expr_span)
 
-  def _parse_array_type_expression(self) -> Union[ArrayTypeExpression, GarbageExpression]:
+  def _parse_array_type_expression(self) -> ArrayTypeExpression:
     assert self._current.type == Token.Type.START_SQUARE_BRACKET
     start_span = self._current.span
     self._advance()
@@ -92,7 +89,7 @@ class Parser:
     inner_type = self._parse_type_expression()
 
     if not isinstance(inner_type, TypeExpression):
-      return self._error('loop type must be a struct or primitive')
+      raise self._error('loop type must be a struct or primitive')
 
     include_length = False
     condition_span = None
@@ -117,14 +114,14 @@ class Parser:
       length_label = 'null'
       self._advance()
     else:
-      return self._error('expected length of array')
+      raise self._error('expected length of array')
 
     if self._current.type != Token.Type.END_SQUARE_BRACKET:
-      return self._error('missing "]"')
+      raise self._error('missing "]"')
     self._advance()
 
     if self._current.type != Token.Type.SEMICOLON:
-      return self._error('missing ";"')
+      raise self._error('missing ";"')
 
     expr_span = merge_span(start_span, self._current.span)
     self._advance()
@@ -134,20 +131,17 @@ class Parser:
   def _parse_assignement(self):
     start_span = self._current.span
     if self._current.type != Token.Type.IDENTIFIER:
-      return self._error('missing label')
+      raise self._error('missing label')
 
     label_token = self._current
     self._advance()
 
     if self._current.type != Token.Type.COLON:
-      return self._error('missing ":"')
+      raise self._error('missing ":"')
     self._advance()
 
     type_expr = self._parse_type_expression()
     expr_span = merge_span(start_span, type_expr.span)
-
-    if isinstance(type_expr, GarbageExpression):
-      return type_expr
 
     return AssignExpression(label_token.label, type_expr, expr_span)
 
@@ -158,13 +152,13 @@ class Parser:
     self._advance()
 
     if self._current.type != Token.Type.IDENTIFIER:
-      return self._error('missing struct label')
+      raise self._error('missing struct label')
 
     label_token = self._current
     self._advance()
 
     if self._current.type != Token.Type.START_CURLY_BRACKET:
-      return self._error('missing "{"')
+      raise self._error('missing "{"')
     self._advance()
 
     members = []
@@ -173,9 +167,6 @@ class Parser:
         break
 
       result = self._parse_assignement()
-      if isinstance(result, GarbageExpression):
-        return result
-
       members.append(result)
 
     if self._current.type != Token.Type.END_CURLY_BRACKET:
@@ -190,24 +181,22 @@ class Parser:
     assert(self._current.type == Token.Type.TYPE)
     self._advance()
 
-    result = self._parse_assignement()
-    if isinstance(result, GarbageExpression):
-      return result
-
-    return result
+    return self._parse_assignement()
 
   def parse(self):
     expressions = []
     while not self._is_eof():
-      if self._current.type == Token.Type.TYPE:
-        expressions.append(self._parse_type())
-        continue
+      try:
+        if self._current.type == Token.Type.TYPE:
+          expressions.append(self._parse_type())
+       
+        elif self._current.type == Token.Type.STRUCT:
+          expressions.append(self._parse_struct())
+        
+        else:
+          raise self._error('unknown start of expression')
 
-      if self._current.type == Token.Type.STRUCT:
-        expressions.append(self._parse_struct())
-        continue
-
-      self._errors.append(('unknown start of expression', self._current.span))
-      self._advance()
+      except ParserException:
+        self._advance()
 
     return (expressions, self._errors)
