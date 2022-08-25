@@ -61,6 +61,10 @@ class CodeGenerator:
       return size
 
     for expr in reversed(self._type_expressions):
+      # FIXME: Figure out how to handle this case?
+      if isinstance(expr.type, ArrayTypeExpression):
+        continue
+
       if expr.id == type_id:
         return self._get_type_size(expr.type.id)
 
@@ -153,8 +157,8 @@ class CodeGenerator:
       self._generate_struct_stream_decls(header)
 
   def _get_first_field_type(self, type):
-    assert isinstance(type, TypeExpression) or isinstance(
-      type, StructExpression), "loop type must be a struct or primitive"
+    assert isinstance(
+      type, TypeExpression), "loop type must be a non-array type"
 
     if type.id == 'str':
       return 'uint8_t'

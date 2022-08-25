@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from tokenizer import Token
 
 
@@ -20,7 +20,7 @@ class TypeExpression:
 @dataclass
 class AssignExpression:
   id: str
-  type: TypeExpression
+  type: Union[TypeExpression, ArrayTypeExpression]
   span: Tuple[int, int]
 
 
@@ -84,12 +84,15 @@ class Parser:
     self._advance()
     return TypeExpression(label_expr.label, expr_span)
 
-  def _parse_array_type_expression(self) -> ArrayTypeExpression:
+  def _parse_array_type_expression(self) -> Union[ArrayTypeExpression, GarbageExpression]:
     assert self._current.type == Token.Type.START_SQUARE_BRACKET
     start_span = self._current.span
     self._advance()
 
     inner_type = self._parse_type_expression()
+
+    if not isinstance(inner_type, TypeExpression):
+      return self._error('loop type must be a struct or primitive')
 
     include_length = False
     condition_span = None
@@ -142,6 +145,9 @@ class Parser:
 
     type_expr = self._parse_type_expression()
     expr_span = merge_span(start_span, type_expr.span)
+
+    if isinstance(type_expr, GarbageExpression):
+      return type_expr
 
     return AssignExpression(label_token.label, type_expr, expr_span)
 
