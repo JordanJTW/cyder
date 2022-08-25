@@ -6,7 +6,7 @@ from typing import List, Tuple, Union
 from tokenizer import Token
 
 
-def merge_span(start_span, end_span):
+def merge_span(start_span: Tuple[int, int], end_span: Tuple[int, int]):
   """Create a span that spans `start_span` to `end_span`"""
   return (start_span[0], end_span[1])
 
@@ -39,15 +39,16 @@ class ArrayTypeExpression:
   span: Tuple[int, int]
 
 
+@dataclass
 class ParserException(Exception):
-  pass
+  message: str
+  span: Tuple[int, int]
 
 
 class Parser:
   def __init__(self, tokens):
     self._tokens = tokens
     self._index = 0
-    self._errors = []
 
   def _is_eof(self):
     return self._index >= len(self._tokens) or self._current.type == Token.Type.END_OF_FILE
@@ -59,23 +60,19 @@ class Parser:
   def _current(self) -> Token:
     return self._tokens[self._index]
 
-  def _error(self, message) -> ParserException:
-    self._errors.append((message, self._current.span))
-    return ParserException()
-
   def _parse_type_expression(self):
     if self._current.type == Token.Type.START_SQUARE_BRACKET:
       return self._parse_array_type_expression()
 
     start_span = self._current.span
     if self._current.type != Token.Type.IDENTIFIER:
-      raise self._error('missing type')
+      raise ParserException('missing type', self._current.span)
 
     label_expr = self._current
     self._advance()
 
     if self._current.type != Token.Type.SEMICOLON:
-      raise self._error('missing ";"')
+      raise ParserException('missing ";"', self._current.span)
 
     expr_span = merge_span(start_span, self._current.span)
     self._advance()
@@ -89,7 +86,8 @@ class Parser:
     inner_type = self._parse_type_expression()
 
     if not isinstance(inner_type, TypeExpression):
-      raise self._error('loop type must be a struct or primitive')
+      raise ParserException(
+        'loop type must be a struct or primitive', self._current.span)
 
     include_length = False
     condition_span = None
@@ -108,20 +106,20 @@ class Parser:
       self._advance()
     elif self._current.type == Token.Type.NULL:
       if condition_span != None:
-        self._errors.append(
+        raise ParserException(
           ('loop conditions not allowed with "null"', condition_span))
 
       length_label = 'null'
       self._advance()
     else:
-      raise self._error('expected length of array')
+      raise ParserException('expected length of array', self._current.span)
 
     if self._current.type != Token.Type.END_SQUARE_BRACKET:
-      raise self._error('missing "]"')
+      raise ParserException('missing "]"', self._current.span)
     self._advance()
 
     if self._current.type != Token.Type.SEMICOLON:
-      raise self._error('missing ";"')
+      raise ParserException('missing ";"', self._current.span)
 
     expr_span = merge_span(start_span, self._current.span)
     self._advance()
@@ -131,13 +129,13 @@ class Parser:
   def _parse_assignement(self):
     start_span = self._current.span
     if self._current.type != Token.Type.IDENTIFIER:
-      raise self._error('missing label')
+      raise ParserException('missing label', self._current.span)
 
     label_token = self._current
     self._advance()
 
     if self._current.type != Token.Type.COLON:
-      raise self._error('missing ":"')
+      raise ParserException('missing ":"', self._current.span)
     self._advance()
 
     type_expr = self._parse_type_expression()
@@ -152,13 +150,13 @@ class Parser:
     self._advance()
 
     if self._current.type != Token.Type.IDENTIFIER:
-      raise self._error('missing struct label')
+      raise ParserException('missing struct label', self._current.span)
 
     label_token = self._current
     self._advance()
 
     if self._current.type != Token.Type.START_CURLY_BRACKET:
-      raise self._error('missing "{"')
+      raise ParserException('missing "{"', self._current.span)
     self._advance()
 
     members = []
@@ -170,7 +168,7 @@ class Parser:
       members.append(result)
 
     if self._current.type != Token.Type.END_CURLY_BRACKET:
-      return self._error('missing "}')
+      raise ParserException('missing "}', self._current.span)
 
     expr_span = merge_span(start_span, self._current.span)
     self._advance()
@@ -185,18 +183,22 @@ class Parser:
 
   def parse(self):
     expressions = []
+    errors = []
+
     while not self._is_eof():
       try:
         if self._current.type == Token.Type.TYPE:
           expressions.append(self._parse_type())
-       
+
         elif self._current.type == Token.Type.STRUCT:
           expressions.append(self._parse_struct())
-        
+
         else:
-          raise self._error('unknown start of expression')
+          errors.append(
+            ('unknown start of expression', self._current.span))
+          self._advance()
 
-      except ParserException:
-        self._advance()
+      except ParserException as e:
+        errors.append((e.message, e.span))
 
-    return (expressions, self._errors)
+    return (expressions, errors)
