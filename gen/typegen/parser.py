@@ -18,6 +18,14 @@ class TypeExpression:
 
 
 @dataclass
+class ArrayTypeExpression:
+  inner_type: TypeExpression
+  length_label: str
+  include_length: bool
+  span: Tuple[int, int]
+
+
+@dataclass
 class AssignExpression:
   id: str
   type: Union[TypeExpression, ArrayTypeExpression]
@@ -28,14 +36,6 @@ class AssignExpression:
 class StructExpression:
   id: str
   members: List[AssignExpression]
-  span: Tuple[int, int]
-
-
-@dataclass
-class ArrayTypeExpression:
-  inner_type: TypeExpression
-  length_label: str
-  include_length: bool
   span: Tuple[int, int]
 
 
