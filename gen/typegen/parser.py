@@ -107,7 +107,7 @@ class Parser:
     elif self._current.type == Token.Type.NULL:
       if condition_span != None:
         raise ParserException(
-          ('loop conditions not allowed with "null"', condition_span))
+          'loop conditions not allowed with "null"', condition_span)
 
       length_label = 'null'
       self._advance()
