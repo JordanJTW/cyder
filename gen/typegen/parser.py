@@ -208,7 +208,7 @@ class Parser:
     global_types: Mapping[str, Union[AssignExpression, StructExpression]] = {}
 
     def check_type_exists(expr: TypeExpression):
-      if expr.id in ['u8', 'u16', 'u32', 'i16', 'i32']:
+      if expr.id in ['u8', 'u16', 'u24', 'u32', 'i16', 'i32', 'str']:
         return
 
       for type_id in global_types:
