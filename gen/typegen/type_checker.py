@@ -39,7 +39,13 @@ class TypeChecker:
 
     for expr in expressions:
       if isinstance(expr, AssignExpression):
-        check_assign_valid(expr)
+        if isinstance(expr.type, TypeExpression) and expr.id == expr.type.id:
+          errors.append(
+            ('type expressions can not reference themselves', expr.type.span))
+          # This is already a known invalid reference so checking with
+          # `check_assign_valid()` will produce a redundant error
+        else:
+          check_assign_valid(expr)
 
         if check_id_unique(expr, global_types):
           global_types[expr.id] = expr
