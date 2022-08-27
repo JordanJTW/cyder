@@ -7,6 +7,7 @@ from error_message import print_errors
 from codegen import CodeGenerator
 from parser import Parser
 from tokenizer import Tokenizer
+from type_checker import TypeChecker
 
 
 def compile(filename, output_path):
@@ -22,6 +23,12 @@ def compile(filename, output_path):
 
     parser = Parser(tokens)
     (exprs, errors) = parser.parse()
+
+    if errors:
+      print_errors(errors, contents)
+      sys.exit(-1)
+
+    errors = TypeChecker().check(exprs)
 
     if errors:
       print_errors(errors, contents)
