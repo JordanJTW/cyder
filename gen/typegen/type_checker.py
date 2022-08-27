@@ -12,20 +12,36 @@ class TypeChecker:
 
     def check_type_exists(expr: TypeExpression):
       if expr.id in ['u8', 'u16', 'u24', 'u32', 'i16', 'i32', 'str']:
-        return
+        return True
 
       for type_id in global_types:
         if type_id == expr.id:
-          return
+          return True
 
       errors.append((f'unknown type "{expr.id}"', expr.span))
+      return False
+
+    def type_references_self(self_label: str, expr: TypeExpression):
+      if self_label == expr.id:
+        errors.append(
+            ('type expressions can not reference themselves', member.type.span))
+        return True
+      return False
 
     def check_assign_valid(expr: AssignExpression):
       if isinstance(expr.type, TypeExpression):
-        check_type_exists(expr.type)
+        if type_references_self(expr.id, expr.type):
+          return False
+
+        return check_type_exists(expr.type)
 
       elif isinstance(expr.type, ArrayTypeExpression):
-        check_type_exists(expr.type.inner_type)
+        if type_references_self(expr.id, expr.type.inner_type):
+          return False
+
+        return check_type_exists(expr.type.inner_type)
+
+      assert False, f'Recieved unknown type: "{type(expr.type).__name__}"'
 
     def check_id_unique(
             expr: Union[AssignExpression, StructExpression], world):
@@ -39,13 +55,7 @@ class TypeChecker:
 
     for expr in expressions:
       if isinstance(expr, AssignExpression):
-        if isinstance(expr.type, TypeExpression) and expr.id == expr.type.id:
-          errors.append(
-            ('type expressions can not reference themselves', expr.type.span))
-          # This is already a known invalid reference so checking with
-          # `check_assign_valid()` will produce a redundant error
-        else:
-          check_assign_valid(expr)
+        check_assign_valid(expr)
 
         if check_id_unique(expr, global_types):
           global_types[expr.id] = expr
