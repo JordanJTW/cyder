@@ -2,7 +2,7 @@ import functools
 import textwrap
 
 from typing import List, Tuple, Union
-from parser import TypeExpression, ArrayTypeExpression, StructExpression, AssignExpression
+from type_checker import CheckedTypeExpression, CheckedArrayTypeExpression, CheckedStructExpression, CheckedAssignExpression
 from pathlib import Path
 
 
@@ -37,13 +37,13 @@ def write(file, contents: str, indent: int = 0):
 
 class CodeGenerator:
   def __init__(self, expressions):
-    self._type_expressions: List[AssignExpression] = [
+    self._type_expressions: List[CheckedAssignExpression] = [
         expr for expr in expressions
-        if isinstance(expr, AssignExpression)
+        if isinstance(expr, CheckedAssignExpression)
     ]
-    self._struct_expressions: List[StructExpression] = [
+    self._struct_expressions: List[CheckedStructExpression] = [
         expr for expr in expressions
-        if isinstance(expr, StructExpression)
+        if isinstance(expr, CheckedStructExpression)
     ]
     self._errors: List[str] = []
 
@@ -62,7 +62,7 @@ class CodeGenerator:
 
     for expr in reversed(self._type_expressions):
       # FIXME: Figure out how to handle this case?
-      if isinstance(expr.type, ArrayTypeExpression):
+      if isinstance(expr.type, CheckedArrayTypeExpression):
         continue
 
       if expr.id == type_id:
@@ -72,7 +72,7 @@ class CodeGenerator:
     self._errors.append(f'No size found for type: {type_id}')
     return 0
 
-  def _get_c_type(self, type: Union[ArrayTypeExpression, TypeExpression]) -> Tuple[str, bool]:
+  def _get_c_type(self, type: Union[CheckedArrayTypeExpression, CheckedTypeExpression]) -> Tuple[str, bool]:
     builtin_types = {
       'u8': 'uint8_t',
       'u16': 'uint16_t',
@@ -82,11 +82,11 @@ class CodeGenerator:
       'i32': 'int32_t',
     }
 
-    if isinstance(type, ArrayTypeExpression):
+    if isinstance(type, CheckedArrayTypeExpression):
       (c_type, _) = self._get_c_type(type.inner_type)
       return (f'std::vector<{c_type}>', True)
 
-    assert isinstance(type, TypeExpression)
+    assert isinstance(type, CheckedTypeExpression)
 
     for struct in self._struct_expressions:
       if struct.id == type.id:
@@ -105,7 +105,7 @@ class CodeGenerator:
       (c_type, _) = self._get_c_type(expr.type)
       self._write_type(file, expr.id, c_type)
 
-  def _write_struct(self, file, label, members: List[AssignExpression]):
+  def _write_struct(self, file, label, members: List[CheckedAssignExpression]):
     file.write(f'struct {label} {{\n')
     for member in members:
       (c_type, _) = self._get_c_type(member.type)
@@ -158,7 +158,7 @@ class CodeGenerator:
 
   def _get_first_field_type(self, type):
     assert isinstance(
-      type, TypeExpression), "loop type must be a non-array type"
+      type, CheckedTypeExpression), "loop type must be a non-array type"
 
     if type.id == 'str':
       return 'uint8_t'
@@ -173,7 +173,7 @@ class CodeGenerator:
 
     assert False, f'Type "{type}" not found'
 
-  def _write_read_type(self, file, label, members: List[AssignExpression]):
+  def _write_read_type(self, file, label, members: List[CheckedAssignExpression]):
     write(file, f"""
       {_READTYPE_PROTOTYPE.format(label)} {{
         struct {label} obj;
@@ -193,7 +193,7 @@ class CodeGenerator:
       if local_variables:
         offset_str = offset_str + ' + ' + ' + '.join(local_variables)
 
-      if isinstance(member.type, TypeExpression):
+      if isinstance(member.type, CheckedTypeExpression):
         if member.type.id == 'str':
           file.write(
             f'  obj.{member.id} = TRY(ReadType<std::string>(region, {offset_str}));\n')
@@ -214,9 +214,9 @@ class CodeGenerator:
                 f'  obj.{member.id} = betoh<{c_type}>(TRY(region.Copy<{c_type}>({offset_str})));\n')
             offset = offset + self._get_type_size(member.type.id)
 
-      elif isinstance(member.type, ArrayTypeExpression):
-        assert isinstance(member.type.inner_type, TypeExpression)
-        inner_type_expr: TypeExpression = member.type.inner_type
+      elif isinstance(member.type, CheckedArrayTypeExpression):
+        assert isinstance(member.type.inner_type, CheckedTypeExpression)
+        inner_type_expr: CheckedTypeExpression = member.type.inner_type
 
         (c_type, is_struct) = self._get_c_type(inner_type_expr)
 
@@ -253,7 +253,7 @@ class CodeGenerator:
     file.write(f'size_t {label}::size() const {{\n')
     size_variables = []
     for member in members:
-      if isinstance(member.type, ArrayTypeExpression):
+      if isinstance(member.type, CheckedArrayTypeExpression):
         (c_type, is_struct) = self._get_c_type(member.type.inner_type)
 
         if is_struct:
@@ -274,7 +274,7 @@ class CodeGenerator:
     file.write(f'  return {offset_str};\n')
     file.write('}\n\n')
 
-  def _write_write_type_value(self, file, type_expr: TypeExpression, name, indent):
+  def _write_write_type_value(self, file, type_expr: CheckedTypeExpression, name, indent):
     (c_type, is_struct) = self._get_c_type(type_expr)
 
     if is_struct:
@@ -295,17 +295,17 @@ class CodeGenerator:
         total_offset += sizeof({c_type});
       """, indent=indent)
 
-  def _write_write_type(self, file, label, members: List[AssignExpression]):
+  def _write_write_type(self, file, label, members: List[CheckedAssignExpression]):
     write(file, f"""
       {_WRITETYPE_PROTOTYPE.format(label)} {{
         size_t total_offset = offset;
     """)
 
     for member in members:
-      if isinstance(member.type, TypeExpression):
+      if isinstance(member.type, CheckedTypeExpression):
         self._write_write_type_value(
           file, member.type, f'obj.{member.id}', indent=2)
-      elif isinstance(member.type, ArrayTypeExpression):
+      elif isinstance(member.type, CheckedArrayTypeExpression):
         write(file, f'for (const auto& item : obj.{member.id}) {{\n', indent=2)
         self._write_write_type_value(
           file, member.type.inner_type, 'item', indent=4)
@@ -326,7 +326,7 @@ class CodeGenerator:
     for index, member in enumerate(members):
       line_end = ' << ", "' if index + 1 != len(members) else ''
       stream_value = f'obj.{member.id}'
-      if isinstance(member.type, ArrayTypeExpression):
+      if isinstance(member.type, CheckedArrayTypeExpression):
         stream_value = f'"[{member.type.inner_type};" << obj.{member.id}.size() << "]"'
       # Cast value to an int to work around printing u8 and having them appear as char...
       # Without this any u8 set to 0 ends up being interpreted as an \0 for a string.

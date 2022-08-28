@@ -1,7 +1,40 @@
 
+from dataclasses import dataclass
 from typing import List, Mapping, Tuple, Union
 
 from parser import AssignExpression, StructExpression, TypeExpression, ArrayTypeExpression
+
+
+@dataclass
+class CheckedTypeExpression:
+  id: str
+  span: Tuple[int, int]
+
+
+@dataclass
+class CheckedArrayTypeExpression:
+  inner_type: CheckedTypeExpression
+  length_label: str
+  include_length: bool
+  span: Tuple[int, int]
+
+
+@dataclass
+class CheckedAssignExpression:
+  id: str
+  # FIXME: Fold this into `id` as a type?
+  id_span: Tuple[int, int]
+  type: Union[CheckedTypeExpression, CheckedArrayTypeExpression]
+  span: Tuple[int, int]
+
+
+@dataclass
+class CheckedStructExpression:
+  id: str
+  # FIXME: Fold this into `id` as a type?
+  id_span: Tuple[int, int]
+  members: List[CheckedAssignExpression]
+  span: Tuple[int, int]
 
 
 class TypeChecker:
@@ -53,6 +86,20 @@ class TypeChecker:
         return False
       return True
 
+    checked_expressions = []
+
+    def checked_type_expression(
+      expr: Union[TypeExpression, ArrayTypeExpression]):
+      if isinstance(expr, ArrayTypeExpression):
+        return CheckedArrayTypeExpression(
+            CheckedTypeExpression(expr.inner_type.id, expr.inner_type.span), expr.length_label, expr.include_length, expr.span)
+      else:
+        return CheckedTypeExpression(expr.id, expr.span)
+
+    def checked_assign_expression(expr: AssignExpression):
+      return CheckedAssignExpression(
+          expr.id, expr.id_span, checked_type_expression(expr.type), expr.span)
+
     for expr in expressions:
       if isinstance(expr, AssignExpression):
         check_assign_valid(expr)
@@ -60,17 +107,25 @@ class TypeChecker:
         if check_id_unique(expr, global_types):
           global_types[expr.id] = expr
 
+        checked_expressions.append(checked_assign_expression(expr))
+
       if isinstance(expr, StructExpression):
         is_unique = check_id_unique(expr, global_types)
 
         local_types = {}
+        checked_members = []
         for member in expr.members:
           check_id_unique(member, local_types)
           local_types[member.id] = member
 
           check_assign_valid(member)
 
+          checked_members.append(checked_assign_expression(member))
+
         if is_unique:
           global_types[expr.id] = expr
 
-    return errors
+        checked_expressions.append(CheckedStructExpression(
+            expr.id, expr.id_span, checked_members, expr.span))
+
+    return (checked_expressions, errors)

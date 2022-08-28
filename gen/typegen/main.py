@@ -28,13 +28,13 @@ def compile(filename, output_path):
       print_errors(errors, contents)
       sys.exit(-1)
 
-    errors = TypeChecker().check(exprs)
+    (checked_exprs, errors) = TypeChecker().check(exprs)
 
     if errors:
       print_errors(errors, contents)
       sys.exit(-1)
 
-    codegen = CodeGenerator(exprs)
+    codegen = CodeGenerator(checked_exprs)
     if errors := codegen.generate(output_path):
       for error in errors:
         print(error)
