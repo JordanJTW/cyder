@@ -12,14 +12,14 @@ def merge_span(start_span: Tuple[int, int], end_span: Tuple[int, int]):
 
 
 @dataclass
-class TypeExpression:
-  id: str
+class LabelExpression:
+  label: str
   span: Tuple[int, int]
 
 
 @dataclass
 class ArrayTypeExpression:
-  inner_type: TypeExpression
+  inner_type: LabelExpression
   length_label: str
   include_length: bool
   span: Tuple[int, int]
@@ -27,18 +27,14 @@ class ArrayTypeExpression:
 
 @dataclass
 class AssignExpression:
-  id: str
-  # FIXME: Fold this into `id` as a type?
-  id_span: Tuple[int, int]
-  type: Union[TypeExpression, ArrayTypeExpression]
+  id: LabelExpression
+  type: Union[LabelExpression, ArrayTypeExpression]
   span: Tuple[int, int]
 
 
 @dataclass
 class StructExpression:
-  id: str
-  # FIXME: Fold this into `id` as a type?
-  id_span: Tuple[int, int]
+  id: LabelExpression
   members: List[AssignExpression]
   span: Tuple[int, int]
 
@@ -48,6 +44,7 @@ class ParserException(Exception):
   message: str
   span: Tuple[int, int]
 
+ParsedExpression = Union[StructExpression, AssignExpression]
 
 class Parser:
   def __init__(self, tokens):
@@ -80,7 +77,7 @@ class Parser:
 
     expr_span = merge_span(start_span, self._current.span)
     self._advance()
-    return TypeExpression(label_expr.label, expr_span)
+    return LabelExpression(label_expr.label, expr_span)
 
   def _parse_array_type_expression(self) -> ArrayTypeExpression:
     assert self._current.type == Token.Type.START_SQUARE_BRACKET
@@ -89,7 +86,7 @@ class Parser:
 
     inner_type = self._parse_type_expression()
 
-    if not isinstance(inner_type, TypeExpression):
+    if not isinstance(inner_type, LabelExpression):
       raise ParserException(
         'loop type must be a struct or primitive', self._current.span)
 
@@ -145,7 +142,9 @@ class Parser:
     type_expr = self._parse_type_expression()
     expr_span = merge_span(start_span, type_expr.span)
 
-    return AssignExpression(label_token.label, label_token.span, type_expr, expr_span)
+    return AssignExpression(
+      LabelExpression(label_token.label, label_token.span),
+      type_expr, expr_span)
 
   def _parse_struct(self):
     start_span = self._current.span
@@ -177,7 +176,9 @@ class Parser:
     expr_span = merge_span(start_span, self._current.span)
     self._advance()
 
-    return StructExpression(label_token.label, label_token.span, members, expr_span)
+    return StructExpression(
+      LabelExpression(label_token.label, label_token.span),
+      members, expr_span)
 
   def _parse_type(self):
     assert (self._current.type == Token.Type.TYPE)
