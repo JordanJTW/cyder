@@ -8,7 +8,6 @@ from parser import AssignExpression, StructExpression, TypeExpression, ArrayType
 @dataclass
 class CheckedTypeExpression:
   id: str
-  span: Tuple[int, int]
 
 
 @dataclass
@@ -16,25 +15,18 @@ class CheckedArrayTypeExpression:
   inner_type: CheckedTypeExpression
   length_label: str
   include_length: bool
-  span: Tuple[int, int]
 
 
 @dataclass
 class CheckedAssignExpression:
   id: str
-  # FIXME: Fold this into `id` as a type?
-  id_span: Tuple[int, int]
   type: Union[CheckedTypeExpression, CheckedArrayTypeExpression]
-  span: Tuple[int, int]
 
 
 @dataclass
 class CheckedStructExpression:
   id: str
-  # FIXME: Fold this into `id` as a type?
-  id_span: Tuple[int, int]
   members: List[CheckedAssignExpression]
-  span: Tuple[int, int]
 
 
 class TypeChecker:
@@ -92,13 +84,13 @@ class TypeChecker:
       expr: Union[TypeExpression, ArrayTypeExpression]):
       if isinstance(expr, ArrayTypeExpression):
         return CheckedArrayTypeExpression(
-            CheckedTypeExpression(expr.inner_type.id, expr.inner_type.span), expr.length_label, expr.include_length, expr.span)
+            CheckedTypeExpression(expr.inner_type.id), expr.length_label, expr.include_length)
       else:
-        return CheckedTypeExpression(expr.id, expr.span)
+        return CheckedTypeExpression(expr.id)
 
     def checked_assign_expression(expr: AssignExpression):
       return CheckedAssignExpression(
-          expr.id, expr.id_span, checked_type_expression(expr.type), expr.span)
+          expr.id, checked_type_expression(expr.type))
 
     for expr in expressions:
       if isinstance(expr, AssignExpression):
@@ -126,6 +118,6 @@ class TypeChecker:
           global_types[expr.id] = expr
 
         checked_expressions.append(CheckedStructExpression(
-            expr.id, expr.id_span, checked_members, expr.span))
+            expr.id, checked_members))
 
     return (checked_expressions, errors)
