@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from typing import List, Mapping, Tuple, Union
 
-from parser import AssignExpression, StructExpression, TypeExpression, ArrayTypeExpression
+from compiler.parser import AssignExpression, StructExpression, TypeExpression, ArrayTypeExpression
 
 
 @dataclass

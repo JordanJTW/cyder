@@ -1,10 +1,9 @@
 import functools
 import textwrap
 
-from typing import List, Tuple, Union
-from type_checker import CheckedTypeExpression, CheckedArrayTypeExpression, CheckedStructExpression, CheckedAssignExpression
+from compiler.type_checker import CheckedTypeExpression, CheckedArrayTypeExpression, CheckedStructExpression, CheckedAssignExpression
 from pathlib import Path
-
+from typing import List, Tuple, Union
 
 _READTYPE_PROTOTYPE = \
     "template<> absl::StatusOr<{}> ReadType(const core::MemoryRegion& region, size_t offset)"

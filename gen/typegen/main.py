@@ -3,11 +3,11 @@
 import argparse
 import sys
 
-from error_message import print_errors
-from codegen import CodeGenerator
-from parser import Parser
-from tokenizer import Tokenizer
-from type_checker import TypeChecker
+from compiler.codegen import CodeGenerator
+from compiler.error_message import print_errors
+from compiler.parser import Parser
+from compiler.tokenizer import Tokenizer
+from compiler.type_checker import TypeChecker
 
 
 def compile(filename, output_path):

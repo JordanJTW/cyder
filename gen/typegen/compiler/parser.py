@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from compiler.tokenizer import Token
 from typing import List, Tuple, Union
-from tokenizer import Token
 
 
 def merge_span(start_span: Tuple[int, int], end_span: Tuple[int, int]):
@@ -150,7 +150,7 @@ class Parser:
   def _parse_struct(self):
     start_span = self._current.span
 
-    assert(self._current.type == Token.Type.STRUCT)
+    assert (self._current.type == Token.Type.STRUCT)
     self._advance()
 
     if self._current.type != Token.Type.IDENTIFIER:
@@ -180,7 +180,7 @@ class Parser:
     return StructExpression(label_token.label, label_token.span, members, expr_span)
 
   def _parse_type(self):
-    assert(self._current.type == Token.Type.TYPE)
+    assert (self._current.type == Token.Type.TYPE)
     self._advance()
 
     return self._parse_assignement()
