@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from typing import List, Mapping, Tuple, Union
 
-from compiler.parser import AssignExpression, StructExpression, LabelExpression, ArrayTypeExpression, ParsedExpression
+from compiler.parser import AssignExpression, StructExpression, LabelExpression, ArrayTypeExpression, ParsedExpression, ParserException
 
 
 @dataclass
@@ -46,40 +46,36 @@ class TypeChecker:
         if type_id == expr.label:
           return CheckedTypeExpression(expr.label)
 
-      errors.append((f'unknown type "{expr.label}"', expr.span))
-      return None
-
-    def type_references_self(self_label: str, expr: LabelExpression):
-      if self_label == expr.label:
-        errors.append(
-            ('type expressions can not reference themselves', member.type.span))
-        return True
-      return False
+      raise ParserException(f'unknown type "{expr.label}"', expr.span)
 
     def check_assign_valid(expr: AssignExpression):
       if isinstance(expr.type, LabelExpression):
-        if type_references_self(expr.id.label, expr.type):
-          return None
+        # FIXME: With-in structs a member might have the same name as a
+        #        global type id which will cause a false trigger here:
+        if expr.id.label == expr.type.label:
+          raise ParserException(
+            'type expressions can not reference themselves', expr.type.span)
 
-        if checked_type := check_type_exists(expr.type):
-          return checked_type
-
-        return None
+        return check_type_exists(expr.type)
 
       elif isinstance(expr.type, ArrayTypeExpression):
-        if type_references_self(expr.id.label, expr.type.inner_type):
-          return None
+        if expr.id.label == expr.type.inner_type.label:
+          raise ParserException(
+            'type expressions can not reference themselves', expr.type.span)
 
-        if checked_type := check_type_exists(expr.type.inner_type):
-          return CheckedArrayTypeExpression(checked_type, expr.type.length_label, expr.type.include_length)
+        checked_type = check_type_exists(expr.type.inner_type)
+        return CheckedArrayTypeExpression(
+            checked_type, expr.type.length_label, expr.type.include_length)
 
       assert False, f'Recieved unknown type: "{type(expr.type).__name__}"'
 
     def check_assign_expr(expr: AssignExpression):
-      if checked_type := check_assign_valid(expr):
+      try:
+        checked_type = check_assign_valid(expr)
         return CheckedAssignExpression(expr.id.label, checked_type)
-
-      return None
+      except ParserException as e:
+        errors.append((e.message, e.span))
+        return None
 
     def check_id_unique(expr: ParsedExpression,
                         world: Mapping[str, ParsedExpression]):
