@@ -40,14 +40,14 @@ class TypeChecker:
 
     def check_type_exists(expr: LabelExpression):
       if expr.label in ['u8', 'u16', 'u24', 'u32', 'i16', 'i32', 'str']:
-        return True
+        return CheckedTypeExpression(expr.label)
 
       for type_id in global_types:
         if type_id == expr.label:
-          return True
+          return CheckedTypeExpression(expr.label)
 
       errors.append((f'unknown type "{expr.label}"', expr.span))
-      return False
+      return None
 
     def type_references_self(self_label: str, expr: LabelExpression):
       if self_label == expr.label:
@@ -59,17 +59,27 @@ class TypeChecker:
     def check_assign_valid(expr: AssignExpression):
       if isinstance(expr.type, LabelExpression):
         if type_references_self(expr.id.label, expr.type):
-          return False
+          return None
 
-        return check_type_exists(expr.type)
+        if checked_type := check_type_exists(expr.type):
+          return checked_type
+
+        return None
 
       elif isinstance(expr.type, ArrayTypeExpression):
         if type_references_self(expr.id.label, expr.type.inner_type):
-          return False
+          return None
 
-        return check_type_exists(expr.type.inner_type)
+        if checked_type := check_type_exists(expr.type.inner_type):
+          return CheckedArrayTypeExpression(checked_type, expr.type.length_label, expr.type.include_length)
 
       assert False, f'Recieved unknown type: "{type(expr.type).__name__}"'
+
+    def check_assign_expr(expr: AssignExpression):
+      if checked_type := check_assign_valid(expr):
+        return CheckedAssignExpression(expr.id.label, checked_type)
+
+      return None
 
     def check_id_unique(expr: ParsedExpression,
                         world: Mapping[str, ParsedExpression]):
@@ -84,26 +94,15 @@ class TypeChecker:
     checked_expressions: List[
       Union[CheckedAssignExpression, CheckedStructExpression]] = []
 
-    def checked_type_expression(
-      expr: Union[LabelExpression, ArrayTypeExpression]):
-      if isinstance(expr, ArrayTypeExpression):
-        return CheckedArrayTypeExpression(
-            CheckedTypeExpression(expr.inner_type.label), expr.length_label, expr.include_length)
-      else:
-        return CheckedTypeExpression(expr.label)
-
-    def checked_assign_expression(expr: AssignExpression):
-      return CheckedAssignExpression(
-          expr.id.label, checked_type_expression(expr.type))
-
     for expr in expressions:
       if isinstance(expr, AssignExpression):
-        check_assign_valid(expr)
+        checked_assign = check_assign_expr(expr)
 
         if check_id_unique(expr, global_types):
           global_types[expr.id.label] = expr
 
-        checked_expressions.append(checked_assign_expression(expr))
+          if checked_assign:
+            checked_expressions.append(checked_assign)
 
       if isinstance(expr, StructExpression):
         is_unique = check_id_unique(expr, global_types)
@@ -114,14 +113,13 @@ class TypeChecker:
           check_id_unique(member, local_types)
           local_types[member.id.label] = member
 
-          check_assign_valid(member)
-
-          checked_members.append(checked_assign_expression(member))
+          if checked_assign := check_assign_expr(member):
+            checked_members.append(checked_assign)
 
         if is_unique:
           global_types[expr.id.label] = expr
 
-        checked_expressions.append(CheckedStructExpression(
-            expr.id.label, checked_members))
+          checked_expressions.append(CheckedStructExpression(
+              expr.id.label, checked_members))
 
     return (checked_expressions, errors)
