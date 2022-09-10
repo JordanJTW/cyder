@@ -13,7 +13,10 @@
 class TypegenIntegrationTests : public ::testing::Test {
  protected:
   TypegenIntegrationTests()
-      : region_(&internal_buffer_, 64), test_region_(&test_buffer_, 64) {}
+      : region_(&internal_buffer_, 64), test_region_(&test_buffer_, 64) {
+    memset(internal_buffer_, 0, 64);
+    memset(test_buffer_, 0, 64);
+  }
 
   template <typename T>
   void WriteToRegion(T value) {
