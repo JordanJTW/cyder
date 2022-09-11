@@ -84,7 +84,10 @@ absl::Status ResourceFile::Save(const std::string& path) {
   std::vector<core::MemoryRegion> resource_data;
   std::vector<std::string> resource_names;
 
-  uint16_t entry_offset = 0;
+  // Entries start after all of the `ResourceTypeItem`s:
+  // FIXME: typegen could have a static size function which takes count?
+  uint16_t entry_offset = sizeof(uint16_t) +
+      ResourceTypeItem::fixed_size * resource_groups_.size();
   uint32_t data_offset = 0;
   uint16_t name_offset = 0;
 
@@ -117,27 +120,16 @@ absl::Status ResourceFile::Save(const std::string& path) {
     }
   }
 
-  // Adjust the offsets to account for `type_list` now that it is filled
-  // FIXME: ResourceTypeItems have a fixed size so if we have the `count` filled
-  //        typegen could potentially calculate the size before filling?
-  for (auto& item : type_list.items) {
-    item.offset += type_list.size();
-  }
-
-  ResourceMapHeader map_header;
-  map_header.type_list_offset = map_header.size();
-  map_header.name_list_offset =
-      map_header.type_list_offset + type_list.size() + entry_offset;
-
   ResourceHeader file_header;
   file_header.data_offset = 0x100;
   file_header.data_length = data_offset;
   file_header.map_offset = file_header.data_offset + file_header.data_length;
   file_header.map_length =
-      map_header.size() + type_list.size() + entry_offset + name_offset;
+      ResourceMapHeader::fixed_size + entry_offset + name_offset;
 
-  // FIXME: ResourceMapHeader is a static type so its size should be known and
-  //        that would allow the ResourceHeader to be declared first here...
+  ResourceMapHeader map_header;
+  map_header.type_list_offset = ResourceMapHeader::fixed_size;
+  map_header.name_list_offset = map_header.type_list_offset + entry_offset;
   map_header.file_header = file_header;
 
   // Assume that the Resouce Map is the last thing in the file:

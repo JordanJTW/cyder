@@ -104,12 +104,16 @@ class CodeGenerator:
       (c_type, _) = self._get_c_type(expr.type)
       self._write_type(file, expr.id, c_type)
 
-  def _write_struct(self, file, label, members: List[CheckedAssignExpression]):
-    file.write(f'struct {label} {{\n')
-    for member in members:
+  def _write_struct(self, file, expr: CheckedStructExpression):
+    file.write(f'struct {expr.id} {{\n')
+    for member in expr.members:
       (c_type, is_struct) = self._get_c_type(member.type)
       init_expr = '' if is_struct else '{0}'
       file.write(f'  {c_type} {member.id}{init_expr};\n')
+
+    if not expr.is_dynamic:
+      write(file, f"""\nconst static size_t fixed_size = {expr.size};""", indent=2)
+
     write(file, """
 
         size_t size() const;
@@ -118,7 +122,7 @@ class CodeGenerator:
 
   def _generate_struct_decls(self, file):
     for expr in self._struct_expressions:
-      self._write_struct(file, expr.id, expr.members)
+      self._write_struct(file, expr)
 
   def _write_read_write_type_decls(self, file, type):
     file.write(f'{_READTYPE_PROTOTYPE.format(type)};\n')

@@ -8,6 +8,8 @@ from compiler.parser import AssignExpression, StructExpression, LabelExpression,
 @dataclass
 class CheckedTypeExpression:
   id: str
+  size: int
+  is_dynamic: bool
 
 
 @dataclass
@@ -27,9 +29,14 @@ class CheckedAssignExpression:
 class CheckedStructExpression:
   id: str
   members: List[CheckedAssignExpression]
+  size: int
+  is_dynamic: bool
 
 
 CheckedExpression = Union[CheckedStructExpression, CheckedAssignExpression]
+
+
+_INTEGER_SIZES = {'u8': 1, 'u16': 2, 'u24': 3, 'u32': 4, 'i16': 2, 'i32': 4}
 
 
 class TypeChecker:
@@ -40,12 +47,22 @@ class TypeChecker:
     errors: List[Tuple[str, Tuple[int, int]]] = []
 
     def check_type_exists(expr: LabelExpression):
-      if expr.label in ['u8', 'u16', 'u24', 'u32', 'i16', 'i32', 'str']:
-        return CheckedTypeExpression(expr.label)
+      if size := _INTEGER_SIZES.get(expr.label, None):
+        return CheckedTypeExpression(expr.label, size, False)
 
-      for type_id in global_types:
-        if type_id == expr.label:
-          return CheckedTypeExpression(expr.label)
+      if expr.label == 'str':
+        return CheckedTypeExpression(expr.label, 1, True)
+
+      if ref := global_types.get(expr.label, None):
+        if isinstance(ref, CheckedAssignExpression):
+          if isinstance(ref.type, CheckedTypeExpression):
+            return CheckedTypeExpression(
+                expr.label, ref.type.size, ref.type.is_dynamic)
+          else:
+            raise ParserException(
+                f'arrays can not be global', global_id_spans[expr.label])
+        elif isinstance(ref, CheckedStructExpression):
+          return CheckedTypeExpression(expr.label, ref.size, ref.is_dynamic)
 
       raise ParserException(f'unknown type "{expr.label}"', expr.span)
 
@@ -104,6 +121,8 @@ class TypeChecker:
         local_id_spans: Mapping[str, Tuple[int, int]] = {}
         checked_members: List[CheckedAssignExpression] = []
 
+        fixed_size = 0
+        is_dynamic = False
         for member in expr.members:
           check_id_unique(member.id, local_id_spans)
           local_id_spans[member.id.label] = member.id.span
@@ -111,9 +130,17 @@ class TypeChecker:
           if checked_assign := check_assign_expr(member):
             checked_members.append(checked_assign)
 
+            if isinstance(checked_assign.type, CheckedTypeExpression):
+              if checked_assign.type.id == 'str':
+                is_dynamic = True
+              fixed_size += checked_assign.type.size
+            
+            if isinstance(checked_assign.type, CheckedArrayTypeExpression):
+              is_dynamic = True
+
         if is_unique:
           global_id_spans[expr.id.label] = expr.id.span
           global_types[expr.id.label] = CheckedStructExpression(
-              expr.id.label, checked_members)
+              expr.id.label, checked_members, fixed_size, is_dynamic)
 
     return (global_types.values(), errors)
