@@ -22,7 +22,8 @@ absl::StatusOr<MemoryRegion> MemoryRegion::Create(size_t offset) const {
 
 absl::StatusOr<MemoryRegion> MemoryRegion::Create(std::string name,
                                                   size_t offset) const {
-  return Create(std::move(name), offset, std::max(size_ - offset, 0ul));
+  size_t new_size = size_ > offset ? size_ - offset : 0;
+  return Create(std::move(name), offset, new_size);
 }
 
 absl::StatusOr<MemoryRegion> MemoryRegion::Create(std::string name,
