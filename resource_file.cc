@@ -128,10 +128,6 @@ absl::Status ResourceFile::Save(const std::string& path) {
   map_header.type_list_offset = map_header.size();
   map_header.name_list_offset =
       map_header.type_list_offset + type_list.size() + entry_offset;
-  // FIXME: typegen should initialize all primitive fields to 0
-  map_header.file_attributes = 0;
-  map_header.file_ref_number = 0;
-  map_header.next_map_handle = 0;
 
   ResourceHeader file_header;
   file_header.data_offset = 0x100;

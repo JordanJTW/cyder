@@ -107,8 +107,9 @@ class CodeGenerator:
   def _write_struct(self, file, label, members: List[CheckedAssignExpression]):
     file.write(f'struct {label} {{\n')
     for member in members:
-      (c_type, _) = self._get_c_type(member.type)
-      file.write(f'  {c_type} {member.id};\n')
+      (c_type, is_struct) = self._get_c_type(member.type)
+      init_expr = '' if is_struct else '{0}'
+      file.write(f'  {c_type} {member.id}{init_expr};\n')
     write(file, """
 
         size_t size() const;
