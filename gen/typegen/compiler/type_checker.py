@@ -35,7 +35,8 @@ CheckedExpression = Union[CheckedStructExpression, CheckedAssignExpression]
 class TypeChecker:
   @staticmethod
   def check(expressions: List[ParsedExpression]):
-    global_types: Mapping[str, ParsedExpression] = {}
+    global_id_spans: Mapping[str, Tuple[int, int]] = {}
+    global_types: Mapping[str, CheckedExpression] = {}
     errors: List[Tuple[str, Tuple[int, int]]] = []
 
     def check_type_exists(expr: LabelExpression):
@@ -77,45 +78,42 @@ class TypeChecker:
         errors.append((e.message, e.span))
         return None
 
-    def check_id_unique(expr: ParsedExpression,
-                        world: Mapping[str, ParsedExpression]):
-      if current_type := world.get(expr.id.label, None):
+    def check_id_unique(id: LabelExpression,
+                        id_to_span: Mapping[str, Tuple[int, int]]):
+      if current_span := id_to_span.get(id.label, None):
         errors.append(
-          (f'type with name "{expr.id.label}" originally defined here', current_type.id.span))
+          (f'type with name "{id.label}" originally defined here', current_span))
         errors.append(
-          (f'type with name "{expr.id.label}" already defined', expr.id.span))
+          (f'type with name "{id.label}" already defined', current_span))
         return False
       return True
-
-    checked_expressions: List[
-      Union[CheckedAssignExpression, CheckedStructExpression]] = []
 
     for expr in expressions:
       if isinstance(expr, AssignExpression):
         checked_assign = check_assign_expr(expr)
 
-        if check_id_unique(expr, global_types):
-          global_types[expr.id.label] = expr
+        if check_id_unique(expr.id, global_id_spans):
+          global_id_spans[expr.id.label] = expr.id.span
 
           if checked_assign:
-            checked_expressions.append(checked_assign)
+            global_types[expr.id.label] = checked_assign
 
       if isinstance(expr, StructExpression):
-        is_unique = check_id_unique(expr, global_types)
+        is_unique = check_id_unique(expr.id, global_id_spans)
 
-        local_types: Mapping[str, ParsedExpression] = {}
+        local_id_spans: Mapping[str, Tuple[int, int]] = {}
         checked_members: List[CheckedAssignExpression] = []
+
         for member in expr.members:
-          check_id_unique(member, local_types)
-          local_types[member.id.label] = member
+          check_id_unique(member.id, local_id_spans)
+          local_id_spans[member.id.label] = member.id.span
 
           if checked_assign := check_assign_expr(member):
             checked_members.append(checked_assign)
 
         if is_unique:
-          global_types[expr.id.label] = expr
+          global_id_spans[expr.id.label] = expr.id.span
+          global_types[expr.id.label] = CheckedStructExpression(
+              expr.id.label, checked_members)
 
-          checked_expressions.append(CheckedStructExpression(
-              expr.id.label, checked_members))
-
-    return (checked_expressions, errors)
+    return (global_types.values(), errors)
