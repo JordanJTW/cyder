@@ -63,7 +63,9 @@ absl::Status MemoryRegion::CheckSafeAccess(const std::string& access_type,
                                            size_t size) const {
   // Prevent access which would overflow the base data (segfault)
   if (maximum_size_ < offset + size) {
-    return absl::OutOfRangeError(absl::StrCat("Overflow"));
+    return absl::OutOfRangeError(absl::StrCat(
+        "Overflow reading from \"", name_, "\" offset: ", offset, " + size: ",
+        size, " > maximum size: ", maximum_size_));
   }
   // Warn but do not _prevent_ accesses outside preferred size
   if (size_ && size_ < offset + size) {
