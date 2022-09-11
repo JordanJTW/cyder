@@ -1,6 +1,6 @@
 #include "trap_manager.h"
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 #include <cstdint>
 #include <iomanip>
