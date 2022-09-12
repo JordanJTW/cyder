@@ -78,8 +78,25 @@ void DumpMemoryRegionTo(const core::MemoryRegion& region, std::string path) {
 
 }  // namespace
 
+absl::Status MaybeWriteNextRegion(MemoryReader& reader,
+                                  absl::string_view output_dir,
+                                  absl::string_view filename,
+                                  std::string extension,
+                                  size_t length) {
+  if (length == 0) {
+    return absl::OkStatus();
+  }
+
+  reader.AlignTo(128);
+  auto region = TRY(reader.NextRegion(extension, length));
+  DumpMemoryRegionTo(region,
+                     absl::StrCat(output_dir, "/", filename, ".", extension));
+  return absl::OkStatus();
+}
+
 absl::Status Main(const core::Args& args) {
-  auto path = TRY(args.GetArg(1, "FILENAME"));
+  auto path = TRY(args.GetArg(1, "INPUT"));
+  auto output_dir = TRY(args.GetArg(2, "OUTPUT_DIR"));
 
   int fd = open(path.c_str(), O_RDONLY);
   if (fd < 0) {
@@ -125,17 +142,10 @@ absl::Status Main(const core::Args& args) {
   auto macbinary_read_version = TRY(reader.Next<uint8_t>());
   auto header_crc = TRY(reader.Next<uint16_t>());
 
-  reader.AlignTo(128);
-  auto data_region = TRY(reader.NextRegion("Data", data_length));
-
-  DumpMemoryRegionTo(data_region,
-                     absl::StrCat("/Users/jordanwerthman/", filename, ".data"));
-
-  reader.AlignTo(128);
-  auto rsrc_region = TRY(reader.NextRegion("Rsrc", rsrc_length));
-
-  DumpMemoryRegionTo(rsrc_region,
-                     absl::StrCat("/Users/jordanwerthman/", filename, ".rsrc"));
+  RETURN_IF_ERROR(
+      MaybeWriteNextRegion(reader, output_dir, filename, "data", data_length));
+  RETURN_IF_ERROR(
+      MaybeWriteNextRegion(reader, output_dir, filename, "rsrc", rsrc_length));
 
   LOG(INFO) << filename << " type: " << GetTypeName(file_type)
             << " creator: " << GetTypeName(creator_type)
