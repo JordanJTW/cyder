@@ -133,6 +133,9 @@ absl::Status Main(const core::Args& args) {
 
   core::MemoryRegion memory(mmap_ptr, size);
 
+  // MacBinary II Header
+  // Link: https://files.stairways.com/other/macbinaryii-standard-info.txt
+  // Link: https://github.com/mietek/theunarchiver/wiki/MacBinarySpecs
   MemoryReader reader(memory);
   CHECK_EQ(0u, TRY(reader.Next<uint8_t>()));
   auto filename = TRY(reader.NextString(/*fixed_length=*/63));
@@ -168,9 +171,11 @@ absl::Status Main(const core::Args& args) {
             << " creator: " << GetTypeName(creator_type)
             << " x: " << finder_horr_pos << ", y: " << finder_vert_pos
             << " folder id: " << finder_folder_id
+            << " is_protected: " << (is_protected ? "true" : "false")
             << " data length: " << data_length
             << " rsrc length: " << rsrc_length << " created: " << creation_date
             << " modified: " << modified_date << " info length: " << info_length
+            << " packed files count: " << packed_files_count
             << " second header length: " << second_header_length
             << " write version: " << int(macbinary_write_version)
             << " read version: " << int(macbinary_read_version)
