@@ -11,11 +11,13 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
+#include "finder_flags.h"
 #include "gen/typegen/typegen_prelude.h"
 #include "resource.h"
 
 namespace {
 
+using cyder::hfs::ParseFinderFlags;
 using rsrcloader::GetTypeName;
 
 absl::Status LoadFileError(absl::string_view file_path) {
@@ -180,6 +182,13 @@ absl::Status Main(const core::Args& args) {
             << " write version: " << int(macbinary_write_version)
             << " read version: " << int(macbinary_read_version)
             << " CRC: " << header_crc;
+
+  uint16_t finder_flags = finder_flags_low;
+  finder_flags = (finder_flags << 8) | finder_flags_high;
+
+  for (auto flag : ParseFinderFlags(finder_flags)) {
+    LOG(INFO) << "Finder Flag: " << flag;
+  }
 
   uint16_t calculated_crc =
       crc16(TRY(memory.Create("crc", /*offset=*/0, /*size=*/124)));
