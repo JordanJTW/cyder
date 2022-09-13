@@ -94,6 +94,23 @@ absl::Status MaybeWriteNextRegion(MemoryReader& reader,
   return absl::OkStatus();
 }
 
+// Implements CRC-16/XModem calculation
+// Link: https://mdfs.net/Info/Comp/Comms/CRC16.htm, https://crccalc.com
+uint16_t crc16(const core::MemoryRegion& region, uint16_t initial_crc = 0) {
+  uint16_t crc = initial_crc;
+  for (int i = 0; i < region.size(); ++i) {
+    crc = crc ^ (region.raw_ptr()[i] << 8);
+    for (int byte = 0; byte < 8; ++byte) {
+      if (crc & 0x8000) {
+        crc = (crc << 1) ^ 0x1021;
+      } else {
+        crc <<= 1;
+      }
+    }
+  }
+  return crc;
+}
+
 absl::Status Main(const core::Args& args) {
   auto path = TRY(args.GetArg(1, "INPUT"));
   auto output_dir = TRY(args.GetArg(2, "OUTPUT_DIR"));
@@ -158,6 +175,11 @@ absl::Status Main(const core::Args& args) {
             << " write version: " << int(macbinary_write_version)
             << " read version: " << int(macbinary_read_version)
             << " CRC: " << header_crc;
+
+  uint16_t calculated_crc =
+      crc16(TRY(memory.Create("crc", /*offset=*/0, /*size=*/124)));
+  LOG(INFO) << "Calculated CRC: " << calculated_crc;
+  CHECK_EQ(calculated_crc, header_crc);
 
   return absl::OkStatus();
 }
