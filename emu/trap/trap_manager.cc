@@ -88,12 +88,17 @@ absl::Status TrapManager::PerformTrapEntry() {
   uint16_t trap_op =
       be16toh(TRY(memory::kSystemMemory.Copy<uint16_t>(instruction_ptr)));
 
+  if (IsAutoPopSet(trap_op)) {
+    // Clear the bit so that GetTrapName() works below
+    // FIXME: GetTrapName() should ignore flags in the A-Trap
+    trap_op = trap_op & ~(1 << 10);
+    TRY(Pop<uint32_t>());
+  }
+
   LOG(INFO) << "\u001b[38;5;160m"
             << "A-Line Exception " << (IsToolbox(trap_op) ? "Toolbox" : "OS")
             << "::" << GetTrapName(trap_op) << " (0x" << std::hex << trap_op
             << ") Index: " << std::dec << ExtractIndex(trap_op) << "\u001b[0m";
-
-  CHECK(!IsAutoPopSet(trap_op));
 
   // `instruction_ptr` points to the address of the instruction that triggered
   // the trap. When we return from handling the trap return to the instruction
@@ -116,6 +121,12 @@ absl::Status TrapManager::PerformTrapDispatch() {
   Ptr trap_address = return_address - 2;
 
   auto trap = be16toh(TRY(memory::kSystemMemory.Copy<uint16_t>(trap_address)));
+
+  // FIXME: Traps should be dispatched based on their index and not full AXXX
+  //        representations so flags like this do not break dispatch
+  if (IsToolbox(trap)) {
+    trap = trap & ~(1 << 10);
+  }
 
   // Handle _LoadSeg specially since it needs to modify the return address.
   absl::Status status = absl::OkStatus();
