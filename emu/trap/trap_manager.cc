@@ -81,18 +81,28 @@ absl::Status TrapManager::DispatchEmulatedSubroutine(uint32_t address) {
   }
 }
 
+static uint16_t trap_op;
+
 absl::Status TrapManager::PerformTrapEntry() {
   /*status_register=*/TRY(Pop<uint16_t>());
   auto instruction_ptr = TRY(Pop<uint32_t>());
 
-  uint16_t trap_op =
-      be16toh(TRY(memory::kSystemMemory.Copy<uint16_t>(instruction_ptr)));
+  // FIXME: Pass this through the emulator (maybe with unique addressed)?
+  trap_op = be16toh(TRY(memory::kSystemMemory.Copy<uint16_t>(instruction_ptr)));
 
   if (IsAutoPopSet(trap_op)) {
     // Clear the bit so that GetTrapName() works below
     // FIXME: GetTrapName() should ignore flags in the A-Trap
     trap_op = trap_op & ~(1 << 10);
-    TRY(Pop<uint32_t>());
+    // If the "auto-pop bit" is set then the program has called a trap
+    // indirectly (through a "glue subroutine"). We should return to
+    // the JSR address instead of the instruction after the A-Trap.
+    instruction_ptr = TRY(Pop<uint32_t>());
+  } else {
+    // `instruction_ptr` points to the address of the instruction that
+    // triggered the trap. When we return from handling the trap return
+    // to the instruction past the 16-bit A-Trap (i.e. + 2).
+    instruction_ptr += 2;
   }
 
   LOG(INFO) << "\u001b[38;5;160m"
@@ -100,10 +110,7 @@ absl::Status TrapManager::PerformTrapEntry() {
             << "::" << GetTrapName(trap_op) << " (0x" << std::hex << trap_op
             << ") Index: " << std::dec << ExtractIndex(trap_op) << "\u001b[0m";
 
-  // `instruction_ptr` points to the address of the instruction that triggered
-  // the trap. When we return from handling the trap return to the instruction
-  // past the 16-bit A-Line Trap (i.e. + 2).
-  RETURN_IF_ERROR(Push<uint32_t>(instruction_ptr + 2));
+  RETURN_IF_ERROR(Push<uint32_t>(instruction_ptr));
 
   uint32_t dispatch_address = GetTrapAddress(trap_op);
   RETURN_IF_ERROR(Push<uint32_t>(dispatch_address));
@@ -115,29 +122,19 @@ absl::Status TrapManager::PerformTrapExit() {
 }
 
 absl::Status TrapManager::PerformTrapDispatch() {
-  // The return address should be at the top of the stack which is +2 past the
-  // address of the instruction that caused the trap (see above).
+  // This must be removed from the stack so the arguments are at the top:
   Ptr return_address = TRY(Pop<Ptr>());
-  Ptr trap_address = return_address - 2;
-
-  auto trap = be16toh(TRY(memory::kSystemMemory.Copy<uint16_t>(trap_address)));
-
-  // FIXME: Traps should be dispatched based on their index and not full AXXX
-  //        representations so flags like this do not break dispatch
-  if (IsToolbox(trap)) {
-    trap = trap & ~(1 << 10);
-  }
 
   // Handle _LoadSeg specially since it needs to modify the return address.
   absl::Status status = absl::OkStatus();
-  if (Trap::LoadSeg == trap) {
+  if (Trap::LoadSeg == trap_op) {
     status = HandleLoadSegmentTrap(segment_loader_, return_address);
   } else {
-    status = IsToolbox(trap) ? DispatchNativeToolboxTrap(trap)
-                             : DispatchNativeSystemTrap(trap);
+    status = IsToolbox(trap_op) ? DispatchNativeToolboxTrap(trap_op)
+                                : DispatchNativeSystemTrap(trap_op);
   }
   RETURN_IF_ERROR(Push<Ptr>(return_address));
-  if (IsSystem(trap))
+  if (IsSystem(trap_op))
     RETURN_IF_ERROR(Push<Ptr>(memory::kTrapManagerExitAddress));
   return status;
 }
