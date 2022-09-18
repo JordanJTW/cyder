@@ -100,7 +100,7 @@ absl::Status MaybeWriteNextRegion(MemoryReader& reader,
 // Link: https://mdfs.net/Info/Comp/Comms/CRC16.htm, https://crccalc.com
 uint16_t crc16(const core::MemoryRegion& region, uint16_t initial_crc = 0) {
   uint16_t crc = initial_crc;
-  for (int i = 0; i < region.size(); ++i) {
+  for (size_t i = 0; i < region.size(); ++i) {
     crc = crc ^ (region.raw_ptr()[i] << 8);
     for (int byte = 0; byte < 8; ++byte) {
       if (crc & 0x8000) {
