@@ -11,6 +11,34 @@ namespace memory {
 extern core::MemoryRegion kSystemMemory;
 }  // namespace memory
 
+namespace {
+
+// Link: https://macgui.com/news/article.php?t=523
+absl::Status WriteAppParams(memory::MemoryManager& memory_manager,
+                            size_t a5_world_offset) {
+  // Standard Input (0 = Keyboard)
+  RETURN_IF_ERROR(
+      memory::kSystemMemory.Write<uint32_t>(a5_world_offset + 8, 0));
+  // Standard Output (0 = Screen)
+  RETURN_IF_ERROR(
+      memory::kSystemMemory.Write<uint32_t>(a5_world_offset + 12, 0));
+
+  // Writes a simple Finder Information structure with nothing to open.
+  // More information can be found in Inside Macintosh Volume II (pg. 55-56).
+  // FIXME: Allow passing a file to open when starting an application.
+  auto handle = memory_manager.AllocateHandle(/*size=*/4, "FinderInfo");
+  auto finder_info = memory_manager.GetRegionForHandle(handle);
+  RETURN_IF_ERROR(finder_info.Write<uint16_t>(/*offset=*/0, 0 /*open*/));
+  RETURN_IF_ERROR(finder_info.Write<uint16_t>(/*offset=*/2, 0 /*count*/));
+
+  // Finder Information Handle
+  RETURN_IF_ERROR(memory::kSystemMemory.Write<uint32_t>(
+      a5_world_offset + 16, htobe<uint32_t>(handle)));
+  return absl::OkStatus();
+}
+
+}  // namespace
+
 using rsrcloader::Resource;
 using rsrcloader::ResourceGroup;
 
@@ -41,6 +69,8 @@ absl::StatusOr<SegmentLoader> SegmentLoader::Create(
   RETURN_IF_ERROR(memory::kSystemMemory.Write(
       table_data.raw_ptr() + sizeof(InMemoryTableHeader),
       memory::GetA5WorldPosition() + header.table_offset, header.table_size));
+
+  RETURN_IF_ERROR(WriteAppParams(memory_manager, memory::GetA5WorldPosition()));
 
   return SegmentLoader(memory_manager, resource_manager, std::move(header));
 }
