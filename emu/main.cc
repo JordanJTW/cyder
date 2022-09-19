@@ -120,28 +120,29 @@ void cpu_instr_callback(unsigned int pc) {
 
   CHECK(pc != 0) << "Reset";
   if (absl::GetFlag(FLAGS_disassemble) || breakpoint) {
-#define REG(name) " " << #name << ": 0x" << m68k_get_reg(NULL, M68K_REG_##name)
+#define REG(name)                                                    \
+  COLOR(240) << std::hex << " " << #name << ": 0x"                   \
+             << m68k_get_reg(NULL, M68K_REG_##name) << COLOR_RESET() \
+             << std::dec
 
-    LOG(INFO) << "\u001b[38;5;240m" << std::hex << REG(A0) << REG(A1) << REG(A2)
-              << REG(A3) << REG(A4) << REG(A5) << REG(A6) << REG(A7)
-              << "\u001b[0m";
-    LOG(INFO) << "\u001b[38;5;240m" << std::hex << REG(D0) << REG(D1) << REG(D2)
-              << REG(D3) << REG(D4) << REG(D5) << REG(D6) << REG(D7)
-              << "\u001b[0m";
+    LOG(INFO) << REG(A0) << REG(A1) << REG(A2) << REG(A3) << REG(A4) << REG(A5)
+              << REG(A6) << REG(A7);
+    LOG(INFO) << REG(D0) << REG(D1) << REG(D2) << REG(D3) << REG(D4) << REG(D5)
+              << REG(D6) << REG(D7);
 
-    LOG(INFO) << "\u001b[38;5;240m"
-              << "Handles: " << memory_manager_ptr->LogHandles() << "\u001b[0m";
+    LOG(INFO) << COLOR(240) << "Handles: " << memory_manager_ptr->LogHandles()
+              << COLOR_RESET();
 
     Ptr stack_head = m68k_get_reg(NULL, M68K_REG_SP);
     uint32_t stack_length = cyder::memory::kStackStart - stack_head;
-    LOG(INFO) << "\u001b[38;5;240mStack:\n"
+    LOG(INFO) << COLOR(240) << "Stack:\n"
               << *cyder::memory::kSystemMemory.Create("Stack", stack_head,
                                                       stack_length)
-              << "\u001b[0m";
+              << COLOR_RESET();
 
-    LOG(INFO) << "\u001b[38;5;240mStatus: "
-              << std::bitset<16>(m68k_get_reg(NULL, M68K_REG_SR)) << REG(SP)
-              << "\u001b[0m";
+    LOG(INFO) << COLOR(240)
+              << "Status: " << std::bitset<16>(m68k_get_reg(NULL, M68K_REG_SR))
+              << REG(SP) << COLOR_RESET();
 #undef REG
 
     char buffer[255];

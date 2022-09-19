@@ -105,10 +105,11 @@ absl::Status TrapManager::PerformTrapEntry() {
     instruction_ptr += 2;
   }
 
-  LOG(INFO) << "\u001b[38;5;160m"
-            << "A-Line Exception " << (IsToolbox(trap_op) ? "Toolbox" : "OS")
+  LOG(INFO) << COLOR(160) << "A-Line Exception "
+            << (IsToolbox(trap_op) ? "Toolbox" : "OS")
             << "::" << GetTrapName(trap_op) << " (0x" << std::hex << trap_op
-            << ") Index: " << std::dec << ExtractIndex(trap_op) << "\u001b[0m";
+            << ") Index: " << std::dec << ExtractIndex(trap_op)
+            << COLOR_RESET();
 
   RETURN_IF_ERROR(Push<uint32_t>(instruction_ptr));
 

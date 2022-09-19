@@ -41,5 +41,8 @@ const LogSeverity FATAL = 3;
 // Indicates a point which should not be reached in code.
 #define NOTREACHED() LOG(FATAL) << "NOTREACHED(): "
 
+#define COLOR(value) "\u001b[38;5;" << #value << "m"
+#define COLOR_RESET() "\u001b[0m"
+
 }  // namespace logging
 }  // namespace core
