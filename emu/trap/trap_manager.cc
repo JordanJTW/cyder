@@ -75,9 +75,15 @@ absl::Status TrapManager::DispatchEmulatedSubroutine(uint32_t address) {
       return PerformTrapEntry();
     case memory::kTrapManagerDispatchAddress:
       return PerformTrapDispatch();
+    case memory::kTrapManagerExitAddress:
+      return PerformTrapExit();
+    // FIXME: This should not be necessary; remove this hack...
+    case (memory::kTrapManagerExitAddress + 2):
+      return absl::OkStatus();
     default:
       return absl::UnimplementedError(
-          absl::StrCat("No subroutine registered for address: ", address));
+          absl::StrCat("No subroutine registered for address: 0x",
+                       absl::Hex(address, absl::kZeroPad8)));
   }
 }
 
@@ -113,12 +119,35 @@ absl::Status TrapManager::PerformTrapEntry() {
 
   RETURN_IF_ERROR(Push<uint32_t>(instruction_ptr));
 
+  if (IsSystem(trap_op)) {
+    if (ShouldSaveA0(trap_op)) {
+      RETURN_IF_ERROR(
+          Push<uint32_t>(m68k_get_reg(/*context=*/NULL, M68K_REG_A0)));
+    }
+    RETURN_IF_ERROR(
+        Push<uint32_t>(m68k_get_reg(/*context=*/NULL, M68K_REG_A1)));
+    RETURN_IF_ERROR(
+        Push<uint32_t>(m68k_get_reg(/*context=*/NULL, M68K_REG_D1)));
+    RETURN_IF_ERROR(
+        Push<uint32_t>(m68k_get_reg(/*context=*/NULL, M68K_REG_D2)));
+
+    m68k_set_reg(M68K_REG_D1, trap_op);
+  }
+
   uint32_t dispatch_address = GetTrapAddress(trap_op);
   RETURN_IF_ERROR(Push<uint32_t>(dispatch_address));
   return absl::OkStatus();
 }
 
 absl::Status TrapManager::PerformTrapExit() {
+  uint32_t trap_op = m68k_get_reg(/*context=*/NULL, M68K_REG_D1);
+
+  m68k_set_reg(M68K_REG_D2, TRY(Pop<uint32_t>()));
+  m68k_set_reg(M68K_REG_D1, TRY(Pop<uint32_t>()));
+  m68k_set_reg(M68K_REG_A1, TRY(Pop<uint32_t>()));
+  if (ShouldSaveA0(trap_op)) {
+    m68k_set_reg(M68K_REG_A0, TRY(Pop<uint32_t>()));
+  }
   return absl::OkStatus();
 }
 
@@ -135,8 +164,9 @@ absl::Status TrapManager::PerformTrapDispatch() {
                                 : DispatchNativeSystemTrap(trap_op);
   }
   RETURN_IF_ERROR(Push<Ptr>(return_address));
-  if (IsSystem(trap_op))
+  if (IsSystem(trap_op)) {
     RETURN_IF_ERROR(Push<Ptr>(memory::kTrapManagerExitAddress));
+  }
   return status;
 }
 

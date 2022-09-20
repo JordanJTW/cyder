@@ -58,8 +58,8 @@ std::bitset<2> ExtractFlags(uint16_t trap) {
   return (trap >> 9) & 0x03;
 }
 
-constexpr bool IsReturnA0(uint16_t trap) {
-  return IsSystem(trap) && ((trap >> 8) & 1);
+constexpr bool ShouldSaveA0(uint16_t trap) {
+  return IsSystem(trap) && !((trap >> 8) & 1);
 }
 
 }  // namespace trap
