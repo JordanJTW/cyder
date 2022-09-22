@@ -95,7 +95,7 @@ void CheckReadAccess(uint32_t address);
 void CheckWriteAccess(uint32_t address, uint32_t value);
 
 // Sets the bounds of the A5 world when bounds checking.
-void SetA5WorldBounds(uint32_t above_a5, uint32_t below_a5);
+absl::Status SetA5WorldBounds(uint32_t above_a5, uint32_t below_a5);
 uint32_t GetA5WorldPosition();
 
 // Returns a string representation of the memory map (for debugging).

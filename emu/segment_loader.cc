@@ -63,7 +63,7 @@ absl::StatusOr<SegmentLoader> SegmentLoader::Create(
   CHECK_EQ(header.table_offset, 32u)
       << "Jump table offset should always be 32 bytes";
 
-  memory::SetA5WorldBounds(header.above_a5, header.below_a5);
+  RETURN_IF_ERROR(memory::SetA5WorldBounds(header.above_a5, header.below_a5));
 
   // Write all unloaded entries verbatim to system memory:
   RETURN_IF_ERROR(memory::kSystemMemory.Write(

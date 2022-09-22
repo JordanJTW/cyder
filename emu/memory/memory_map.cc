@@ -30,10 +30,18 @@ uint32_t GetA5WorldPosition() {
   return a5_world;
 }
 
-void SetA5WorldBounds(uint32_t above_a5, uint32_t below_a5) {
+absl::Status SetA5WorldBounds(uint32_t above_a5, uint32_t below_a5) {
   above_a5_size = above_a5;
   below_a5_size = below_a5;
   a5_world = kStackStart + below_a5_size;
+
+  if (above_a5_size + a5_world > kLastEmulatedSubroutineAddress) {
+    return absl::FailedPreconditionError(absl::StrCat(
+        "A5 World is too large for available memory by ",
+        (above_a5_size + a5_world - kLastEmulatedSubroutineAddress), " bytes"));
+  }
+
+  return absl::OkStatus();
 }
 
 void CheckReadAccess(uint32_t address) {
@@ -116,7 +124,7 @@ void CheckReadAccess(uint32_t address) {
     return;
   }
 
-  if (address >= kLastSystemAddress) {
+  if (address >= kLastEmulatedSubroutineAddress) {
     return;
   }
 
@@ -144,7 +152,6 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
   if (within_region(kSystemTrapTableStart, kSystemTrapTableEnd)) {
     LOG(FATAL) << "Write system A-Trap table directly: 0x" << std::hex
                << address << " = 0x" << value;
-    ;
     return;
   }
 
@@ -152,7 +159,6 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
   if (within_region(kToolboxTrapTableStart, kToolboxTrapTableEnd)) {
     LOG(FATAL) << "Write toolbox A-Trap table directly: 0x" << std::hex
                << address << " = 0x" << value;
-    ;
     return;
   }
 
@@ -169,27 +175,29 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
 
   // Application Heap
   if (within_region(kHeapStart, kHeapEnd)) {
-    LOG(WARNING) << "Write to application heap: 0x" << std::hex << address;
+    LOG(WARNING) << "Write to application heap: 0x" << std::hex << address
+                 << " = 0x" << value;
     return;
   }
 
   // Stack
   if (within_region(kStackEnd, kStackStart)) {
-    LOG_IF(INFO, verbose_logging) << "Write Stack: 0x" << std::hex << address
-                                  << " (0x" << (kStackStart - address) << ")";
+    LOG_IF(INFO, verbose_logging)
+        << "Write Stack: 0x" << std::hex << address << " (0x"
+        << (kStackStart - address) << ") = 0x" << value;
     return;
   }
 
   // A5 World
   if (address == a5_world) {
-    LOG(WARNING) << "Write A5 (Pointer to QuickDraw): 0x" << std::hex
-                 << address;
+    LOG(WARNING) << "Write A5 (Pointer to QuickDraw): 0x" << std::hex << address
+                 << " = 0x" << value;
     return;
   }
   if (within_region(a5_world - below_a5_size, a5_world)) {
     LOG_IF(INFO, verbose_logging)
         << "Write below A5 (app globals): 0x" << std::hex << address << " (-0x"
-        << (a5_world - address) << ")";
+        << (a5_world - address) << ") = 0x" << value;
     kHasInitializedMemory[address] = true;
     return;
   }
@@ -197,15 +205,22 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
     if (address < a5_world + 32) {
       LOG(WARNING) << "Write unimplemented application parameters: 0x"
                    << std::hex << address << " (0x" << (address - a5_world)
-                   << ")";
+                   << ") = 0x" << value;
       return;
     }
     LOG(WARNING) << "Write above A5: 0x" << std::hex << address << " (+0x"
-                 << (address - a5_world) << ")";
+                 << (address - a5_world) << ") = 0x" << value;
     return;
   }
 
-  LOG(FATAL) << "Untracked write: 0x" << std::hex << address;
+  if (address > kLastEmulatedSubroutineAddress) {
+    LOG(FATAL) << "Writing to address reserved for native function calls: 0x"
+               << std::hex << address << " = 0x" << value;
+    return;
+  }
+
+  LOG(FATAL) << "Untracked write: 0x" << std::hex << address << " = 0x"
+             << value;
 }
 
 std::string MemoryMapToStr() {
