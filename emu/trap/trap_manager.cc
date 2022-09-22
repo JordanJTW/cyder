@@ -404,6 +404,23 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       }
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-116.html
+    // NOTE: It appears that _GetRMenu was renamed to _GetMenu at some point
+    case Trap::GetRMenu: {
+      auto menu_id = TRY(Pop<Integer>());
+      LOG(INFO) << "TRAP GetRMenu(menuID: " << menu_id << ")";
+
+      Handle menu_handle = resource_manager_.GetResource('MENU', menu_id);
+
+      auto menu = TRY(ReadType<MenuResource>(
+          memory_manager_.GetRegionForHandle(menu_handle), 0));
+
+      LOG(INFO) << "Menu {" << menu << "}";
+      for (const auto& item : menu.items) {
+        LOG(INFO) << "MenuItem {" << item << "}";
+      }
+      return absl::OkStatus();
+    }
     // =================  Process Manager  ====================
 
     // Link: http://0.0.0.0:8000/docs/mac/Processes/Processes-51.html
