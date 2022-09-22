@@ -233,9 +233,6 @@ absl::Status Main(const core::Args& args) {
   // Assembly: RTS
   RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
       cyder::memory::kTrapManagerEntryAddress, htobe16(0x4E75)));
-  // Assembly: RTS
-  RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
-      cyder::memory::kTrapManagerDispatchAddress, htobe16(0x4E75)));
   RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(
       0x28, htobe32(cyder::memory::kTrapManagerEntryAddress)));
 
@@ -245,6 +242,17 @@ absl::Status Main(const core::Args& args) {
   // Assembly: RTS
   RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
       cyder::memory::kTrapManagerExitAddress + 2, htobe16(0x4E75)));
+
+  for (int i = 0; i < 1024; ++i) {
+    RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
+        cyder::memory::kBaseToolboxTrapAddress + (i * sizeof(uint16_t)),
+        htobe16(0x4E75)));
+  }
+  for (int i = 0; i < 256; ++i) {
+    RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
+        cyder::memory::kBaseSystemTrapAddress + (i * sizeof(uint16_t)),
+        htobe16(0x4E75)));
+  }
 
   // FIXME: Create a more accurate AppParmHandle for the current application
   Handle handle = memory_manager.AllocateHandle(10, "AppParam");

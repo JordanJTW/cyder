@@ -22,7 +22,7 @@ class TrapManager {
   absl::Status DispatchEmulatedSubroutine(uint32_t address);
 
   absl::Status PerformTrapEntry();
-  absl::Status PerformTrapDispatch();
+  absl::Status PerformTrapDispatch(uint16_t trap_index, bool is_toolbox);
   absl::Status PerformTrapExit();
 
  private:

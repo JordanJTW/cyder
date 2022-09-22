@@ -73,28 +73,36 @@ absl::Status TrapManager::DispatchEmulatedSubroutine(uint32_t address) {
   switch (address) {
     case memory::kTrapManagerEntryAddress:
       return PerformTrapEntry();
-    case memory::kTrapManagerDispatchAddress:
-      return PerformTrapDispatch();
     case memory::kTrapManagerExitAddress:
       return PerformTrapExit();
     // FIXME: This should not be necessary; remove this hack...
     case (memory::kTrapManagerExitAddress + 2):
       return absl::OkStatus();
     default:
+      if (address < memory::kTrapManagerExitAddress &&
+          address >= memory::kBaseSystemTrapAddress) {
+        uint16_t trap_index =
+            (address - memory::kBaseSystemTrapAddress) / sizeof(uint16_t);
+        return PerformTrapDispatch(trap_index, false);
+      } else if (address < memory::kBaseSystemTrapAddress &&
+                 address >= memory::kBaseToolboxTrapAddress) {
+        uint16_t trap_index =
+            (address - memory::kBaseToolboxTrapAddress) / sizeof(uint16_t);
+        return PerformTrapDispatch(trap_index, true);
+      }
+
       return absl::UnimplementedError(
           absl::StrCat("No subroutine registered for address: 0x",
                        absl::Hex(address, absl::kZeroPad8)));
   }
 }
 
-static uint16_t trap_op;
-
 absl::Status TrapManager::PerformTrapEntry() {
   /*status_register=*/TRY(Pop<uint16_t>());
   auto instruction_ptr = TRY(Pop<uint32_t>());
 
-  // FIXME: Pass this through the emulator (maybe with unique addressed)?
-  trap_op = be16toh(TRY(memory::kSystemMemory.Copy<uint16_t>(instruction_ptr)));
+  uint16_t trap_op =
+      be16toh(TRY(memory::kSystemMemory.Copy<uint16_t>(instruction_ptr)));
 
   if (IsAutoPopSet(trap_op)) {
     // Clear the bit so that GetTrapName() works below
@@ -151,7 +159,16 @@ absl::Status TrapManager::PerformTrapExit() {
   return absl::OkStatus();
 }
 
-absl::Status TrapManager::PerformTrapDispatch() {
+absl::Status TrapManager::PerformTrapDispatch(uint16_t trap_index,
+                                              bool is_toolbox) {
+  uint16_t trap_op = 0xA000 | trap_index;
+  if (is_toolbox) {
+    trap_op |= (1 << 11);
+  } else {
+    trap_op = m68k_get_reg(/*context=*/NULL, M68K_REG_D1);
+    CHECK_EQ(trap_index, ExtractIndex(trap_op));
+  }
+
   // This must be removed from the stack so the arguments are at the top:
   Ptr return_address = TRY(Pop<Ptr>());
 
@@ -179,7 +196,13 @@ uint32_t TrapManager::GetTrapAddress(uint16_t trap) {
   if (patch_address != patch_trap_addresses_.cend()) {
     return patch_address->second;
   } else {
-    return memory::kTrapManagerDispatchAddress;
+    if (IsToolbox(trap)) {
+      return memory::kBaseToolboxTrapAddress +
+             ExtractIndex(trap) * sizeof(uint16_t);
+    } else {
+      return memory::kBaseSystemTrapAddress +
+             ExtractIndex(trap) * sizeof(uint16_t);
+    }
   }
 }
 
@@ -297,7 +320,8 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
                 << trap_address << ", trap: '" << GetTrapName(trap_index)
                 << "')";
 
-      if (trap_address == memory::kTrapManagerDispatchAddress) {
+      if (trap_address >= memory::kBaseToolboxTrapAddress &&
+          trap_address < memory::kTrapManagerExitAddress) {
         patch_trap_addresses_.erase(trap_index);
         return absl::OkStatus();
       }
