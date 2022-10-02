@@ -148,13 +148,13 @@ absl::Status ParseCode(const Resource& resource) {
 absl::Status Main(const core::Args& args) {
   auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
 
-  ResourceGroup* const code = file->FindGroupByType('CODE');
+  const ResourceGroup* const code = file->FindGroupByType('CODE');
   if (code == nullptr) {
     return absl::NotFoundError("Could not find any 'CODE' resource");
   }
 
   for (const auto& resource : code->GetResources()) {
-    RETURN_IF_ERROR(ParseCode(*resource));
+    RETURN_IF_ERROR(ParseCode(resource));
   }
   return absl::OkStatus();
 }

@@ -19,7 +19,7 @@ ResourceManager::ResourceManager(memory::MemoryManager& memory_manager,
                                  rsrcloader::ResourceFile& resource_file)
     : memory_manager_(memory_manager), resource_file_(resource_file) {}
 
-rsrcloader::Resource* ResourceManager::GetSegmentZero() const {
+const rsrcloader::Resource* ResourceManager::GetSegmentZero() const {
   return resource_file_.FindByTypeAndId('CODE', 0);
 }
 

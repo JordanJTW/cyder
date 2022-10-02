@@ -46,7 +46,7 @@ using rsrcloader::ResourceGroup;
 absl::StatusOr<SegmentLoader> SegmentLoader::Create(
     memory::MemoryManager& memory_manager,
     ResourceManager& resource_manager) {
-  Resource* const segment_zero = resource_manager.GetSegmentZero();
+  const Resource* const segment_zero = resource_manager.GetSegmentZero();
   if (segment_zero == nullptr) {
     return absl::FailedPreconditionError("Missing 'CODE' Segment 0");
   }

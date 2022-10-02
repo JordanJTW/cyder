@@ -66,10 +66,11 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
 
   auto type_list =
       TRY(ReadType<ResourceTypeList>(type_list_region, /*offset=*/0));
-  std::vector<std::unique_ptr<ResourceGroup>> resource_groups;
+  std::vector<ResourceGroup> resource_groups;
   for (const auto& type_item : type_list.items) {
-    resource_groups.push_back(TRY(ResourceGroup::Load(
-        type_list_region, name_list_region, data_region, type_item)));
+    const ResourceGroup group = TRY(ResourceGroup::Load(
+        type_list_region, name_list_region, data_region, type_item));
+    resource_groups.push_back(std::move(group));
   }
 
   return std::unique_ptr<ResourceFile>(
@@ -86,32 +87,32 @@ absl::Status ResourceFile::Save(const std::string& path) {
 
   // Entries start after all of the `ResourceTypeItem`s:
   // FIXME: typegen could have a static size function which takes count?
-  uint16_t entry_offset = sizeof(uint16_t) +
-      ResourceTypeItem::fixed_size * resource_groups_.size();
+  uint16_t entry_offset =
+      sizeof(uint16_t) + ResourceTypeItem::fixed_size * resource_groups_.size();
   uint32_t data_offset = 0;
   uint16_t name_offset = 0;
 
   for (const auto& group : resource_groups_) {
     ResourceTypeItem resource_type_item;
-    resource_type_item.type_id = group->GetType();
-    resource_type_item.count = group->GetCount();
+    resource_type_item.type_id = group.GetType();
+    resource_type_item.count = group.GetCount();
     resource_type_item.offset = entry_offset;
     type_list.items.push_back(resource_type_item);
 
-    for (const auto& resource : group->GetResources()) {
+    for (const auto& resource : group.GetResources()) {
       ResourceEntry resource_entry;
-      resource_entry.id = resource->GetId();
-      resource_entry.attributes = resource->GetAttributes();
+      resource_entry.id = resource.GetId();
+      resource_entry.attributes = resource.GetAttributes();
       resource_entry.data_offset = data_offset;
 
       entry_offset += resource_entry.size();
-      data_offset += resource->GetSize() + sizeof(uint32_t);
-      resource_data.push_back(resource->GetData());
+      data_offset += resource.GetSize() + sizeof(uint32_t);
+      resource_data.push_back(resource.GetData());
 
-      if (!resource->GetName().empty()) {
+      if (!resource.GetName().empty()) {
         resource_entry.name_offset = name_offset;
-        name_offset += resource->GetName().size() + sizeof(uint8_t);
-        resource_names.push_back(resource->GetName());
+        name_offset += resource.GetName().size() + sizeof(uint8_t);
+        resource_names.push_back(resource.GetName());
       } else {
         resource_entry.name_offset = 0xFFFF;
       }
@@ -172,41 +173,42 @@ absl::Status ResourceFile::Save(const std::string& path) {
   return absl::OkStatus();
 }
 
-Resource* ResourceFile::FindByTypeAndId(ResType theType, ResId theId) const {
+const Resource* ResourceFile::FindByTypeAndId(ResType theType,
+                                              ResId theId) const {
   for (const auto& group : resource_groups_) {
-    if (group->GetType() == theType) {
-      return group->FindById(theId);
+    if (group.GetType() == theType) {
+      return group.FindById(theId);
     }
   }
   return nullptr;
 }
 
-Resource* ResourceFile::FindByTypeAndName(ResType theType,
-                                          absl::string_view theName) const {
+const Resource* ResourceFile::FindByTypeAndName(
+    ResType theType,
+    absl::string_view theName) const {
   for (const auto& group : resource_groups_) {
-    if (group->GetType() == theType) {
-      return group->FindByName(theName);
+    if (group.GetType() == theType) {
+      return group.FindByName(theName);
     }
   }
   return nullptr;
 }
 
-ResourceGroup* ResourceFile::FindGroupByType(ResType theType) const {
+const ResourceGroup* ResourceFile::FindGroupByType(ResType theType) const {
   for (const auto& group : resource_groups_) {
-    if (group->GetType() == theType) {
-      return group.get();
+    if (group.GetType() == theType) {
+      return &group;
     }
   }
   return nullptr;
 }
 
-ResourceFile::ResourceFile(
-    std::vector<std::unique_ptr<ResourceGroup>> resource_groups)
+ResourceFile::ResourceFile(std::vector<ResourceGroup> resource_groups)
     : resource_groups_(std::move(resource_groups)) {}
 
 std::ostream& operator<<(std::ostream& out, const ResourceFile& value) {
   for (const auto& group : value.resource_groups_) {
-    out << *group;
+    out << group;
   }
   return out;
 }

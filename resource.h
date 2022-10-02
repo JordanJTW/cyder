@@ -16,7 +16,7 @@ class Resource {
            const core::MemoryRegion& data,
            std::string name);
 
-  static absl::StatusOr<std::unique_ptr<Resource>> Load(
+  static absl::StatusOr<Resource> Load(
       const core::MemoryRegion& name_list_region,
       const core::MemoryRegion& data_region,
       const ResourceEntry& entry);
@@ -26,11 +26,6 @@ class Resource {
   uint8_t GetAttributes() const { return entry_.attributes; }
   uint32_t GetSize() const { return data_.size(); }
   const core::MemoryRegion& GetData() const { return data_; }
-
- protected:
-  // Disallow copy and assign:
-  Resource(const Resource&) = delete;
-  Resource& operator=(Resource&) = delete;
 
  private:
   friend std::ostream& operator<<(std::ostream&, const Resource&);

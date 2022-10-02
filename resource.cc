@@ -9,7 +9,7 @@
 namespace rsrcloader {
 
 // static
-absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
+absl::StatusOr<Resource> Resource::Load(
     const core::MemoryRegion& name_list_region,
     const core::MemoryRegion& data_region,
     const ResourceEntry& entry) {
@@ -26,7 +26,7 @@ absl::StatusOr<std::unique_ptr<Resource>> Resource::Load(
     name = TRY(ReadType<std::string>(name_list_region, entry.name_offset));
   }
 
-  return absl::make_unique<Resource>(entry, resource_region, name);
+  return Resource(entry, resource_region, name);
 }
 
 Resource::Resource(const ResourceEntry& entry,

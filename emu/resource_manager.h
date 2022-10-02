@@ -17,7 +17,7 @@ class ResourceManager {
  public:
   ResourceManager(memory::MemoryManager&, rsrcloader::ResourceFile&);
 
-  rsrcloader::Resource* GetSegmentZero() const;
+  const rsrcloader::Resource* GetSegmentZero() const;
 
   Handle GetResource(ResType, ResId);
   Handle GetResourseByName(ResType, absl::string_view);

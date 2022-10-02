@@ -3,11 +3,17 @@
 #include <iostream>
 #include <string>
 
+#include "absl/flags/flag.h"
 #include "color_palette.h"
 #include "core/logging.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
 #include "resource_file.h"
+
+ABSL_FLAG(std::vector<std::string>,
+          filter_type,
+          /*default_value=*/{},
+          "The resource group type(s) to filter on");
 
 using namespace rsrcloader;
 
@@ -80,51 +86,71 @@ void ParseIcon4bit(const std::string& name,
 absl::Status Main(const core::Args& args) {
   auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
 
-  if (ResourceGroup* group = file->FindGroupByType('ICON')) {
+  if (const ResourceGroup* group = file->FindGroupByType('ICON')) {
     for (const auto& resource : group->GetResources()) {
-      ParseIcon(absl::StrCat("icon.", resource->GetId()),
-                resource->GetData().raw_ptr(), resource->GetSize(), 32);
+      ParseIcon(absl::StrCat("icon.", resource.GetId()),
+                resource.GetData().raw_ptr(), resource.GetSize(), 32);
     }
   }
-  if (ResourceGroup* group = file->FindGroupByType('ICN#')) {
+  if (const ResourceGroup* group = file->FindGroupByType('ICN#')) {
     for (const auto& resource : group->GetResources()) {
-      ParseIcon(absl::StrCat("icn#.", resource->GetId()),
-                resource->GetData().raw_ptr(), resource->GetSize(), 32);
-      ParseIcon(absl::StrCat("icn#.", resource->GetId(), ".mask"),
-                resource->GetData().raw_ptr() + 128, resource->GetSize(), 32);
+      ParseIcon(absl::StrCat("icn#.", resource.GetId()),
+                resource.GetData().raw_ptr(), resource.GetSize(), 32);
+      ParseIcon(absl::StrCat("icn#.", resource.GetId(), ".mask"),
+                resource.GetData().raw_ptr() + 128, resource.GetSize(), 32);
     }
   }
-  if (ResourceGroup* group = file->FindGroupByType('ics#')) {
+  if (const ResourceGroup* group = file->FindGroupByType('ics#')) {
     for (const auto& resource : group->GetResources()) {
-      ParseIcon(absl::StrCat("ics#.", resource->GetId()),
-                resource->GetData().raw_ptr(), resource->GetSize(), 16);
+      ParseIcon(absl::StrCat("ics#.", resource.GetId()),
+                resource.GetData().raw_ptr(), resource.GetSize(), 16);
     }
   }
-  if (ResourceGroup* group = file->FindGroupByType('icl8')) {
+  if (const ResourceGroup* group = file->FindGroupByType('icl8')) {
     for (const auto& resource : group->GetResources()) {
-      ParseIcon8bit(absl::StrCat("icl8.", resource->GetId()),
-                    resource->GetData().raw_ptr(), resource->GetSize(), 32);
+      ParseIcon8bit(absl::StrCat("icl8.", resource.GetId()),
+                    resource.GetData().raw_ptr(), resource.GetSize(), 32);
     }
   }
-  if (ResourceGroup* group = file->FindGroupByType('ics8')) {
+  if (const ResourceGroup* group = file->FindGroupByType('ics8')) {
     for (const auto& resource : group->GetResources()) {
-      ParseIcon8bit(absl::StrCat("ics8.", resource->GetId()),
-                    resource->GetData().raw_ptr(), resource->GetSize(), 16);
+      ParseIcon8bit(absl::StrCat("ics8.", resource.GetId()),
+                    resource.GetData().raw_ptr(), resource.GetSize(), 16);
     }
   }
-  if (ResourceGroup* group = file->FindGroupByType('icl4')) {
+  if (const ResourceGroup* group = file->FindGroupByType('icl4')) {
     for (const auto& resource : group->GetResources()) {
-      ParseIcon4bit(absl::StrCat("icl4.", resource->GetId()),
-                    resource->GetData().raw_ptr(), resource->GetSize(), 32);
+      ParseIcon4bit(absl::StrCat("icl4.", resource.GetId()),
+                    resource.GetData().raw_ptr(), resource.GetSize(), 32);
     }
   }
-  if (ResourceGroup* group = file->FindGroupByType('ics4')) {
+  if (const ResourceGroup* group = file->FindGroupByType('ics4')) {
     for (const auto& resource : group->GetResources()) {
-      ParseIcon4bit(absl::StrCat("ics4.", resource->GetId()),
-                    resource->GetData().raw_ptr(), resource->GetSize(), 16);
+      ParseIcon4bit(absl::StrCat("ics4.", resource.GetId()),
+                    resource.GetData().raw_ptr(), resource.GetSize(), 16);
     }
   }
-  std::cout << *file;
+
+  const auto& filter_types = absl::GetFlag(FLAGS_filter_type);
+  auto should_allow_type = [filter_types](absl::string_view type) {
+    if (filter_types.empty())
+      return true;
+
+    return std::find(filter_types.cbegin(), filter_types.cend(), type) !=
+           filter_types.cend();
+  };
+
+  for (const auto& group : file->groups()) {
+    const std::string type_str = GetTypeName(group.GetType());
+    if (should_allow_type(type_str)) {
+      LOG(INFO) << "Group(type: " << type_str << ", size: " << group.GetSize()
+                << "):";
+      for (const auto& resource : group.GetResources()) {
+        LOG(INFO) << " - " << resource;
+      }
+    }
+  }
+
   RETURN_IF_ERROR(file->Save("/tmp/test.rsrc"));
   return absl::OkStatus();
 }
