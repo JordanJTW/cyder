@@ -146,7 +146,7 @@ absl::Status Main(const core::Args& args) {
       LOG(INFO) << "Group(type: " << type_str << ", size: " << group.GetSize()
                 << "):";
       for (const auto& resource : group.GetResources()) {
-        LOG(INFO) << " - " << resource;
+        LOG(INFO) << resource << ":\n" << resource.GetData();
       }
     }
   }
