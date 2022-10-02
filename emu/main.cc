@@ -226,6 +226,11 @@ absl::Status Main(const core::Args& args) {
   uint32_t sr = m68k_get_reg(NULL, M68K_REG_SR);
   m68k_set_reg(M68K_REG_SR, sr | (1 << 13));
 
+  RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(
+      GlobalVars::ApplLimit, htobe(cyder::memory::kHeapEnd)));
+  RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(
+      GlobalVars::CurrentA5, htobe(cyder::memory::GetA5WorldPosition())));
+
   // Sets the size of the name to 0 so it is not read:
   // TODO: Store the application name here as a Pascal string
   RETURN_IF_ERROR(kSystemMemory.Write<uint8_t>(GlobalVars::CurApName, 0));
