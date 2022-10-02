@@ -291,6 +291,7 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-175.html
     case Trap::GetOSTrapAddress: {
       uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
+      trap_index = trap_index & 0xFFFF;  // A-Traps are always WORD sized
       LOG(INFO) << "TRAP GetOSTrapAddress(trap: '"
                 << GetTrapNameBySystemIndex(trap_index) << "')";
       m68k_set_reg(M68K_REG_A0, GetTrapAddress(trap_index));
@@ -299,6 +300,7 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-176.html
     case Trap::GetToolBoxTrapAddress: {
       uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
+      trap_index = trap_index & 0xFFFF;  // A-Traps are always WORD sized
       LOG(INFO) << "TRAP GetToolBoxTrapAddress(trap: '"
                 << GetTrapNameByToolboxIndex(trap_index) << "')";
       m68k_set_reg(M68K_REG_A0, GetTrapAddress(trap_index));
@@ -307,6 +309,17 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-185.html
     case Trap::GetTrapAddress: {
       uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
+      trap_index = trap_index & 0xFFFF;  // A-Traps are always WORD sized
+      if (trap_index < 0xFF) {
+        // Any trap number from $00 to $4F, $54, or $57 is in the OS table
+        bool is_system =
+            trap_index < 0x4F || trap_index == 0x54 || trap_index == 0x57;
+        if (!is_system) {
+          // See the description of A-Traps in trap_helpers.h
+          trap_index |= (1 << 11); // Sets the "Toolbox Trap" bit
+        }
+        trap_index = 0xA000 | trap_index;
+      }
       LOG(INFO) << "TRAP GetTrapAddress(trap: '" << GetTrapName(trap_index)
                 << "')";
       m68k_set_reg(M68K_REG_A0, GetTrapAddress(trap_index));
