@@ -512,6 +512,65 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       DrawRect(renderer_, rect, {0xFF, 0xBF, 0x00});
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-86.html
+    case Trap::SetRect: {
+      auto bottom = TRY(Pop<uint16_t>());
+      auto right = TRY(Pop<uint16_t>());
+      auto top = TRY(Pop<uint16_t>());
+      auto left = TRY(Pop<uint16_t>());
+      auto rect_ptr = TRY(Pop<Ptr>());
+      LOG(INFO) << "TRAP SetRect(r: 0x" << std::hex << rect_ptr
+                << ", left: " << std::dec << left << ", top: " << top
+                << ", right: " << right << ", bottom: " << bottom << ")";
+      struct Rect rect;
+      rect.left = left;
+      rect.top = top;
+      rect.right = right;
+      rect.bottom = bottom;
+      RETURN_IF_ERROR(WriteType<Rect>(rect, memory::kSystemMemory, rect_ptr));
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-88.html
+    case Trap::InsetRect: {
+      auto dv = TRY(Pop<int16_t>());
+      auto dh = TRY(Pop<int16_t>());
+      auto rect_ptr = TRY(Pop<Ptr>());
+      auto rect = TRY(ReadType<Rect>(memory::kSystemMemory, rect_ptr));
+      LOG(INFO) << "TRAP InsetRect(r: { " << rect << " }, dh: " << dh
+                << ", dv: " << dv << ")";
+      rect.left += dh;
+      rect.right -= dh;
+      rect.top += dv;
+      rect.bottom -= dv;
+
+      if (rect.right - rect.left < 0 || rect.bottom - rect.top < 0) {
+        rect.left = 0;
+        rect.top = 0;
+        rect.right = 0;
+        rect.bottom = 0;
+      }
+
+      LOG(INFO) << "New rect: { " << rect << " }";
+      RETURN_IF_ERROR(WriteType<Rect>(rect, memory::kSystemMemory, rect_ptr));
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-87.html
+    case Trap::OffsetRect: {
+      auto dv = TRY(Pop<int16_t>());
+      auto dh = TRY(Pop<int16_t>());
+      auto rect_ptr = TRY(Pop<Ptr>());
+      auto rect = TRY(ReadType<Rect>(memory::kSystemMemory, rect_ptr));
+      LOG(INFO) << "TRAP OffsetRect(r: { " << rect << " }, dh: " << dh
+                << ", dv: " << dv << ")";
+      rect.left += dh;
+      rect.right += dh;
+      rect.top += dv;
+      rect.bottom += dv;
+
+      LOG(INFO) << "New rect: { " << rect << " }";
+      RETURN_IF_ERROR(WriteType<Rect>(rect, memory::kSystemMemory, rect_ptr));
+      return absl::OkStatus();
+    }
 
     // ================== Resource Manager ==================
 
