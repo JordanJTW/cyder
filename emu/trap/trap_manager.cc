@@ -434,6 +434,31 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       }
       return TrapReturn<Handle>(handle);
     }
+
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-120.html
+    case Trap::InsertMenu: {
+      auto before_id = TRY(Pop<uint16_t>());
+      auto the_menu = TRY(Pop<Handle>());
+      LOG(INFO) << "TRAP InsertMenu(beforeId: " << before_id << ", theMenu: 0x"
+                << std::hex << the_menu << ")";
+      return absl::OkStatus();
+    }
+
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-147.html
+    case Trap::AppendResMenu: {
+      auto the_type = TRY(Pop<ResType>());
+      auto the_menu = TRY(Pop<Handle>());
+      LOG(INFO) << "TRAP AppendResMenu(theMenu: 0x" << std::hex << the_menu
+                << ", theType: " << GetTypeName(the_type) << ")";
+      return absl::OkStatus();
+    }
+
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-130.html
+    case Trap::DrawMenuBar: {
+      LOG(INFO) << "TRAP DrawMenuBar()";
+      return absl::OkStatus();
+    }
+
     // =================  Process Manager  ====================
 
     // Link: http://0.0.0.0:8000/docs/mac/Processes/Processes-51.html
