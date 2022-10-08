@@ -306,7 +306,7 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-175.html
     case Trap::GetOSTrapAddress: {
       uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
-      trap_index = trap_index & 0xFFFF;  // A-Traps are always WORD sized
+      trap_index = ExtractSystemIndex(trap_index & 0xFFFF);
       LOG(INFO) << "TRAP GetOSTrapAddress(trap: '"
                 << GetTrapNameBySystemIndex(trap_index) << "')";
       m68k_set_reg(M68K_REG_A0, GetTrapAddress(trap_index));
@@ -315,7 +315,7 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-176.html
     case Trap::GetToolBoxTrapAddress: {
       uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0);
-      trap_index = trap_index & 0xFFFF;  // A-Traps are always WORD sized
+      trap_index = ExtractToolboxIndex(trap_index & 0xFFFF);
       LOG(INFO) << "TRAP GetToolBoxTrapAddress(trap: '"
                 << GetTrapNameByToolboxIndex(trap_index) << "')";
       m68k_set_reg(M68K_REG_A0, GetTrapAddress(trap_index));

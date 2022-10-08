@@ -43,10 +43,18 @@ constexpr bool IsSystem(uint16_t trap) {
   return !IsToolbox(trap);
 }
 
-// Extracts the 8 or 10-bit (OS/Toolbox) trap index number
+constexpr int ExtractToolboxIndex(uint16_t trap) {
+  // Mask the lower 10-bits for a Toolbox trap index (see above)
+  return (trap & 0x03FF);
+}
+
+constexpr int ExtractSystemIndex(uint16_t trap) {
+  // Mask the lower 8-bits for OS trap index (see above)
+  return (trap & 0x00FF);
+}
+
 constexpr int ExtractIndex(uint16_t trap) {
-  // Toolbox traps have 10-bit indexs and OS have 8-bit (see above)
-  return IsToolbox(trap) ? (trap & 0x03FF) : (trap & 0x00FF);
+  return IsToolbox(trap) ? ExtractToolboxIndex(trap) : ExtractSystemIndex(trap);
 }
 
 constexpr bool IsAutoPopSet(uint16_t trap) {
