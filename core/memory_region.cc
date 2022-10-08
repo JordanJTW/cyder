@@ -63,9 +63,9 @@ absl::Status MemoryRegion::CheckSafeAccess(const std::string& access_type,
                                            size_t size) const {
   // Prevent access which would overflow the base data (segfault)
   if (maximum_size_ < offset + size) {
-    return absl::OutOfRangeError(absl::StrCat(
-        "Overflow reading from \"", name_, "\" offset: ", offset, " + size: ",
-        size, " > maximum size: ", maximum_size_));
+    return absl::OutOfRangeError(
+        absl::StrCat("Overflow reading from \"", name_, "\" offset: ", offset,
+                     " + size: ", size, " > maximum size: ", maximum_size_));
   }
   // Warn but do not _prevent_ accesses outside preferred size
   if (size_ && size_ < offset + size) {
@@ -89,31 +89,47 @@ MemoryRegion::MemoryRegion(std::string name,
 std::ostream& operator<<(std::ostream& os, const MemoryRegion& region) {
   constexpr size_t bytes_per_line = 16;
 
-  size_t line_count = region.size() / bytes_per_line;
-  if (region.size() % bytes_per_line) {
+  size_t initial_index =
+      (region.base_offset() / bytes_per_line) * bytes_per_line;
+  size_t total_from_start =
+      region.base_offset() - initial_index + region.size();
+
+  size_t line_count = (total_from_start / bytes_per_line);
+  if (total_from_start % bytes_per_line) {
     line_count += 1;
   }
   for (size_t line = 0; line < line_count; ++line) {
-    size_t start_index = line * bytes_per_line;
-    size_t full_line = start_index + bytes_per_line;
-    size_t end_index = std::min(full_line, region.size());
+    size_t start_index = initial_index + line * bytes_per_line;
+    size_t end_index = start_index + bytes_per_line;
 
-    os << std::setfill('0') << std::setw(6) << std::hex
-       << region.base_offset() + start_index << "\t";
+    os << std::setfill('0') << std::setw(6) << std::hex << start_index << "\t";
+
     for (size_t index = start_index; index < end_index; ++index) {
-      os << " " << std::setfill('0') << std::setw(2) << std::hex
-         << (int)region.raw_ptr()[index];
-    }
+      if (index != start_index && index % 8 == 0) {
+        os << "   ";
+      }
 
-    // Ensure that lines are always printed to the full width so
-    // that the ASCII column (below) is aligned when displayed
-    for (size_t index = end_index; index < full_line; ++index) {
-      os << "   ";
+      // Ensure that lines are always printed to the full width so
+      // that the ASCII column (below) is aligned when displayed
+      if (index < region.base_offset() ||
+          index > initial_index + total_from_start) {
+        os << "   ";
+        continue;
+      }
+
+      os << " " << std::setfill('0') << std::setw(2) << std::hex
+         << (int)region.raw_ptr()[index - region.base_offset()];
     }
 
     os << "\t|";
     for (size_t index = start_index; index < end_index; ++index) {
-      uint8_t character = region.raw_ptr()[index];
+      if (index < region.base_offset() ||
+          index > initial_index + total_from_start) {
+        os << " ";
+        continue;
+      }
+
+      uint8_t character = region.raw_ptr()[index - region.base_offset()];
       if (std::isprint(character)) {
         os << character;
       } else {
