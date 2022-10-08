@@ -19,11 +19,17 @@
 #include "segment_loader.h"
 #include "third_party/musashi/src/m68k.h"
 #include "trap/trap_manager.h"
+#include "trap_names.h"
 
 ABSL_FLAG(bool,
           disassemble,
           /*default_value=*/false,
           "Disassemble the m68k instructions being executed");
+
+ABSL_FLAG(std::string,
+          system_file,
+          /*default_value=*/"",
+          "A Macintosh System (1-5) resource file to pull from");
 
 constexpr bool memory_write_log = false;
 
@@ -185,10 +191,10 @@ using cyder::SegmentLoader;
 using cyder::memory::kSystemMemory;
 using cyder::memory::MemoryManager;
 using cyder::trap::TrapManager;
+using rsrcloader::ResourceFile;
 
 absl::Status Main(const core::Args& args) {
-  auto file =
-      TRY(rsrcloader::ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
+  auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
 
   MemoryManager memory_manager;
   memory_manager_ptr = &memory_manager;
@@ -213,6 +219,23 @@ absl::Status Main(const core::Args& args) {
                            renderer);
   on_emulated_subroutine = std::bind(&TrapManager::DispatchEmulatedSubroutine,
                                      &trap_manager, std::placeholders::_1);
+
+  auto system_path = absl::GetFlag(FLAGS_system_file);
+  if (!system_path.empty()) {
+    auto system = TRY(ResourceFile::Load(system_path));
+    if (auto* version = system->FindByTypeAndId('STR ', 0)) {
+      LOG(INFO) << "Using System: " << system_path;
+      LOG(INFO) << TRY(ReadType<absl::string_view>(version->GetData(), 0));
+    }
+
+    if (auto* pack4 = system->FindByTypeAndId('PACK', 4)) {
+      LOG(INFO) << "Loading PACK4 into memory";
+      Handle handle =
+          memory_manager.AllocateHandleForRegion(pack4->GetData(), "PACK4");
+      size_t address = be32toh(MUST(kSystemMemory.Copy<uint32_t>(handle)));
+      trap_manager.SetTrapAddress(Trap::Pack4, address);
+    }
+  }
 
   m68k_init();
   m68k_set_instr_hook_callback(cpu_instr_callback);
