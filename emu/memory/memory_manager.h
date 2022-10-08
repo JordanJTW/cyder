@@ -28,11 +28,13 @@ class MemoryManager {
 
   uint32_t GetHandleSize(Handle handle);
 
+  bool SetApplLimit(Ptr last_addr);
+
   std::string LogHandles() {
     std::stringstream os;
     for (const auto& handle_pair : handle_to_metadata_) {
-      os << "\t0x" << std::hex << handle_pair.first << " -> 0x"
-         << handle_pair.second.start;
+      os << "\n0x" << std::hex << handle_pair.first << " -> 0x"
+         << handle_pair.second.start << " (" << handle_pair.second.tag << ")";
     }
     return os.str();
   }

@@ -6,6 +6,7 @@
 #include "core/logging.h"
 #include "core/memory_region.h"
 #include "emu/memory/memory_map.h"
+#include "global_names.h"
 
 namespace cyder {
 namespace memory {
@@ -105,6 +106,17 @@ uint32_t MemoryManager::GetHandleSize(Handle handle) {
     return {};
   }
   return entry->second.size;
+}
+
+bool MemoryManager::SetApplLimit(Ptr last_addr) {
+  if (last_addr >= kHeapEnd) {
+    LOG(WARNING) << "Requested more heap memory than available";
+    return false;
+  }
+  auto status =
+      kSystemMemory.Write<Ptr>(GlobalVars::ApplLimit, htobe(last_addr));
+  CHECK(status.ok()) << std::move(status).message();
+  return true;
 }
 
 }  // namespace memory

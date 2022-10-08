@@ -301,6 +301,17 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, /*noErr*/ 0);
       return absl::OkStatus();
 
+    // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-19.html
+    case Trap::SetApplLimit: {
+      uint32_t zone_limit = m68k_get_reg(NULL, M68K_REG_A0);
+      LOG(INFO) << "TRAP SetApplLimit(zoneLimit: 0x" << std::hex << zone_limit
+                << ")";
+      bool success = memory_manager_.SetApplLimit(zone_limit);
+      int32_t result_code = success ? /*noErr*/ 0 : /*memFullErr*/ -108;
+      m68k_set_reg(M68K_REG_D0, result_code);
+      return absl::OkStatus();
+    }
+
     // =======================  Trap Manager  ====================
 
     // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-175.html
@@ -331,7 +342,7 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
             trap_index < 0x4F || trap_index == 0x54 || trap_index == 0x57;
         if (!is_system) {
           // See the description of A-Traps in trap_helpers.h
-          trap_index |= (1 << 11); // Sets the "Toolbox Trap" bit
+          trap_index |= (1 << 11);  // Sets the "Toolbox Trap" bit
         }
         trap_index = 0xA000 | trap_index;
       }
@@ -438,7 +449,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       }
       return TrapReturn<Handle>(handle);
     }
-
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-120.html
     case Trap::InsertMenu: {
       auto before_id = TRY(Pop<uint16_t>());
@@ -447,7 +457,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                 << std::hex << the_menu << ")";
       return absl::OkStatus();
     }
-
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-147.html
     case Trap::AppendResMenu: {
       auto the_type = TRY(Pop<ResType>());
@@ -456,7 +465,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                 << ", theType: " << GetTypeName(the_type) << ")";
       return absl::OkStatus();
     }
-
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-130.html
     case Trap::DrawMenuBar: {
       LOG(INFO) << "TRAP DrawMenuBar()";
