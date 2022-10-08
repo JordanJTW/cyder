@@ -25,6 +25,8 @@ class TrapManager {
   absl::Status PerformTrapDispatch(uint16_t trap_index, bool is_toolbox);
   absl::Status PerformTrapExit();
 
+  void SetTrapAddress(uint16_t trap, uint32_t address);
+
  private:
   absl::Status DispatchNativeSystemTrap(uint16_t trap);
   absl::Status DispatchNativeToolboxTrap(uint16_t trap);

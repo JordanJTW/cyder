@@ -206,6 +206,21 @@ uint32_t TrapManager::GetTrapAddress(uint16_t trap) {
   }
 }
 
+void TrapManager::SetTrapAddress(uint16_t trap, uint32_t address) {
+  if (address >= memory::kBaseToolboxTrapAddress &&
+      address < memory::kTrapManagerExitAddress) {
+    patch_trap_addresses_.erase(trap);
+    return;
+  }
+
+  patch_trap_addresses_[trap] = address;
+
+  for (const auto& pair : patch_trap_addresses_) {
+    LOG(INFO) << "Patch trap: 0x" << std::hex << pair.first << " -> 0x"
+              << pair.second;
+  }
+}
+
 absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
   CHECK(IsSystem(trap));
 
@@ -333,18 +348,7 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
                 << trap_address << ", trap: '" << GetTrapName(trap_index)
                 << "')";
 
-      if (trap_address >= memory::kBaseToolboxTrapAddress &&
-          trap_address < memory::kTrapManagerExitAddress) {
-        patch_trap_addresses_.erase(trap_index);
-        return absl::OkStatus();
-      }
-
-      patch_trap_addresses_[trap_index] = trap_address;
-
-      for (const auto& pair : patch_trap_addresses_) {
-        LOG(INFO) << "Patch trap: 0x" << std::hex << pair.first << " -> 0x"
-                  << pair.second;
-      }
+      SetTrapAddress(trap_index, trap_address);
       return absl::OkStatus();
     }
 
