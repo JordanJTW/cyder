@@ -1,0 +1,51 @@
+
+type Integer: u16;
+type Ptr: u32;
+
+type RegionHandle: Ptr;
+
+struct Point {
+  x: Integer;
+  y: Integer;
+}
+
+struct Rect {
+  top: Integer;
+  left: Integer;
+  bottom: Integer; 
+  right: Integer; 
+}
+
+struct BitMap {
+  base_addr: Ptr;
+  row_bytes: Integer;
+  bounds: Rect;
+}
+
+struct Region {
+  region_size: Integer;
+  bounding_box: Rect;
+  // More data if not rectangular
+}
+
+// FIXME: Allow typegen to define an 8x8 pixel grid
+struct Pattern {
+  upper: u32;
+  lower: u32;
+}
+
+struct GrafPort {
+  device: Integer;
+  port_bits: BitMap;
+  port_rect: Rect;
+  visible_region: RegionHandle;
+  clip_region: RegionHandle;
+  back_pattern: Pattern;
+  fill_pattern: Pattern;
+  pen_location: Point;
+  pen_size: Point;
+  pattern_mode: Integer;
+  pen_pattern: Pattern;
+  pen_visiblity: Integer;
+  text_font: Integer;
+}

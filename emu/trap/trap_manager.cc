@@ -9,6 +9,7 @@
 #include "absl/strings/string_view.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
+#include "emu/graphics/grafport_types.h"
 #include "emu/memory/memory_map.h"
 #include "emu/trap/stack_helpers.h"
 #include "emu/trap/trap_helpers.h"

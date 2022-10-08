@@ -6,18 +6,6 @@ type GrafPtr: Ptr;
 type Integer: u16;
 type ResourceId: Integer;
 
-struct Point {
-  x: Integer;
-  y: Integer;
-}
-
-struct Rect {
-  top: Integer;
-  left: Integer;
-  bottom: Integer; 
-  right: Integer; 
-}
-
 struct MenuItemResource {
   title: str;
   icon: u8;

@@ -1,6 +1,7 @@
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 
+add_subdirectory(graphics)
 add_subdirectory(memory)
 add_subdirectory(trap)
 
@@ -18,5 +19,5 @@ target_link_libraries(
   TRAP_LIB
   GENERATED_TYPES
   TYPEGEN_PRELUDE)
-target_link_libraries(emu absl::flags absl::statusor absl::strings)
+target_link_libraries(emu absl::flags absl::statusor absl::strings GRAFPORT_TYPES)
 target_link_libraries(emu ${SDL2_LIBRARIES})
