@@ -550,7 +550,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect_ptr = TRY(Pop<Ptr>());
       auto rect = TRY(ReadType<Rect>(memory::kSystemMemory, rect_ptr));
       LOG(INFO) << "TRAP InsetRect(r: { " << rect << " } @ 0x" << std::hex
-                << rect_ptr << ", dh: " << dh << ", dv: " << dv << ")";
+                << rect_ptr << std::dec << ", dh: " << dh << ", dv: " << dv
+                << ")";
       rect.left += dh;
       rect.right -= dh;
       rect.top += dv;
@@ -573,7 +574,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect_ptr = TRY(Pop<Ptr>());
       auto rect = TRY(ReadType<Rect>(memory::kSystemMemory, rect_ptr));
       LOG(INFO) << "TRAP OffsetRect(r: { " << rect << " } @ 0x" << std::hex
-                << rect_ptr << ", dh: " << dh << ", dv: " << dv << ")";
+                << rect_ptr << std::dec << ", dh: " << dh << ", dv: " << dv
+                << ")";
       rect.left += dh;
       rect.right += dh;
       rect.top += dv;
