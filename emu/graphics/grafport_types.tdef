@@ -4,11 +4,13 @@ type Ptr: u32;
 
 type RegionHandle: Ptr;
 
+// Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-57.html#HEADING57-39
 struct Point {
   x: Integer;
   y: Integer;
 }
 
+// Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-57.html#HEADING57-39
 struct Rect {
   top: Integer;
   left: Integer;
@@ -16,24 +18,28 @@ struct Rect {
   right: Integer; 
 }
 
+// Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-57.html#HEADING57-39
 struct BitMap {
   base_addr: Ptr;
   row_bytes: Integer;
   bounds: Rect;
 }
 
+// Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-57.html#HEADING57-39
 struct Region {
   region_size: Integer;
   bounding_box: Rect;
   // More data if not rectangular
 }
 
-// FIXME: Allow typegen to define an 8x8 pixel grid
+// Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-196.html#HEADING196-146
 struct Pattern {
+  // FIXME: typegen should support constant sized arrays i.e. data: [u8;8]
   upper: u32;
   lower: u32;
 }
 
+// Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-57.html#HEADING57-39
 struct GrafPort {
   device: Integer;
   port_bits: BitMap;
@@ -48,4 +54,41 @@ struct GrafPort {
   pen_pattern: Pattern;
   pen_visiblity: Integer;
   text_font: Integer;
+}
+
+// Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-405.html#HEADING405-37
+struct Cursor {
+  // FIXME: typegen should support constant sized arrays i.e. data: [u8;32]
+  data_1: u32;
+  data_2: u32;
+  data_3: u32;
+  data_4: u32;
+  data_5: u32;
+  data_6: u32;
+  data_7: u32;
+  data_8: u32;
+  mask_1: u32;
+  mask_2: u32;
+  mask_3: u32;
+  mask_4: u32;
+  mask_5: u32;
+  mask_6: u32;
+  mask_7: u32;
+  mask_8: u32;
+  hotspot: u32;
+}
+
+// Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-30.html#MARKER-9-1
+// Fields are listed in reverse order since the QDGlobals are below the
+// A5 World and thus referenced as negative offsets from it
+struct QDGlobals {
+  random_seed: u32;
+  screen_bits: BitMap;
+  arrow: Cursor;
+  dark_grey: Pattern;
+  light_grey: Pattern;
+  grey: Pattern;
+  black: Pattern;
+  white: Pattern;
+  the_port: Ptr;
 }
