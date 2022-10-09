@@ -563,7 +563,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         rect.bottom = 0;
       }
 
-      LOG(INFO) << "New rect: { " << rect << " }";
       RETURN_IF_ERROR(WriteType<Rect>(rect, memory::kSystemMemory, rect_ptr));
       return absl::OkStatus();
     }
@@ -580,7 +579,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       rect.top += dv;
       rect.bottom += dv;
 
-      LOG(INFO) << "New rect: { " << rect << " }";
       RETURN_IF_ERROR(WriteType<Rect>(rect, memory::kSystemMemory, rect_ptr));
       return absl::OkStatus();
     }
@@ -659,6 +657,26 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto globalPtr = TRY(Pop<Ptr>());
       LOG(INFO) << "TRAP InitGraf(globalPtr: 0x" << std::hex << globalPtr
                 << ")";
+
+      uint32_t a5_world = m68k_get_reg(/*context=*/NULL, M68K_REG_A5);
+      RETURN_IF_ERROR(
+          memory::kSystemMemory.Write<uint32_t>(a5_world, globalPtr));
+
+      Rect screen_bounds;
+      screen_bounds.top = 0;
+      screen_bounds.left = 0;
+      screen_bounds.bottom = 384;
+      screen_bounds.right = 512;
+
+      // FIXME: Add WARNING if `screenBits.baseAddr` is accessed
+      QDGlobals qd_globals;
+      qd_globals.screen_bits.bounds = screen_bounds;
+
+      // `globalPtr` accounts for the size of `thePort` so must be added here
+      RETURN_IF_ERROR(WriteType<QDGlobals>(
+          qd_globals, memory::kSystemMemory,
+          globalPtr - QDGlobals::fixed_size + sizeof(Ptr)));
+
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Text/Text-222.html
@@ -688,7 +706,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG(INFO) << "TRAP InitDialogs(0x" << std::hex << resumeProc << ")";
       return absl::OkStatus();
     }
-      // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-381.html
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-381.html
     case Trap::InitCursor: {
       LOG(INFO) << "TRAP InitCursor()";
       return absl::OkStatus();
