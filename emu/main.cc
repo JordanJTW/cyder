@@ -140,16 +140,7 @@ void cpu_instr_callback(unsigned int pc) {
     LOG(INFO) << COLOR(240) << "Handles: " << memory_manager_ptr->LogHandles()
               << COLOR_RESET();
 
-    Ptr stack_head = m68k_get_reg(NULL, M68K_REG_SP);
-    uint32_t stack_length = cyder::memory::kStackStart - stack_head;
-    LOG(INFO) << COLOR(240) << "Stack:\n"
-              << *cyder::memory::kSystemMemory.Create("Stack", stack_head,
-                                                      stack_length)
-              << COLOR_RESET();
-
-    LOG(INFO) << COLOR(240)
-              << "Status: " << std::bitset<16>(m68k_get_reg(NULL, M68K_REG_SR))
-              << REG(SP) << COLOR_RESET();
+    cyder::memory::debug::LogStack();
 #undef REG
 
     char buffer[255];

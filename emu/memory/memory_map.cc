@@ -5,6 +5,7 @@
 
 #include "core/logging.h"
 #include "global_names.h"
+#include "third_party/musashi/src/m68k.h"
 
 namespace cyder {
 namespace memory {
@@ -233,5 +234,21 @@ std::string MemoryMapToStr() {
   return ss.str();
 }
 
+namespace debug {
+
+void LogA5World() {
+  LOG(INFO) << "A5 World:\n"
+            << MUST(kSystemMemory.Create("A5 World", a5_world - below_a5_size,
+                                         below_a5_size + above_a5_size));
+}
+
+void LogStack() {
+  uint32_t stack_head = m68k_get_reg(/*context=*/NULL, M68K_REG_SP);
+  LOG(INFO) << "Stack:\n"
+            << MUST(memory::kSystemMemory.Create("Stack", stack_head,
+                                                 kStackStart - stack_head));
+}
+
+}  // namespace debug
 }  // namespace memory
 }  // namespace cyder

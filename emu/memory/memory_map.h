@@ -104,5 +104,10 @@ uint32_t GetA5WorldPosition();
 // Returns a string representation of the memory map (for debugging).
 std::string MemoryMapToStr();
 
+namespace debug {
+void LogA5World();  // Logs the A5 World (from below to above A5)
+void LogStack();
+}  // namespace debug
+
 }  // namespace memory
 }  // namespace cyder
