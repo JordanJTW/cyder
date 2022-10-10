@@ -106,6 +106,7 @@ std::string MemoryMapToStr();
 
 namespace debug {
 void LogA5World();  // Logs the A5 World (from below to above A5)
+void LogAppGlobals();
 void LogStack();
 }  // namespace debug
 

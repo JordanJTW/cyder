@@ -242,6 +242,12 @@ void LogA5World() {
                                          below_a5_size + above_a5_size));
 }
 
+void LogAppGlobals() {
+  LOG(INFO) << "Application Globals:\n"
+            << MUST(kSystemMemory.Create("Globals", a5_world - below_a5_size,
+                                         below_a5_size));
+}
+
 void LogStack() {
   uint32_t stack_head = m68k_get_reg(/*context=*/NULL, M68K_REG_SP);
   LOG(INFO) << "Stack:\n"
