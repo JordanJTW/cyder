@@ -14,6 +14,7 @@
 #include "global_names.h"
 #include "memory/memory_manager.h"
 #include "memory/memory_map.h"
+#include "memory/stack_monitor.h"
 #include "resource_file.h"
 #include "resource_manager.h"
 #include "segment_loader.h"
@@ -93,12 +94,15 @@ unsigned int m68k_read_memory_32(unsigned int address) {
   return be32toh(MUST(cyder::memory::kSystemMemory.Copy<uint32_t>(address)));
 }
 
+cyder::memory::StackMonitor stack_monitor;
+
 void m68k_write_memory_8(unsigned int address, unsigned int value) {
   cyder::memory::CheckWriteAccess(address, value);
   LOG_IF(INFO, memory_write_log)
       << std::hex << __func__ << "(" << address << ": " << value << ")";
   CHECK(cyder::memory::kSystemMemory.Write<uint8_t>(address, value).ok())
       << " unable to write " << std::hex << value << " to " << address;
+  stack_monitor.MaybeHandleWrite(address, value, /*size=*/1);
 }
 void m68k_write_memory_16(unsigned int address, unsigned int value) {
   cyder::memory::CheckWriteAccess(address, value);
@@ -107,6 +111,7 @@ void m68k_write_memory_16(unsigned int address, unsigned int value) {
   CHECK(cyder::memory::kSystemMemory.Write<uint16_t>(address, htobe16(value))
             .ok())
       << " unable to write " << std::hex << value << " to " << address;
+  stack_monitor.MaybeHandleWrite(address, value, /*size=*/2);
 }
 void m68k_write_memory_32(unsigned int address, unsigned int value) {
   cyder::memory::CheckWriteAccess(address, value);
@@ -115,11 +120,14 @@ void m68k_write_memory_32(unsigned int address, unsigned int value) {
   CHECK(cyder::memory::kSystemMemory.Write<uint32_t>(address, htobe32(value))
             .ok())
       << " unable to write " << std::hex << value << " to " << address;
+  stack_monitor.MaybeHandleWrite(address, value, /*size=*/4);
 }
 
 cyder::memory::MemoryManager* memory_manager_ptr;
 
 void cpu_instr_callback(unsigned int pc) {
+  stack_monitor.UpdateStackState();
+
   if (pc == break_on_line) {
     LOG(INFO) << "Breakpoint!";
     breakpoint = true;
