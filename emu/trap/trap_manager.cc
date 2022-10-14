@@ -713,6 +713,37 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG(INFO) << "TRAP InitCursor()";
       return absl::OkStatus();
     }
+
+    case Trap::GetNewWindow: {
+      auto behind_window = TRY(Pop<Ptr>());
+      auto window_storage = TRY(Pop<Ptr>());
+      auto window_id = TRY(Pop<Integer>());
+      LOG(INFO) << "TRAP GetNewWindow(id: " << window_id << ", wStorage: 0x"
+                << std::hex << window_storage << ", behind: 0x" << behind_window
+                << ")";
+
+      auto resource_handle = resource_manager_.GetResource('WIND', window_id);
+      auto resource_region =
+          memory_manager_.GetRegionForHandle(resource_handle);
+      auto resource = TRY(ReadType<WIND>(resource_region, /*offset=*/0));
+      LOG(INFO) << "WIND: { " << resource << " }";
+
+      // FIXME: Fill in the rest of the WindowRecord (including GrafPort!)
+      WindowRecord record;
+      record.window_kind = 8 /*userKind*/;
+      record.is_visible = (resource.is_visible != 0);
+      record.has_close = (resource.has_close != 0);
+      record.reference_constant = resource.reference_constant;
+
+      RETURN_IF_ERROR(WriteType<WindowRecord>(record, memory::kSystemMemory,
+                                              window_storage));
+
+      memory::LogRegionAccess(window_storage, WindowRecord::fixed_size,
+                              /*on_read=*/true, /*on_write=*/true,
+                              "WindowRecord");
+      return TrapReturn<Ptr>(window_storage);
+    }
+
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unimplemented Toolbox trap: '", GetTrapName(trap), "'"));
