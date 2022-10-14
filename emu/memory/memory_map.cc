@@ -22,6 +22,11 @@ uint32_t a5_world{0};
 // Stores whether a given address is initialized (written to)
 bool kHasInitializedMemory[kSystemMemorySize];
 
+using RegionEntry = std::pair<std::string, std::pair<size_t, size_t>>;
+
+std::vector<RegionEntry> log_read_regions;
+std::vector<RegionEntry> log_write_regions;
+
 }  // namespace
 
 uint8_t kSystemMemoryRaw[kSystemMemorySize];
@@ -49,6 +54,15 @@ void CheckReadAccess(uint32_t address) {
   auto within_region = [&](size_t lower, size_t upper) {
     return address >= lower && address < upper;
   };
+
+  for (const auto& entry : log_read_regions) {
+    if (within_region(entry.second.first,
+                      entry.second.first + entry.second.second)) {
+      LOG(FATAL) << "Read within protected region \"" << entry.first << "\": 0x"
+                 << std::hex << address << " (0x"
+                 << (address - entry.second.first) << ")";
+    }
+  }
 
   // Interrupt Vector Table
   if (within_region(0, kInterruptVectorTableEnd)) {
@@ -136,6 +150,15 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
   auto within_region = [&](size_t lower, size_t upper) {
     return address >= lower && address < upper;
   };
+
+  for (const auto& entry : log_write_regions) {
+    if (within_region(entry.second.first,
+                      entry.second.first + entry.second.second)) {
+      LOG(FATAL) << "Write within protected region \"" << entry.first
+                 << "\": 0x" << std::hex << address << " (0x"
+                 << (address - entry.second.first) << ") = 0x" << value;
+    }
+  }
 
   // Interrupt Vector Table
   CHECK(!within_region(0, 0x100))
@@ -232,6 +255,21 @@ std::string MemoryMapToStr() {
      << "A5 World: 0x" << a5_world << " (+" << above_a5_size << ", -"
      << below_a5_size << ")";
   return ss.str();
+}
+
+void LogRegionAccess(size_t offset,
+                     size_t length,
+                     bool on_read,
+                     bool on_write,
+                     const std::string& region_name) {
+  auto region_pair = std::pair<std::string, std::pair<size_t, size_t>>{
+      region_name, {offset, length}};
+  if (on_read) {
+    log_read_regions.push_back(region_pair);
+  }
+  if (on_write) {
+    log_write_regions.push_back(region_pair);
+  }
 }
 
 namespace debug {

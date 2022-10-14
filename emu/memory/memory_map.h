@@ -104,6 +104,12 @@ uint32_t GetA5WorldPosition();
 // Returns a string representation of the memory map (for debugging).
 std::string MemoryMapToStr();
 
+void LogRegionAccess(size_t offset,
+                     size_t length,
+                     bool on_read,
+                     bool on_write,
+                     const std::string& region_name);
+
 namespace debug {
 void LogA5World();  // Logs the A5 World (from below to above A5)
 void LogAppGlobals();
