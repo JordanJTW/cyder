@@ -1,8 +1,10 @@
 
 type Integer: u16;
 type Ptr: u32;
+type Boolean: u8;
 
-type RegionHandle: Ptr;
+type Handle: Ptr;
+type RegionHandle: Handle;
 
 // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-57.html#HEADING57-39
 struct Point {
@@ -91,4 +93,36 @@ struct QDGlobals {
   black: Pattern;
   white: Pattern;
   the_port: Ptr;
+}
+
+// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-296.html#HEADING296-96
+struct WindowRecord {
+  port: GrafPort;
+  window_kind: u8;
+  is_visible: Boolean;
+  hilited: Boolean;
+  has_close: Boolean;
+  has_zoom: Boolean;
+  structure_region: RegionHandle;
+  content_region: RegionHandle;
+  update_region: RegionHandle;
+  window_definition_proc: Handle;
+  data_handle: Handle;
+  title_handle: Handle;
+  title_width: u8;
+  control_list: Handle;
+  next_window: Ptr;
+  picture_handle: Handle;
+  reference_constant: u32;
+}
+
+// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-293.html#MARKER-9-629
+struct WIND {
+  initial_rect: Rect;
+  window_definition_id: u16;
+  is_visible: u16;
+  has_close: u16;
+  reference_constant: u32;
+  title: str;
+  // Optional: position: u16;
 }
