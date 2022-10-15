@@ -483,6 +483,35 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
     // ====================  QuickDraw  ======================
 
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-36.html
+    case Trap::GetPort: {
+      auto port_var = TRY(Pop<Ptr>());
+      LOG(INFO) << "TRAP GetPort(VAR port: 0x" << std::hex << port_var << ")";
+
+      uint32_t a5_world = m68k_get_reg(/*context=*/NULL, M68K_REG_A5);
+      auto the_port_addr =
+          betoh<Ptr>(TRY(memory::kSystemMemory.Copy<Ptr>(a5_world)));
+
+      auto the_port =
+          betoh<Ptr>(TRY(memory::kSystemMemory.Copy<Ptr>(the_port_addr)));
+
+      RETURN_IF_ERROR(
+          memory::kSystemMemory.Write<Ptr>(port_var, htobe<Ptr>(the_port)));
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-37.html
+    case Trap::SetPort: {
+      auto port = TRY(Pop<Ptr>());
+      LOG(INFO) << "TRAP SetPort(port: 0x" << std::hex << port << ")";
+
+      uint32_t a5_world = m68k_get_reg(/*context=*/NULL, M68K_REG_A5);
+      auto the_port_addr =
+          betoh<Ptr>(TRY(memory::kSystemMemory.Copy<Ptr>(a5_world)));
+
+      RETURN_IF_ERROR(
+          memory::kSystemMemory.Write<Ptr>(the_port_addr, htobe<Ptr>(port)));
+      return absl::OkStatus();
+    }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-32.html
     case Trap::OpenPort: {
       auto thePortPtr = TRY(Pop<GrafPtr>());
@@ -661,8 +690,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                 << ")";
 
       uint32_t a5_world = m68k_get_reg(/*context=*/NULL, M68K_REG_A5);
-      RETURN_IF_ERROR(
-          memory::kSystemMemory.Write<uint32_t>(a5_world, globalPtr));
+      RETURN_IF_ERROR(memory::kSystemMemory.Write<uint32_t>(
+          a5_world, htobe<Ptr>(globalPtr)));
 
       Rect screen_bounds;
       screen_bounds.top = 0;
