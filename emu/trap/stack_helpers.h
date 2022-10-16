@@ -36,6 +36,19 @@ absl::StatusOr<T> Peek(size_t offset = 0) {
   return betoh<T>(TRY(memory::kSystemMemory.Copy<T>(current_stack + offset)));
 }
 
+// Pops type `T` off of the stack.
+// Types <= 4 bytes in size are stored directly on the stack.
+// Reference:
+// http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-170.html#HEADING170-115
+// FIXME: Add check to template that size of `T` is <= to 4 bytes?
+template <typename T>
+absl::StatusOr<T> PopType() {
+  Ptr current_stack = m68k_get_reg(NULL, M68K_REG_SP);
+  T value = TRY(ReadType<T>(memory::kSystemMemory, current_stack));
+  m68k_set_reg(M68K_REG_SP, current_stack + T::fixed_size);
+  return value;
+}
+
 // Pops pointer to `T` off of the stack and returns the dereferenced value
 template <typename T>
 absl::StatusOr<T> PopRef() {

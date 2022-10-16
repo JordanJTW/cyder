@@ -613,6 +613,20 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       RETURN_IF_ERROR(WriteType<Rect>(rect, memory::kSystemMemory, rect_ptr));
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-93.html
+    case Trap::PtToAngle: {
+      auto angle_var = TRY(Pop<Ptr>());
+      auto pt = TRY(PopType<Point>());
+      auto r = TRY(PopRef<Rect>());
+
+      LOG(INFO) << "TRAP PtToAngle(r: { " << r << " }, pt: { " << pt
+                << " }, VAR angle: 0x" << std::hex << angle_var << ")";
+
+      // FIXME: Calculate the angle in degrees from 0 to 359.
+      Integer angle = 0;
+      RETURN_IF_ERROR(memory::kSystemMemory.Write<Integer>(angle_var, angle));
+      return absl::OkStatus();
+    }
 
     // ================== Resource Manager ==================
 
