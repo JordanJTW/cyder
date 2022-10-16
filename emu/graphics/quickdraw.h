@@ -12,5 +12,7 @@ absl::StatusOr<Ptr> GetQDGlobals();
 absl::StatusOr<Ptr> GetThePort();
 absl::Status SetThePort(Ptr port);
 
+absl::StatusOr<Point> GetLocalToGlobalOffset();
+
 }  // namespace port
 }  // namespace cyder

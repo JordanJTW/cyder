@@ -26,5 +26,16 @@ absl::Status SetThePort(Ptr port) {
   return memory::kSystemMemory.Write<Ptr>(the_port, htobe<Ptr>(port));
 }
 
+absl::StatusOr<Point> GetLocalToGlobalOffset() {
+  auto the_port = TRY(GetThePort());
+
+  auto current_port = TRY(ReadType<GrafPort>(memory::kSystemMemory, the_port));
+
+  Point point;
+  point.x = current_port.port_rect.left;
+  point.y = current_port.port_rect.top;
+  return point;
+}
+
 }  // namespace port
 }  // namespace cyder
