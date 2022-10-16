@@ -1,0 +1,30 @@
+#include "emu/graphics/quickdraw.h"
+
+#include "core/endian_helpers.h"
+#include "core/logging.h"
+#include "core/status_helpers.h"
+#include "emu/memory/memory_map.h"
+#include "third_party/musashi/src/m68k.h"
+
+namespace cyder {
+namespace port {
+
+absl::StatusOr<Ptr> GetQDGlobals() {
+  auto a5_world = m68k_get_reg(/*context=*/NULL, M68K_REG_A5);
+  return betoh<Ptr>(TRY(memory::kSystemMemory.Copy<Ptr>(a5_world)));
+}
+
+absl::StatusOr<Ptr> GetThePort() {
+  // The pointer to the QuickDraw globals points to the first element (thePort)
+  auto the_port = TRY(GetQDGlobals());
+  return betoh<Ptr>(TRY(memory::kSystemMemory.Copy<Ptr>(the_port)));
+}
+
+absl::Status SetThePort(Ptr port) {
+  // The pointer to the QuickDraw globals points to the first element (thePort)
+  auto the_port = TRY(GetQDGlobals());
+  return memory::kSystemMemory.Write<Ptr>(the_port, htobe<Ptr>(port));
+}
+
+}  // namespace port
+}  // namespace cyder

@@ -10,6 +10,7 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "emu/graphics/grafport_types.h"
+#include "emu/graphics/quickdraw.h"
 #include "emu/memory/memory_map.h"
 #include "emu/trap/stack_helpers.h"
 #include "emu/trap/trap_helpers.h"
@@ -488,15 +489,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto port_var = TRY(Pop<Ptr>());
       LOG(INFO) << "TRAP GetPort(VAR port: 0x" << std::hex << port_var << ")";
 
-      uint32_t a5_world = m68k_get_reg(/*context=*/NULL, M68K_REG_A5);
-      auto the_port_addr =
-          betoh<Ptr>(TRY(memory::kSystemMemory.Copy<Ptr>(a5_world)));
 
-      auto the_port =
-          betoh<Ptr>(TRY(memory::kSystemMemory.Copy<Ptr>(the_port_addr)));
-
-      RETURN_IF_ERROR(
-          memory::kSystemMemory.Write<Ptr>(port_var, htobe<Ptr>(the_port)));
+      RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(
+          port_var, htobe<Ptr>(TRY(port::GetThePort()))));
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-37.html
@@ -504,12 +499,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto port = TRY(Pop<Ptr>());
       LOG(INFO) << "TRAP SetPort(port: 0x" << std::hex << port << ")";
 
-      uint32_t a5_world = m68k_get_reg(/*context=*/NULL, M68K_REG_A5);
-      auto the_port_addr =
-          betoh<Ptr>(TRY(memory::kSystemMemory.Copy<Ptr>(a5_world)));
-
-      RETURN_IF_ERROR(
-          memory::kSystemMemory.Write<Ptr>(the_port_addr, htobe<Ptr>(port)));
+      RETURN_IF_ERROR(port::SetThePort(port));
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-32.html

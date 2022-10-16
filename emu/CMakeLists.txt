@@ -15,6 +15,7 @@ target_link_libraries(
   MUSASHI_LIB
   rsrcfork
   GLOBAL_NAMES
+  GRAPHICS_LIB
   TRAP_NAMES
   TRAP_LIB
   GENERATED_TYPES
