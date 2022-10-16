@@ -12,7 +12,7 @@ add_custom_command(
 )
 
 add_library(TRAP_NAMES OBJECT trap_names.cc)
-target_include_directories(TRAP_NAMES PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(TRAP_NAMES PUBLIC ${CMAKE_BINARY_DIR})
 
 add_custom_command(
     OUTPUT  global_names.cc global_names.h
@@ -24,4 +24,4 @@ add_custom_command(
 )
 
 add_library(GLOBAL_NAMES OBJECT global_names.cc)
-target_include_directories(GLOBAL_NAMES PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(GLOBAL_NAMES PUBLIC ${CMAKE_BINARY_DIR})

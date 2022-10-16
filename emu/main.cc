@@ -11,7 +11,8 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
-#include "global_names.h"
+#include "gen/global_names.h"
+#include "gen/trap_names.h"
 #include "memory/memory_manager.h"
 #include "memory/memory_map.h"
 #include "memory/stack_monitor.h"
@@ -20,7 +21,6 @@
 #include "segment_loader.h"
 #include "third_party/musashi/src/m68k.h"
 #include "trap/trap_manager.h"
-#include "trap_names.h"
 
 ABSL_FLAG(bool,
           disassemble,

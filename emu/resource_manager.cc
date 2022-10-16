@@ -1,7 +1,7 @@
 #include "resource_manager.h"
 
 #include "emu/memory/memory_map.h"
-#include "global_names.h"
+#include "gen/global_names.h"
 
 namespace cyder {
 namespace {

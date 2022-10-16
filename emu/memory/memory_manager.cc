@@ -6,7 +6,7 @@
 #include "core/logging.h"
 #include "core/memory_region.h"
 #include "emu/memory/memory_map.h"
-#include "global_names.h"
+#include "gen/global_names.h"
 
 namespace cyder {
 namespace memory {

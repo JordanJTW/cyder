@@ -6,7 +6,7 @@
 
 #include "absl/strings/string_view.h"
 #include "emu/memory/memory_manager.h"
-#include "generated_types.h"
+#include "gen/typegen/generated_types.h"
 #include "resource.h"
 #include "resource_file.h"
 #include "resource_types.h"

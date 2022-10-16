@@ -4,7 +4,7 @@
 #include <sstream>
 
 #include "core/logging.h"
-#include "global_names.h"
+#include "gen/global_names.h"
 #include "third_party/musashi/src/m68k.h"
 
 namespace cyder {

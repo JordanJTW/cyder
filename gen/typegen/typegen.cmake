@@ -19,5 +19,5 @@ macro(typegen target_name type_definition)
 
   add_library(${target_name} OBJECT ${output_name}.cc)
   target_link_libraries(${target_name} CORE_LIB absl::statusor TYPEGEN_PRELUDE)
-  target_include_directories(${target_name} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+  target_include_directories(${target_name} PUBLIC ${CMAKE_BINARY_DIR})
 endmacro()
