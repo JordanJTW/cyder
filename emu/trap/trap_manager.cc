@@ -517,6 +517,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::PaintRect: {
       auto rect = TRY(PopRef<Rect>());
       LOG(INFO) << "TRAP PaintRect(rect: " << rect << ")";
+
+      auto offset = TRY(port::GetLocalToGlobalOffset());
+      rect.left += offset.x;
+      rect.right += offset.x;
+      rect.top += offset.y;
+      rect.bottom += offset.y;
+
       // FIXME: Paint with the color set for QuickDraw (A5 World?)
       DrawRect(renderer_, rect, {0, 0, 0});
       return absl::OkStatus();
@@ -525,6 +532,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::EraseRect: {
       auto rect = TRY(PopRef<Rect>());
       LOG(INFO) << "TRAP EraseRect(rect: " << rect << ")";
+
+      auto offset = TRY(port::GetLocalToGlobalOffset());
+      rect.left += offset.x;
+      rect.right += offset.x;
+      rect.top += offset.y;
+      rect.bottom += offset.y;
+
       // FIXME: Clear with the color set for QuickDraw (A5 World?)
       DrawRect(renderer_, rect, {0xFF, 0xBF, 0x00});
       return absl::OkStatus();
@@ -540,6 +554,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::PaintOval: {
       auto rect = TRY(PopRef<Rect>());
       LOG(INFO) << "TRAP PaintOval(rect: " << rect << ")";
+
+      auto offset = TRY(port::GetLocalToGlobalOffset());
+      rect.left += offset.x;
+      rect.right += offset.x;
+      rect.top += offset.y;
+      rect.bottom += offset.y;
+
       // FIXME: Paint with the color set for QuickDraw (A5 World?)
       DrawRect(renderer_, rect, {0, 0, 0});
       return absl::OkStatus();
@@ -548,6 +569,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::EraseOval: {
       auto rect = TRY(PopRef<Rect>());
       LOG(INFO) << "TRAP EraseOval(rect: " << rect << ")";
+
+      auto offset = TRY(port::GetLocalToGlobalOffset());
+      rect.left += offset.x;
+      rect.right += offset.x;
+      rect.top += offset.y;
+      rect.bottom += offset.y;
+
       // FIXME: Clear with the color set for QuickDraw (A5 World?)
       DrawRect(renderer_, rect, {0xFF, 0xBF, 0x00});
       return absl::OkStatus();
