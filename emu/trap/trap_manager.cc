@@ -489,7 +489,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto port_var = TRY(Pop<Ptr>());
       LOG(INFO) << "TRAP GetPort(VAR port: 0x" << std::hex << port_var << ")";
 
-
       RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(
           port_var, htobe<Ptr>(TRY(port::GetThePort()))));
       return absl::OkStatus();
@@ -650,7 +649,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       // FIXME: Calculate the angle in degrees from 0 to 359.
       Integer angle = 0;
-      RETURN_IF_ERROR(memory::kSystemMemory.Write<Integer>(angle_var, angle));
+      RETURN_IF_ERROR(memory::kSystemMemory.Write<Integer>(
+          angle_var, htobe<Integer>(angle)));
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-50.html
