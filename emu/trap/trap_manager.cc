@@ -521,6 +521,14 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       DrawRect(renderer_, rect, {0, 0, 0});
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-100.html
+    case Trap::EraseRect: {
+      auto rect = TRY(PopRef<Rect>());
+      LOG(INFO) << "TRAP EraseRect(rect: " << rect << ")";
+      // FIXME: Clear with the color set for QuickDraw (A5 World?)
+      DrawRect(renderer_, rect, {0xFF, 0xBF, 0x00});
+      return absl::OkStatus();
+    }
     // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-63.html
     case Trap::Random: {
       LOG(INFO) << "TRAP Random()";
