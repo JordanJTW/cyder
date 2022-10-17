@@ -408,6 +408,22 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       RETURN_IF_ERROR(TrapReturn<uint16_t>(0x0000));
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-72.html
+    case Trap::GetMouse: {
+      auto mouse_location_var = TRY(Pop<Ptr>());
+
+      LOG(INFO) << "TRAP GetMouse(VAR mouseLoc: 0x" << std::hex
+                << mouse_location_var << ")";
+
+      // FIXME: Fill in Point based on current mouse location
+      Point mouse_location;
+      mouse_location.x = 0;
+      mouse_location.y = 0;
+
+      RETURN_IF_ERROR(WriteType<Point>(mouse_location, memory::kSystemMemory,
+                                       mouse_location_var));
+      return absl::OkStatus();
+    }
 
     // ===================  Menu Manager  ======================
 
