@@ -112,7 +112,8 @@ class CodeGenerator:
       file.write(f'  {c_type} {member.id}{init_expr};\n')
 
     if not expr.is_dynamic:
-      write(file, f"""\nconst static size_t fixed_size = {expr.size};""", indent=2)
+      write(
+        file, f"""\nconst static size_t fixed_size = {expr.size};""", indent=2)
 
     write(file, """
 
@@ -120,8 +121,23 @@ class CodeGenerator:
       };\n
     """)
 
+  def _write_offsets(self, file, expr: CheckedStructExpression):
+    if expr.is_dynamic:
+      return
+
+    field_offset = 0
+    file.write(f'namespace {expr.id}Fields {{\n')
+    for member in expr.members:
+      write(file,
+            f'const static size_t {member.id} = 0x{field_offset:x};\n', indent=2)
+      assert isinstance(
+        member.type, CheckedTypeExpression), 'Unexpected field type in static struct'
+      field_offset += member.type.size
+    file.write(f'}}  // namespace {expr.id}Fields\n\n')
+
   def _generate_struct_decls(self, file):
     for expr in self._struct_expressions:
+      self._write_offsets(file, expr)
       self._write_struct(file, expr)
 
   def _write_read_write_type_decls(self, file, type):

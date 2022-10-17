@@ -22,10 +22,22 @@ uint32_t a5_world{0};
 // Stores whether a given address is initialized (written to)
 bool kHasInitializedMemory[kSystemMemorySize];
 
-using RegionEntry = std::pair<std::string, std::pair<size_t, size_t>>;
+struct RegionEntry {
+  std::string name;
+  size_t start;
+  size_t end;
+  std::vector<size_t> whitelist;
+};
 
 std::vector<RegionEntry> log_read_regions;
 std::vector<RegionEntry> log_write_regions;
+
+bool ShouldLogAccess(const RegionEntry& entry, uint32_t address) {
+  size_t relative_offset = address - entry.start;
+  return std::none_of(
+      entry.whitelist.cbegin(), entry.whitelist.cend(),
+      [&](size_t field_offset) { return field_offset == relative_offset; });
+}
 
 }  // namespace
 
@@ -56,11 +68,11 @@ void CheckReadAccess(uint32_t address) {
   };
 
   for (const auto& entry : log_read_regions) {
-    if (within_region(entry.second.first,
-                      entry.second.first + entry.second.second)) {
-      LOG(FATAL) << "Read within protected region \"" << entry.first << "\": 0x"
-                 << std::hex << address << " (0x"
-                 << (address - entry.second.first) << ")";
+    if (within_region(entry.start, entry.end) &&
+        ShouldLogAccess(entry, address)) {
+      LOG(FATAL) << "Read within protected region \"" << entry.name << "\": 0x"
+                 << std::hex << address << " (0x" << (address - entry.start)
+                 << ")";
     }
   }
 
@@ -152,11 +164,11 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
   };
 
   for (const auto& entry : log_write_regions) {
-    if (within_region(entry.second.first,
-                      entry.second.first + entry.second.second)) {
-      LOG(FATAL) << "Write within protected region \"" << entry.first
-                 << "\": 0x" << std::hex << address << " (0x"
-                 << (address - entry.second.first) << ") = 0x" << value;
+    if (within_region(entry.start, entry.end) &&
+        ShouldLogAccess(entry, address)) {
+      LOG(FATAL) << "Write within protected region \"" << entry.name << "\": 0x"
+                 << std::hex << address << " (0x" << (address - entry.start)
+                 << ") = 0x" << value;
     }
   }
 
@@ -261,14 +273,17 @@ void LogRegionAccess(size_t offset,
                      size_t length,
                      bool on_read,
                      bool on_write,
-                     const std::string& region_name) {
-  auto region_pair = std::pair<std::string, std::pair<size_t, size_t>>{
-      region_name, {offset, length}};
+                     const std::string& region_name,
+                     std::vector<size_t> whitelist_fields) {
+  auto region_entry = RegionEntry{.name = region_name,
+                                  .start = offset,
+                                  .end = offset + length,
+                                  .whitelist = std::move(whitelist_fields)};
   if (on_read) {
-    log_read_regions.push_back(region_pair);
+    log_read_regions.push_back(region_entry);
   }
   if (on_write) {
-    log_write_regions.push_back(region_pair);
+    log_write_regions.push_back(region_entry);
   }
 }
 
