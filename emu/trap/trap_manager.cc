@@ -813,18 +813,33 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG(INFO) << "WIND: { " << resource << " }";
 
       // FIXME: Fill in the rest of the WindowRecord (including GrafPort!)
+      Region visible_region;
+      visible_region.region_size = 8;
+      visible_region.bounding_box = resource.initial_rect;
+
+      auto region_handle = memory_manager_.AllocateHandle(visible_region.size(),
+                                                          "VisibleRegion");
+      auto region_memory = memory_manager_.GetRegionForHandle(region_handle);
+      RETURN_IF_ERROR(
+          WriteType<Region>(visible_region, region_memory, /*offset=*/0));
+
+      GrafPort port;
+      port.port_rect = resource.initial_rect;
+      port.visible_region = region_handle;
+
       WindowRecord record;
+      record.port = std::move(port);
       record.window_kind = 8 /*userKind*/;
       record.is_visible = (resource.is_visible != 0);
       record.has_close = (resource.has_close != 0);
       record.reference_constant = resource.reference_constant;
 
+      RESTRICT_FIELD_ACCESS(
+          WindowRecord, window_storage,
+          WindowRecordFields::port + GrafPortFields::visible_region);
+
       RETURN_IF_ERROR(WriteType<WindowRecord>(record, memory::kSystemMemory,
                                               window_storage));
-
-      memory::LogRegionAccess(window_storage, WindowRecord::fixed_size,
-                              /*on_read=*/true, /*on_write=*/true,
-                              "WindowRecord");
       return TrapReturn<Ptr>(window_storage);
     }
 
