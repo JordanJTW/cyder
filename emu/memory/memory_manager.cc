@@ -57,6 +57,19 @@ Handle MemoryManager::AllocateHandleForRegion(const core::MemoryRegion& region,
   return handle;
 }
 
+Ptr MemoryManager::GetPtrForHandle(Handle handle) {
+  auto entry = handle_to_metadata_.find(handle);
+  CHECK(entry != handle_to_metadata_.cend())
+      << "Handle (0x" << std::hex << handle << ") can not be found.";
+
+  auto current_ptr = be32toh(MUST(kSystemMemory.Copy<uint32_t>(entry->first)));
+
+  const HandleMetadata& metadata = entry->second;
+  CHECK_EQ(current_ptr, metadata.start);
+
+  return current_ptr;
+}
+
 core::MemoryRegion MemoryManager::GetRegionForHandle(Handle handle) {
   auto entry = handle_to_metadata_.find(handle);
   CHECK(entry != handle_to_metadata_.cend())
