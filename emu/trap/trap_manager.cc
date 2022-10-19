@@ -14,6 +14,7 @@
 #include "emu/memory/memory_map.h"
 #include "emu/trap/stack_helpers.h"
 #include "emu/trap/trap_helpers.h"
+#include "gen/global_names.h"
 #include "gen/trap_names.h"
 #include "gen/typegen/typegen_prelude.h"
 #include "resource.h"
@@ -814,6 +815,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       return absl::OkStatus();
     }
 
+    // ====================  Window Manager  =====================
+
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-226.html
     case Trap::GetNewWindow: {
       auto behind_window = TRY(Pop<Ptr>());
       auto window_storage = TRY(Pop<Ptr>());
@@ -839,6 +843,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       RETURN_IF_ERROR(
           WriteType<Region>(visible_region, region_memory, /*offset=*/0));
 
+      // FIXME: Properly maintain the full WindowList ordered by z-index
+      RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(
+          GlobalVars::WindowList, htobe<Ptr>(window_storage)));
+
       GrafPort port;
       port.port_rect = resource.initial_rect;
       port.visible_region = region_handle;
@@ -857,6 +865,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       RETURN_IF_ERROR(WriteType<WindowRecord>(record, memory::kSystemMemory,
                                               window_storage));
       return TrapReturn<Ptr>(window_storage);
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-243.html
+    case Trap::FrontWindow: {
+      LOG(INFO) << "TRAP FrontWindow()";
+      auto front_window = betoh<Ptr>(
+          TRY(memory::kSystemMemory.Copy<Ptr>(GlobalVars::WindowList)));
+      return TrapReturn<Ptr>(front_window);
     }
 
     default:
