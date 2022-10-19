@@ -425,6 +425,27 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                                        mouse_location_var));
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-51.html
+    case Trap::WaitNextEvent: {
+      auto mouse_region = TRY(Pop<Handle>());
+      auto sleep = TRY(Pop<uint32_t>());
+      auto the_event_var = TRY(Pop<Ptr>());
+      auto event_mask = TRY(Pop<uint16_t>());
+
+      LOG(INFO) << "TRAP WaitNextEvent(eventMask: "
+                << std::bitset<16>(event_mask) << ", VAR theEvent: 0x"
+                << std::hex << the_event_var << ", sleep: " << std::dec << sleep
+                << ", mouseRgn: 0x" << std::hex << mouse_region << ")";
+
+      // FIXME: Fill in the EventRecord for various events from SDL and monitor
+      //        the field accesses with RESTRICT_FIELD_ACCESS.
+      EventRecord record;
+      record.what = 0 /*nullEvent*/;
+
+      RETURN_IF_ERROR(
+          WriteType<EventRecord>(record, memory::kSystemMemory, the_event_var));
+      return TrapReturn<uint16_t>(0x0000);
+    }
 
     // ===================  Menu Manager  ======================
 
