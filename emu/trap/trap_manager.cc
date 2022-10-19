@@ -446,6 +446,14 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
           WriteType<EventRecord>(record, memory::kSystemMemory, the_event_var));
       return TrapReturn<uint16_t>(0x0000);
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-80.html
+    case Trap::TickCount: {
+      // FIXME: Read from GlobalVar::Ticks which should be set every 1/60th secs
+      static absl::Time boot_time = absl::Now();
+      auto elapsed_time_ms = absl::ToInt64Milliseconds(absl::Now() - boot_time);
+      uint32_t elapsed_ticks = elapsed_time_ms / 16;
+      return TrapReturn<uint32_t>(elapsed_ticks);
+    }
 
     // ===================  Menu Manager  ======================
 
