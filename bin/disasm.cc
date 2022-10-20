@@ -4,7 +4,7 @@
 #include "core/status_main.h"
 #include "resource_file.h"
 #include "third_party/musashi/src/m68k.h"
-#include "trap_names.h"
+#include "gen/trap_names.h"
 
 using namespace rsrcloader;
 

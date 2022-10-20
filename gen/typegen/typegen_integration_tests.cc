@@ -8,7 +8,7 @@
 #include "core/endian_helpers.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
-#include "typegen_test_types.h"
+#include "gen/typegen/typegen_test_types.h"
 
 class TypegenIntegrationTests : public ::testing::Test {
  protected:
