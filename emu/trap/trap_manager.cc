@@ -64,10 +64,12 @@ absl::Status HandleLoadSegmentTrap(SegmentLoader& segment_loader,
 TrapManager::TrapManager(memory::MemoryManager& memory_manager,
                          ResourceManager& resource_manager,
                          SegmentLoader& segment_loader,
+                         EventManager& event_manager,
                          SDL_Renderer* renderer)
     : memory_manager_(memory_manager),
       resource_manager_(resource_manager),
       segment_loader_(segment_loader),
+      event_manager_(event_manager),
       renderer_(renderer) {
   CHECK(renderer);
 }
@@ -440,13 +442,11 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                 << std::hex << the_event_var << ", sleep: " << std::dec << sleep
                 << ", mouseRgn: 0x" << std::hex << mouse_region << ")";
 
-      // FIXME: Fill in the EventRecord for various events from SDL and monitor
-      //        the field accesses with RESTRICT_FIELD_ACCESS.
-      EventRecord record;
-      record.what = 0 /*nullEvent*/;
+      // FIXME: Monitor the field accesses with RESTRICT_FIELD_ACCESS.
+      auto event = event_manager_.GetNextEvent();
 
-      RETURN_IF_ERROR(
-          WriteType<EventRecord>(record, memory::kSystemMemory, the_event_var));
+      RETURN_IF_ERROR(WriteType<EventRecord>(
+          std::move(event), memory::kSystemMemory, the_event_var));
       return TrapReturn<uint16_t>(0x0000);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-80.html
@@ -889,6 +889,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       // FIXME: Properly maintain the full WindowList ordered by z-index
       RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(
           GlobalVars::WindowList, htobe<Ptr>(window_storage)));
+
+      // Focus (activate) the most recently created window
+      event_manager_.QueueEvent(/*what=*/6 /*updateEvent*/,
+                                /*message=*/window_storage);
 
       GrafPort port;
       port.port_rect = resource.initial_rect;

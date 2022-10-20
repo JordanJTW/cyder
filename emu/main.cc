@@ -11,16 +11,17 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
+#include "emu/event_manager.h"
+#include "emu/memory/memory_manager.h"
+#include "emu/memory/memory_map.h"
+#include "emu/memory/stack_monitor.h"
+#include "emu/segment_loader.h"
+#include "emu/trap/trap_manager.h"
 #include "gen/global_names.h"
 #include "gen/trap_names.h"
-#include "memory/memory_manager.h"
-#include "memory/memory_map.h"
-#include "memory/stack_monitor.h"
 #include "resource_file.h"
 #include "resource_manager.h"
-#include "segment_loader.h"
 #include "third_party/musashi/src/m68k.h"
-#include "trap/trap_manager.h"
 
 ABSL_FLAG(bool,
           disassemble,
@@ -185,6 +186,7 @@ void PrintFrameTiming(std::ostream& os = std::cout, float period = 2.0f) {
   }
 }
 
+using cyder::EventManager;
 using cyder::ResourceManager;
 using cyder::SegmentLoader;
 using cyder::memory::kSystemMemory;
@@ -214,8 +216,10 @@ absl::Status Main(const core::Args& args) {
   SDL_Renderer* renderer =
       SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
+  EventManager event_manager;
+
   TrapManager trap_manager(memory_manager, resource_manager, segment_loader,
-                           renderer);
+                           event_manager, renderer);
   on_emulated_subroutine = std::bind(&TrapManager::DispatchEmulatedSubroutine,
                                      &trap_manager, std::placeholders::_1);
 

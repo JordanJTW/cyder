@@ -5,7 +5,7 @@ add_subdirectory(graphics)
 add_subdirectory(memory)
 add_subdirectory(trap)
 
-add_executable(emu main.cc resource_manager.cc segment_loader.cc)
+add_executable(emu main.cc event_manager.cc resource_manager.cc segment_loader.cc)
 target_link_libraries(
   emu
   CORE_LIB

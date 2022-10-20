@@ -2,6 +2,7 @@
 #include <tuple>
 
 #include "absl/status/status.h"
+#include "emu/event_manager.h"
 #include "emu/memory/memory_manager.h"
 #include "emu/segment_loader.h"
 #include "resource_file.h"
@@ -17,6 +18,7 @@ class TrapManager {
   TrapManager(memory::MemoryManager& memory_manager,
               ResourceManager& resource_manager,
               SegmentLoader& segment_loader,
+              EventManager& event_manager,
               SDL_Renderer* renderer);
 
   absl::Status DispatchEmulatedSubroutine(uint32_t address);
@@ -36,6 +38,7 @@ class TrapManager {
   memory::MemoryManager& memory_manager_;
   ResourceManager& resource_manager_;
   SegmentLoader& segment_loader_;
+  EventManager& event_manager_;
   SDL_Renderer* renderer_;
 
   std::map<uint16_t, uint32_t> patch_trap_addresses_;
