@@ -83,6 +83,12 @@ void ParseIcon4bit(const std::string& name,
   }
 }
 
+void SavePict(const std::string& name, const core::MemoryRegion& data) {
+  std::ofstream pict;
+  pict.open(absl::StrCat("/tmp/", name, ".pict"), std::ios::out);
+  pict.write(reinterpret_cast<const char*>(data.raw_ptr()), data.size());
+}
+
 absl::Status Main(const core::Args& args) {
   auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
 
@@ -128,6 +134,11 @@ absl::Status Main(const core::Args& args) {
     for (const auto& resource : group->GetResources()) {
       ParseIcon4bit(absl::StrCat("ics4.", resource.GetId()),
                     resource.GetData().raw_ptr(), resource.GetSize(), 16);
+    }
+  }
+  if (const ResourceGroup* group = file->FindGroupByType('PICT')) {
+    for (const auto& resource : group->GetResources()) {
+      SavePict(absl::StrCat("pict.", resource.GetId()), resource.GetData());
     }
   }
 
