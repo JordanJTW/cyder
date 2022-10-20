@@ -691,13 +691,24 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::PtToAngle: {
       auto angle_var = TRY(Pop<Ptr>());
       auto pt = TRY(PopType<Point>());
-      auto r = TRY(PopRef<Rect>());
+      auto rect = TRY(PopRef<Rect>());
 
-      LOG(INFO) << "TRAP PtToAngle(r: { " << r << " }, pt: { " << pt
+      LOG(INFO) << "TRAP PtToAngle(rect: { " << rect << " }, pt: { " << pt
                 << " }, VAR angle: 0x" << std::hex << angle_var << ")";
 
-      // FIXME: Calculate the angle in degrees from 0 to 359.
-      Integer angle = 0;
+      auto offset = TRY(port::GetLocalToGlobalOffset());
+
+      int16_t width = rect.right - rect.left;
+      int16_t height = rect.bottom - rect.top;
+      int16_t center_x = rect.left + (width / 2) + offset.x;
+      int16_t center_y = rect.top + (height / 2) + offset.y;
+
+      double result =
+          std::atan2(pt.y - center_y, pt.x - center_x) * 180 / 3.14159265;
+
+      int16_t angle = (360 + result);
+      angle = (angle + 90) % 360;
+
       RETURN_IF_ERROR(memory::kSystemMemory.Write<Integer>(
           angle_var, htobe<Integer>(angle)));
       return absl::OkStatus();
