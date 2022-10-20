@@ -416,10 +416,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG(INFO) << "TRAP GetMouse(VAR mouseLoc: 0x" << std::hex
                 << mouse_location_var << ")";
 
-      // FIXME: Fill in Point based on current mouse location
+      int mouse_x = 0, mouse_y = 0;
+      SDL_GetMouseState(&mouse_x, &mouse_y);
+
+      // FIXME: Ensure it is safe to do these implicit bit-narrowing casts
       Point mouse_location;
-      mouse_location.x = 0;
-      mouse_location.y = 0;
+      mouse_location.x = mouse_x;
+      mouse_location.y = mouse_y;
 
       RETURN_IF_ERROR(WriteType<Point>(mouse_location, memory::kSystemMemory,
                                        mouse_location_var));
