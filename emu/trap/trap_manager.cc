@@ -279,6 +279,8 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
       LOG(INFO) << "TRAP NewPtr(logicalSize: " << logical_size << ")";
       auto ptr = memory_manager_.Allocate(logical_size);
       m68k_set_reg(M68K_REG_A0, ptr);
+      // FIXME: Set `memFullErr` if memory could not be allocated
+      m68k_set_reg(M68K_REG_D0, 0 /* noErr */);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-21.html
