@@ -869,6 +869,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                 << std::hex << window_storage << ", behind: 0x" << behind_window
                 << ")";
 
+      if (window_storage == 0) {
+        window_storage = memory_manager_.Allocate(WindowRecord::fixed_size);
+      }
+
       auto resource_handle = resource_manager_.GetResource('WIND', window_id);
       auto resource_region =
           memory_manager_.GetRegionForHandle(resource_handle);
