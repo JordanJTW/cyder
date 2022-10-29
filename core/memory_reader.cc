@@ -32,10 +32,18 @@ void MemoryReader::OffsetTo(size_t new_offset) {
   offset_ = new_offset;
 }
 
+void MemoryReader::SkipNext(size_t skip_bytes) {
+  offset_ += skip_bytes;
+}
+
 void MemoryReader::AlignTo(size_t block_size) {
   if (offset_ % block_size != 0) {
     OffsetTo(((offset_ / block_size) + 1 * block_size));
   }
+}
+
+bool MemoryReader::HasNext() const {
+  return offset_ < region_.size();
 }
 
 }  // namespace core

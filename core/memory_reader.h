@@ -36,6 +36,15 @@ class MemoryReader final {
     return betoh<IntegerType>(value);
   }
 
+  // Read the next ReadType<> `Type` from the MemoryRegion.
+  // FIXME: Ensure the templated `Type` has a size() method and is not a string
+  template <typename Type>
+  absl::StatusOr<Type> NextType() {
+    auto type = TRY(ReadType<Type>(region_, offset_));
+    offset_ += type.size();
+    return type;
+  }
+
   // Read the next Pascal style string (a byte length |n| followed by |n| chars)
   // from the MemoryRegion. If |fixed_length| is provided then |n| must be less
   // than |fixed_length| and |fixed_length| will _always_ be added to offset.
@@ -49,8 +58,14 @@ class MemoryReader final {
   // Update the offset that the next read should start from.
   void OffsetTo(size_t new_offset);
 
+  // Move the offset forward by |skip_bytes|.
+  void SkipNext(size_t skip_bytes);
+
   // Move the offset to align with the start of the next block.
   void AlignTo(size_t block_size);
+
+  // Return whether or not there is still memory to be read.
+  bool HasNext() const;
 
  private:
   const MemoryRegion region_;
