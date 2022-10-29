@@ -8,6 +8,7 @@
 
 #include "core/endian_helpers.h"
 #include "core/logging.h"
+#include "core/memory_reader.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
@@ -25,52 +26,6 @@ absl::Status LoadFileError(absl::string_view file_path) {
       absl::StrCat("Error loading: '", file_path, "': ", strerror(errno)));
 }
 
-class MemoryReader final {
- public:
-  explicit MemoryReader(const core::MemoryRegion& region) : region_(region) {}
-
-  template <typename IntegerType,
-            typename std::enable_if<std::is_integral<IntegerType>::value,
-                                    bool>::type = true>
-  absl::StatusOr<IntegerType> Next() {
-    IntegerType value = TRY(region_.Copy<IntegerType>(offset_));
-    offset_ += sizeof(value);
-    return betoh<IntegerType>(value);
-  }
-
-  absl::StatusOr<absl::string_view> NextString(
-      absl::optional<size_t> fixed_size = absl::nullopt) {
-    auto length = TRY(Next<uint8_t>());
-    if (fixed_size.has_value() && fixed_size.value() < length) {
-      return absl::FailedPreconditionError(absl::StrCat(
-          "String has a length of ", length,
-          " which is greater than its fixed size (", fixed_size.value(), ")"));
-    }
-    auto data = reinterpret_cast<const char*>(region_.raw_ptr()) + offset_;
-    offset_ += fixed_size.value_or(length);
-    return absl::string_view(data, length);
-  }
-
-  absl::StatusOr<core::MemoryRegion> NextRegion(std::string name,
-                                                size_t length) {
-    auto region = TRY(region_.Create(std::move(name), offset_, length));
-    offset_ += length;
-    return region;
-  }
-
-  void OffsetTo(size_t new_offset) { offset_ = new_offset; }
-
-  void AlignTo(size_t block_size) {
-    if (offset_ % block_size != 0) {
-      OffsetTo(((offset_ / block_size) + 1 * block_size));
-    }
-  }
-
- private:
-  const core::MemoryRegion region_;
-  size_t offset_{0};
-};
-
 void DumpMemoryRegionTo(const core::MemoryRegion& region, std::string path) {
   std::ofstream output(path.c_str(), std::ios::out | std::ios::binary);
   output.write(reinterpret_cast<const char*>(region.raw_ptr()), region.size());
@@ -80,7 +35,7 @@ void DumpMemoryRegionTo(const core::MemoryRegion& region, std::string path) {
 
 }  // namespace
 
-absl::Status MaybeWriteNextRegion(MemoryReader& reader,
+absl::Status MaybeWriteNextRegion(core::MemoryReader& reader,
                                   absl::string_view output_dir,
                                   absl::string_view filename,
                                   std::string extension,
@@ -138,7 +93,7 @@ absl::Status Main(const core::Args& args) {
   // MacBinary II Header
   // Link: https://files.stairways.com/other/macbinaryii-standard-info.txt
   // Link: https://github.com/mietek/theunarchiver/wiki/MacBinarySpecs
-  MemoryReader reader(memory);
+  core::MemoryReader reader(memory);
   CHECK_EQ(0u, TRY(reader.Next<uint8_t>()));
   auto filename = TRY(reader.NextString(/*fixed_length=*/63));
   auto file_type = TRY(reader.Next<uint32_t>());
