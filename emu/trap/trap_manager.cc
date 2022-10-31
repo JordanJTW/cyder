@@ -24,13 +24,15 @@ namespace cyder {
 namespace trap {
 namespace {
 
+constexpr SDL_Color kBackgroundColor = {0xFF, 0xFF, 0xFF, 0xFF};
+constexpr SDL_Color kForegroundColor = {0x00, 0x00, 0x00, 0xFF};
+
 using rsrcloader::GetTypeName;
 
 void DrawRect(SDL_Renderer* renderer,
               const Rect& rect,
-              const std::tuple<uint8_t, uint8_t, uint8_t>& color) {
-  SDL_SetRenderDrawColor(renderer, std::get<0>(color), std::get<1>(color),
-                         std::get<2>(color), 255);
+              const SDL_Color& color) {
+  SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 
   int width = (rect.right - rect.left);
   int height = (rect.bottom - rect.top);
@@ -575,7 +577,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       rect.bottom += offset.y;
 
       // FIXME: Paint with the color set for QuickDraw (A5 World?)
-      DrawRect(renderer_, rect, {0, 0, 0});
+      DrawRect(renderer_, rect, kForegroundColor);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-100.html
@@ -590,7 +592,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       rect.bottom += offset.y;
 
       // FIXME: Clear with the color set for QuickDraw (A5 World?)
-      DrawRect(renderer_, rect, {0xFF, 0xBF, 0x00});
+      DrawRect(renderer_, rect, kBackgroundColor);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-63.html
@@ -612,7 +614,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       rect.bottom += offset.y;
 
       // FIXME: Paint with the color set for QuickDraw (A5 World?)
-      DrawRect(renderer_, rect, {0, 0, 0});
+      DrawRect(renderer_, rect, kForegroundColor);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-112.html
@@ -627,7 +629,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       rect.bottom += offset.y;
 
       // FIXME: Clear with the color set for QuickDraw (A5 World?)
-      DrawRect(renderer_, rect, {0xFF, 0xBF, 0x00});
+      DrawRect(renderer_, rect, kBackgroundColor);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-86.html
