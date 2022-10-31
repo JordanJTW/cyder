@@ -10,6 +10,8 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "emu/graphics/grafport_types.h"
+#include "emu/graphics/graphics_helpers.h"
+#include "emu/graphics/pict_v1.h"
 #include "emu/graphics/quickdraw.h"
 #include "emu/memory/memory_map.h"
 #include "emu/trap/stack_helpers.h"
@@ -927,6 +929,85 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto front_window = betoh<Ptr>(
           TRY(memory::kSystemMemory.Copy<Ptr>(GlobalVars::WindowList)));
       return TrapReturn<Ptr>(front_window);
+    }
+
+      // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
+    case Trap::BeginUpDate: {
+      auto the_window = TRY(Pop<Ptr>());
+      LOG(INFO) << "TRAP BeginUpdate(theWindow: 0x" << std::hex << the_window
+                << ")";
+      return absl::OkStatus();
+    }
+
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-153.html
+    case Trap::FillRgn: {
+      auto pattern = TRY(PopRef<Pattern>());
+      auto region_handle = TRY(Pop<Handle>());
+
+      auto region_ptr = memory_manager_.GetPtrForHandle(region_handle);
+      auto region = TRY(ReadType<Region>(memory::kSystemMemory, region_ptr));
+
+      LOG(INFO) << "TRAP FillRgn(region: { " << region << " } @ 0x" << std::hex
+                << region_handle << ", pattern: { " << pattern << " })";
+
+      DrawRect(renderer_, region.bounding_box, kBackgroundColor);
+      return absl::OkStatus();
+    }
+
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-350.html
+    case Trap::DrawPicture: {
+      auto dst_rect = TRY(PopRef<Rect>());
+      auto my_picture = TRY(Pop<Handle>());
+
+      LOG(INFO) << "TRAP DrawPicture(myPicture: 0x" << std::hex << my_picture
+                << ", dstRect: { " << std::dec << dst_rect << " })";
+
+      auto pict_data = memory_manager_.GetRegionForHandle(my_picture);
+
+      auto pict_frame = TRY(graphics::GetPICTFrame(pict_data));
+
+      size_t picture_size =
+          PixelWidthToBytes(pict_frame.right) * pict_frame.bottom;
+      uint8_t picture[picture_size];
+      std::memset(picture, 0, picture_size);
+
+      RETURN_IF_ERROR(graphics::ParsePICTv1(pict_data, /*output=*/picture));
+
+      SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(
+          SDL_SWSURFACE, pict_frame.right, pict_frame.bottom, 1,
+          SDL_PIXELFORMAT_INDEX1MSB);
+      surface->pixels = picture;
+
+      auto offset = TRY(port::GetLocalToGlobalOffset());
+
+      if (surface != NULL) {
+        SDL_Color colors[2] = {kBackgroundColor, kForegroundColor};
+        SDL_SetPaletteColors(surface->format->palette, colors, 0, 2);
+
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer_, surface);
+        if (texture == NULL)
+          LOG(FATAL) << SDL_GetError();
+
+        SDL_Rect texture_rect;
+        texture_rect.x = offset.x + dst_rect.left;  // the x coordinate
+        texture_rect.y = offset.y + dst_rect.top;   // the y coordinate
+        texture_rect.w =
+            dst_rect.right - dst_rect.left;  // the width of the texture
+        texture_rect.h =
+            dst_rect.bottom - dst_rect.top;  // the height of the texture
+
+        SDL_RenderCopy(renderer_, texture, NULL, &texture_rect);
+      }
+
+      return absl::OkStatus();
+    }
+
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
+    case Trap::EndUpDate: {
+      auto the_window = TRY(Pop<Ptr>());
+      LOG(INFO) << "TRAP EndUpdate(theWindow: 0x" << std::hex << the_window
+                << ")";
+      return absl::OkStatus();
     }
 
     default:

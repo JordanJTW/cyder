@@ -13,6 +13,7 @@ target_link_libraries(
   MAIN_LIB
   MEMORY_LIB
   MUSASHI_LIB
+  PICT_LIB
   rsrcfork
   GLOBAL_NAMES
   GRAPHICS_LIB
