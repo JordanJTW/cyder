@@ -4,7 +4,6 @@
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "core/endian_helpers.h"
 #include "core/memory_region.h"
 #include "gen/typegen/typegen_prelude.h"
 #include "third_party/musashi/src/m68k.h"
@@ -22,9 +21,9 @@ absl::StatusOr<T> Pop() {
   static_assert(std::is_integral<T>::value,
                 "Only integers are stored on the stack (see PopRef<>)");
   Ptr current_stack = m68k_get_reg(NULL, M68K_REG_SP);
-  T value = TRY(memory::kSystemMemory.Copy<T>(current_stack));
+  T value = TRY(memory::kSystemMemory.Read<T>(current_stack));
   m68k_set_reg(M68K_REG_SP, current_stack + sizeof(T));
-  return betoh<T>(value);
+  return value;
 }
 
 // Peek `T` at `offset` index of the stack
@@ -33,7 +32,7 @@ absl::StatusOr<T> Peek(size_t offset = 0) {
   static_assert(std::is_integral<T>::value,
                 "Only integers are stored on the stack");
   Ptr current_stack = m68k_get_reg(NULL, M68K_REG_SP);
-  return betoh<T>(TRY(memory::kSystemMemory.Copy<T>(current_stack + offset)));
+  return TRY(memory::kSystemMemory.Read<T>(current_stack + offset));
 }
 
 // Pops type `T` off of the stack.
@@ -62,8 +61,7 @@ absl::Status Push(T value) {
   static_assert(std::is_integral<T>::value,
                 "Only integers are stored on the stack");
   Ptr new_stack_ptr = m68k_get_reg(NULL, M68K_REG_SP) - sizeof(T);
-  RETURN_IF_ERROR(
-      memory::kSystemMemory.Write<T>(new_stack_ptr, htobe<T>(value)));
+  RETURN_IF_ERROR(memory::kSystemMemory.Write<T>(new_stack_ptr, value));
   m68k_set_reg(M68K_REG_SP, new_stack_ptr);
   return absl::OkStatus();
 }
@@ -79,8 +77,7 @@ absl::Status TrapReturn(T value) {
   static_assert(std::is_integral<T>::value,
                 "Only integers are stored on the stack");
   Ptr current_stack = m68k_get_reg(NULL, M68K_REG_SP);
-  RETURN_IF_ERROR(
-      memory::kSystemMemory.Write<T>(current_stack, htobe<T>(value)));
+  RETURN_IF_ERROR(memory::kSystemMemory.Write<T>(current_stack, value));
   return absl::OkStatus();
 }
 

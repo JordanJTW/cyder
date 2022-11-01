@@ -13,9 +13,8 @@ absl::StatusOr<Resource> Resource::Load(
     const core::MemoryRegion& name_list_region,
     const core::MemoryRegion& data_region,
     const ResourceEntry& entry) {
-  uint32_t resource_size =
-      be32toh(TRY(data_region.Copy<uint32_t>(entry.data_offset),
-                  "Failed to parse resource size"));
+  uint32_t resource_size = TRY(data_region.Read<uint32_t>(entry.data_offset),
+                               "Failed to parse resource size");
 
   core::MemoryRegion resource_region = TRY(data_region.Create(
       "Resource", entry.data_offset + sizeof(uint32_t), resource_size));
@@ -46,7 +45,7 @@ std::string GetTypeName(ResType theType) {
   char type_name[4];
   // The type value is actually a 4 byte string so we must reverse it
   // back to big endian for the text to appear correctly
-  uint32_t reversed_type = htobe32(theType);
+  uint32_t reversed_type = htobe(theType);
   memcpy(type_name, &reversed_type, sizeof(uint32_t));
   return std::string(type_name, 4);
 }

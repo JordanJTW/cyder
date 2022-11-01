@@ -2,22 +2,23 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
+#include "emu/segment_types.h"
+#include "gen/trap_names.h"
 #include "resource_file.h"
 #include "third_party/musashi/src/m68k.h"
-#include "gen/trap_names.h"
 
 using namespace rsrcloader;
 
 const core::MemoryRegion* codeSegment;
 
 unsigned int m68k_read_disassembler_8(unsigned int address) {
-  return MUST(codeSegment->Copy<uint8_t>(address));
+  return MUST(codeSegment->Read<uint8_t>(address));
 }
 unsigned int m68k_read_disassembler_16(unsigned int address) {
-  return be16toh(MUST(codeSegment->Copy<uint16_t>(address)));
+  return MUST(codeSegment->Read<uint16_t>(address));
 }
 unsigned int m68k_read_disassembler_32(unsigned int address) {
-  return be32toh(MUST(codeSegment->Copy<uint32_t>(address)));
+  return MUST(codeSegment->Read<uint32_t>(address));
 }
 
 // TODO: Figure out where this is documented...
@@ -35,7 +36,7 @@ size_t SkipDebugSection(uint16_t op, const core::MemoryRegion& remaining_data) {
 
   // Treat the remainder as data until op: 0x4E56 [Link A6,#]
   while (offset < remaining_data.size()) {
-    uint16_t op = be16toh(remaining_data.Copy<uint16_t>(offset).value());
+    uint16_t op = MUST(remaining_data.Read<uint16_t>(offset));
     if (op == 0x4e56)
       break;
     offset += 2;
@@ -57,32 +58,22 @@ bool IsDebugSection(uint16_t prevOp, uint16_t op) {
 }
 
 absl::Status ParseJumpTable(const core::MemoryRegion& data) {
-  // The jump table is described at:
-  // http://mirror.informatimago.com/next/developer.apple.com/documentation/mac/runtimehtml/RTArch-118.html#MARKER-9-35
-  struct InMemoryTableHeader {
-    uint32_t above_a5;
-    uint32_t below_a5;
-    uint32_t table_size;
-    uint32_t table_offset;
-  };
+ auto header = TRY(ReadType<SegmentTableHeader>(data, /*offset=*/0));
 
-  InMemoryTableHeader header = TRY(data.Copy<InMemoryTableHeader>(0));
-
-  printf("Above A5: 0x%x\n", be32toh(header.above_a5));
-  printf("Below A5: 0x%x\n", be32toh(header.below_a5));
-  header.table_size = be32toh(header.table_size);
+  printf("Above A5: 0x%x\n", header.above_a5);
+  printf("Below A5: 0x%x\n", header.below_a5);
   printf("Jump-Table Size: %d\n", header.table_size);
-  printf("Jump-Table Offset: %d\n", be32toh(header.table_offset));
+  printf("Jump-Table Offset: %d\n", header.table_offset);
 
-  CHECK_EQ(header.table_size, data.size() - sizeof(InMemoryTableHeader));
+  CHECK_EQ(header.table_size, data.size() - SegmentTableHeader::fixed_size);
 
   // Each entry in the jump table is 8-bytes long (an offset to the subroutine
   // within a segment followed by instructions to _LoadSeg)
   for (size_t i = 0; i < header.table_size; i = i + 8) {
-    size_t entry_offset = sizeof(InMemoryTableHeader) + i;
+    size_t entry_offset = SegmentTableHeader::fixed_size + i;
     printf("Offset (relative to segment): %x\n",
-           be16toh(TRY(data.Copy<uint16_t>(entry_offset))));
-    CHECK_EQ(be16toh(TRY(data.Copy<uint16_t>(entry_offset + 6))),
+           TRY(data.Read<uint16_t>(entry_offset)));
+    CHECK_EQ(TRY(data.Read<uint16_t>(entry_offset + 6)),
              /*_SegLoad:*/ 0xA9F0)
         << "Expected to find _SegLoad op-code in jump entry";
   }
@@ -97,7 +88,7 @@ absl::Status ParseSegment(uint16_t id, const core::MemoryRegion& data) {
   size_t pc = 0;
 
   while (pc < codeSegment->size()) {
-    uint16_t op = be16toh(codeSegment->Copy<uint16_t>(pc).value());
+    uint16_t op = TRY(codeSegment->Read<uint16_t>(pc));
 
     if (IsDebugSection(prevOp, op)) {
       size_t offset = SkipDebugSection(op, TRY(data.Create(pc)));
@@ -138,7 +129,7 @@ absl::Status ParseCode(const Resource& resource) {
   // header) segment. The far model header can be identified by checking that
   // the first two bytes are 0xFFFF as documented here:
   //   mirror.informatimago.com/next/developer.apple.com/documentation/mac/runtimehtml/RTArch-128.html
-  if (0xFFFF == TRY(data.Copy<uint16_t>(0))) {
+  if (0xFFFF == TRY(data.Read<uint16_t>(0))) {
     return ParseSegment(resource.GetId(), TRY(data.Create(0x28)));
   }
 

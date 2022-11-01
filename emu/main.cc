@@ -7,7 +7,6 @@
 
 #include "absl/flags/flag.h"
 #include "absl/status/status.h"
-#include "core/endian_helpers.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
@@ -58,18 +57,18 @@ absl::Status HandleException(unsigned int address) {
 }
 
 unsigned int m68k_read_disassembler_8(unsigned int address) {
-  return MUST(cyder::memory::kSystemMemory.Copy<uint8_t>(address));
+  return MUST(cyder::memory::kSystemMemory.Read<uint8_t>(address));
 }
 unsigned int m68k_read_disassembler_16(unsigned int address) {
-  return be16toh(MUST(cyder::memory::kSystemMemory.Copy<uint16_t>(address)));
+  return MUST(cyder::memory::kSystemMemory.Read<uint16_t>(address));
 }
 unsigned int m68k_read_disassembler_32(unsigned int address) {
-  return be32toh(MUST(cyder::memory::kSystemMemory.Copy<uint32_t>(address)));
+  return MUST(cyder::memory::kSystemMemory.Read<uint32_t>(address));
 }
 
 unsigned int m68k_read_memory_8(unsigned int address) {
   cyder::memory::CheckReadAccess(address);
-  return MUST(cyder::memory::kSystemMemory.Copy<uint8_t>(address));
+  return MUST(cyder::memory::kSystemMemory.Read<uint8_t>(address));
 }
 unsigned int m68k_read_memory_16(unsigned int address) {
   cyder::memory::CheckReadAccess(address);
@@ -82,7 +81,7 @@ unsigned int m68k_read_memory_16(unsigned int address) {
     CHECK(status.ok()) << std::move(status).message();
   }
 
-  return be16toh(MUST(cyder::memory::kSystemMemory.Copy<uint16_t>(address)));
+  return MUST(cyder::memory::kSystemMemory.Read<uint16_t>(address));
 }
 unsigned int m68k_read_memory_32(unsigned int address) {
   cyder::memory::CheckReadAccess(address);
@@ -92,7 +91,7 @@ unsigned int m68k_read_memory_32(unsigned int address) {
     CHECK(status.ok()) << std::move(status).message();
   }
 
-  return be32toh(MUST(cyder::memory::kSystemMemory.Copy<uint32_t>(address)));
+  return MUST(cyder::memory::kSystemMemory.Read<uint32_t>(address));
 }
 
 cyder::memory::StackMonitor stack_monitor;
@@ -109,8 +108,7 @@ void m68k_write_memory_16(unsigned int address, unsigned int value) {
   cyder::memory::CheckWriteAccess(address, value);
   LOG_IF(INFO, memory_write_log)
       << std::hex << __func__ << "(" << address << ": " << value << ")";
-  CHECK(cyder::memory::kSystemMemory.Write<uint16_t>(address, htobe16(value))
-            .ok())
+  CHECK(cyder::memory::kSystemMemory.Write<uint16_t>(address, value).ok())
       << " unable to write " << std::hex << value << " to " << address;
   stack_monitor.MaybeHandleWrite(address, value, /*size=*/2);
 }
@@ -118,8 +116,7 @@ void m68k_write_memory_32(unsigned int address, unsigned int value) {
   cyder::memory::CheckWriteAccess(address, value);
   LOG_IF(INFO, memory_write_log)
       << std::hex << __func__ << "(" << address << ": " << value << ")";
-  CHECK(cyder::memory::kSystemMemory.Write<uint32_t>(address, htobe32(value))
-            .ok())
+  CHECK(cyder::memory::kSystemMemory.Write<uint32_t>(address, value).ok())
       << " unable to write " << std::hex << value << " to " << address;
   stack_monitor.MaybeHandleWrite(address, value, /*size=*/4);
 }
@@ -235,7 +232,7 @@ absl::Status Main(const core::Args& args) {
       LOG(INFO) << "Loading PACK4 into memory";
       Handle handle =
           memory_manager.AllocateHandleForRegion(pack4->GetData(), "PACK4");
-      size_t address = be32toh(MUST(kSystemMemory.Copy<uint32_t>(handle)));
+      size_t address = MUST(kSystemMemory.Read<uint32_t>(handle));
       trap_manager.SetTrapAddress(Trap::Pack4, address);
     }
   }
@@ -253,10 +250,10 @@ absl::Status Main(const core::Args& args) {
   uint32_t sr = m68k_get_reg(NULL, M68K_REG_SR);
   m68k_set_reg(M68K_REG_SR, sr | (1 << 13));
 
+  RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(GlobalVars::ApplLimit,
+                                                cyder::memory::kHeapEnd));
   RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(
-      GlobalVars::ApplLimit, htobe(cyder::memory::kHeapEnd)));
-  RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(
-      GlobalVars::CurrentA5, htobe(cyder::memory::GetA5WorldPosition())));
+      GlobalVars::CurrentA5, cyder::memory::GetA5WorldPosition()));
 
   // Sets the size of the name to 0 so it is not read:
   // TODO: Store the application name here as a Pascal string
@@ -264,26 +261,26 @@ absl::Status Main(const core::Args& args) {
 
   // Assembly: RTS
   RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
-      cyder::memory::kTrapManagerEntryAddress, htobe16(0x4E75)));
+      cyder::memory::kTrapManagerEntryAddress, 0x4E75));
   RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(
-      0x28, htobe32(cyder::memory::kTrapManagerEntryAddress)));
+      0x28, cyder::memory::kTrapManagerEntryAddress));
 
   // Assembly: TST.W D0
   RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
-      cyder::memory::kTrapManagerExitAddress, htobe16(0x4A40)));
+      cyder::memory::kTrapManagerExitAddress, 0x4A40));
   // Assembly: RTS
   RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
-      cyder::memory::kTrapManagerExitAddress + 2, htobe16(0x4E75)));
+      cyder::memory::kTrapManagerExitAddress + 2, 0x4E75));
 
   for (int i = 0; i < 1024; ++i) {
     RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
         cyder::memory::kBaseToolboxTrapAddress + (i * sizeof(uint16_t)),
-        htobe16(0x4E75)));
+        0x4E75));
   }
   for (int i = 0; i < 256; ++i) {
     RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
         cyder::memory::kBaseSystemTrapAddress + (i * sizeof(uint16_t)),
-        htobe16(0x4E75)));
+        0x4E75));
   }
 
   // FIXME: Create a more accurate AppParmHandle for the current application
@@ -291,15 +288,14 @@ absl::Status Main(const core::Args& args) {
   auto app_param = memory_manager.GetRegionForHandle(handle);
   RETURN_IF_ERROR(app_param.Write<Integer>(/*offset=*/0, /*vRefNum=*/0));
   RETURN_IF_ERROR(app_param.Write<uint32_t>(/*offset=*/2,
-                                            /*fType=*/htobe<uint32_t>('ABCD')));
+                                            /*fType=*/'ABCD'));
   RETURN_IF_ERROR(app_param.Write<Integer>(/*offset=*/6, /*versNum=*/0));
   RETURN_IF_ERROR(app_param.Write<uint8_t>(/*offset=*/8, /*fName=*/1));
   RETURN_IF_ERROR(app_param.Write<uint8_t>(/*offset=*/9, /*fName=*/'J'));
-  RETURN_IF_ERROR(
-      kSystemMemory.Write<Ptr>(GlobalVars::AppParmHandle, htobe(handle)));
+  RETURN_IF_ERROR(kSystemMemory.Write<Ptr>(GlobalVars::AppParmHandle, handle));
 
-  RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(
-      GlobalVars::CurStackBase, htobe32(cyder::memory::kStackStart)));
+  RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(GlobalVars::CurStackBase,
+                                                cyder::memory::kStackStart));
 
   SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
                                            SDL_TEXTUREACCESS_TARGET, 512, 384);

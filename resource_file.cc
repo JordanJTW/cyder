@@ -145,10 +145,9 @@ absl::Status ResourceFile::Save(const std::string& path) {
 
   for (const auto& entry : resource_data) {
     // FIXME: typegen the data entries? This is quite ugly...
-    RETURN_IF_ERROR(
-        data.Write(offset, htobe(static_cast<uint32_t>(entry.size()))));
-    RETURN_IF_ERROR(
-        data.Write(entry.raw_ptr(), offset + sizeof(uint32_t), entry.size()));
+    RETURN_IF_ERROR(data.Write(offset, static_cast<uint32_t>(entry.size())));
+    RETURN_IF_ERROR(data.WriteRaw(entry.raw_ptr(), offset + sizeof(uint32_t),
+                                  entry.size()));
     offset += sizeof(uint32_t) + entry.size();
   }
 

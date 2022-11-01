@@ -31,9 +31,9 @@ class MemoryReader final {
             typename std::enable_if<std::is_integral<IntegerType>::value,
                                     bool>::type = true>
   absl::StatusOr<IntegerType> Next() {
-    IntegerType value = TRY(region_.Copy<IntegerType>(offset_));
+    IntegerType value = TRY(region_.Read<IntegerType>(offset_));
     offset_ += sizeof(value);
-    return betoh<IntegerType>(value);
+    return std::move(value);
   }
 
   // Read the next ReadType<> `Type` from the MemoryRegion.

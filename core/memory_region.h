@@ -5,6 +5,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "endian_helpers.h"
 #include "status_helpers.h"
 
 namespace core {
@@ -37,24 +38,34 @@ class MemoryRegion final {
                                       size_t offset,
                                       size_t size) const;
 
-  // Copies `length` bytes from `offset` to `dest`. Returns
-  // absl::OutOfRangeError if `offset` + `length` overflows the "base" region.
-  absl::Status Copy(void* dest, size_t offset, size_t length) const;
+  template <typename Type>
+  absl::StatusOr<Type> Read(size_t offset) const {
+    return betoh<Type>(TRY(ReadRaw<Type>(offset)));
+  }
 
-  template <typename T>
-  absl::StatusOr<T> Copy(size_t offset) const {
-    T value;
-    RETURN_IF_ERROR(Copy(&value, offset, sizeof(T)));
+  template <typename Type>
+  absl::StatusOr<Type> ReadRaw(size_t offset) const {
+    Type value;
+    RETURN_IF_ERROR(ReadRaw(&value, offset, sizeof(Type)));
     return std::move(value);
   }
 
-  // Writes `length` bytes from `src` to `offset`
-  absl::Status Write(const void* src, size_t offset, size_t length);
+  // Copies `length` bytes from `offset` to `dest`. Returns
+  // absl::OutOfRangeError if `offset` + `length` overflows the "base" region.
+  absl::Status ReadRaw(void* dest, size_t offset, size_t length) const;
 
-  template <typename T>
-  absl::Status Write(size_t offset, T data) {
-    return Write(&data, offset, sizeof(T));
+  template <typename Type>
+  absl::Status Write(size_t offset, Type data) {
+    return WriteRaw<Type>(offset, htobe<Type>(data));
   }
+
+  template <typename Type>
+  absl::Status WriteRaw(size_t offset, Type data) {
+    return WriteRaw(&data, offset, sizeof(Type));
+  }
+
+  // Writes `length` bytes from `src` to `offset`
+  absl::Status WriteRaw(const void* src, size_t offset, size_t length);
 
   // The offset of this region within "base"
   size_t base_offset() const { return base_offset_; }

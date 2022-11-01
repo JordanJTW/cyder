@@ -1,6 +1,5 @@
 #include "emu/segment_loader.h"
 
-#include "core/endian_helpers.h"
 #include "core/logging.h"
 #include "core/memory_region.h"
 #include "emu/memory/memory_map.h"
@@ -32,8 +31,8 @@ absl::Status WriteAppParams(memory::MemoryManager& memory_manager,
   RETURN_IF_ERROR(finder_info.Write<uint16_t>(/*offset=*/2, 0 /*count*/));
 
   // Finder Information Handle
-  RETURN_IF_ERROR(memory::kSystemMemory.Write<uint32_t>(
-      a5_world_offset + 16, htobe<uint32_t>(handle)));
+  RETURN_IF_ERROR(
+      memory::kSystemMemory.Write<uint32_t>(a5_world_offset + 16, handle));
   return absl::OkStatus();
 }
 
@@ -53,21 +52,18 @@ absl::StatusOr<SegmentLoader> SegmentLoader::Create(
 
   const core::MemoryRegion& table_data = segment_zero->GetData();
 
-  InMemoryTableHeader header = TRY(table_data.Copy<InMemoryTableHeader>(0));
-  header.above_a5 = be32toh(header.above_a5);
-  header.below_a5 = be32toh(header.below_a5);
-  header.table_size = be32toh(header.table_size);
-  header.table_offset = be32toh(header.table_offset);
+  auto header = TRY(ReadType<SegmentTableHeader>(table_data, /*offset=*/0));
 
-  CHECK_EQ(header.table_size, table_data.size() - sizeof(InMemoryTableHeader));
+  CHECK_EQ(header.table_size,
+           table_data.size() - SegmentTableHeader::fixed_size);
   CHECK_EQ(header.table_offset, 32u)
       << "Jump table offset should always be 32 bytes";
 
   RETURN_IF_ERROR(memory::SetA5WorldBounds(header.above_a5, header.below_a5));
 
   // Write all unloaded entries verbatim to system memory:
-  RETURN_IF_ERROR(memory::kSystemMemory.Write(
-      table_data.raw_ptr() + sizeof(InMemoryTableHeader),
+  RETURN_IF_ERROR(memory::kSystemMemory.WriteRaw(
+      table_data.raw_ptr() + SegmentTableHeader::fixed_size,
       memory::GetA5WorldPosition() + header.table_offset, header.table_size));
 
   RETURN_IF_ERROR(WriteAppParams(memory_manager, memory::GetA5WorldPosition()));
@@ -81,14 +77,14 @@ absl::StatusOr<Ptr> SegmentLoader::Load(uint16_t segment_id) {
 
   const auto resource_data = memory_manager_.GetRegionForHandle(segment_handle);
 
-  const bool is_far_model = (0xFFFF == TRY(resource_data.Copy<uint16_t>(0)));
+  const bool is_far_model = (0xFFFF == TRY(resource_data.Read<uint16_t>(0)));
   // TODO: Add support for far model headers
   CHECK(!is_far_model) << "Far model jump-table is not yet supported";
 
   Ptr segment_header_size = is_far_model ? 0x28 : 0x04;
 
-  uint16_t offset_in_table = be16toh(TRY(resource_data.Copy<uint16_t>(0)));
-  uint16_t table_entry_count = be16toh(TRY(resource_data.Copy<uint16_t>(2)));
+  uint16_t offset_in_table = TRY(resource_data.Read<uint16_t>(0));
+  uint16_t table_entry_count = TRY(resource_data.Read<uint16_t>(2));
 
   LOG(INFO) << "Load Segment " << segment_id << " count: " << table_entry_count;
 
@@ -98,8 +94,7 @@ absl::StatusOr<Ptr> SegmentLoader::Load(uint16_t segment_id) {
   Ptr absolute_address = 0;
   for (int i = table_entry_count; i > 0; --i) {
     uint32_t offset = segment_table_offset + (i - 1) * 8;
-    uint16_t routine_offset =
-        be16toh(TRY(memory::kSystemMemory.Copy<uint16_t>(offset)));
+    uint16_t routine_offset = TRY(memory::kSystemMemory.Read<uint16_t>(offset));
 
     absolute_address =
         resource_data.base_offset() + segment_header_size + routine_offset;
@@ -108,25 +103,20 @@ absl::StatusOr<Ptr> SegmentLoader::Load(uint16_t segment_id) {
               << " relative offset: " << std::hex << routine_offset
               << " to absolute: " << absolute_address;
 
-    // Writes out a loaded entry as described in:
-    // http://mirror.informatimago.com/next/developer.apple.com/documentation/mac/runtimehtml/RTArch-118.html#MARKER-9-38
-    //
-    // Segment ID         (2 bytes)
-    // 'JMP' instruction  (2 bytes)
-    // Absolute address   (4 bytes)
+    SegmentTableEntry entry;
+    entry.segment_id = segment_id;
+    entry.jmp_instr = 0x4EF9;
+    entry.address = absolute_address;
+
     RETURN_IF_ERROR(
-        memory::kSystemMemory.Write<uint16_t>(offset, htobe16(segment_id)));
-    RETURN_IF_ERROR(
-        memory::kSystemMemory.Write<uint16_t>(offset + 2, htobe16(0x4EF9)));
-    RETURN_IF_ERROR(memory::kSystemMemory.Write<uint32_t>(
-        offset + 4, htobe32(absolute_address)));
+        WriteType<SegmentTableEntry>(entry, memory::kSystemMemory, offset));
   }
   return absolute_address;
 }
 
 SegmentLoader::SegmentLoader(memory::MemoryManager& memory_manager,
                              ResourceManager& resource_manager,
-                             InMemoryTableHeader table_header)
+                             SegmentTableHeader table_header)
     : memory_manager_(memory_manager),
       resource_manager_(resource_manager),
       table_header_(std::move(table_header)) {}

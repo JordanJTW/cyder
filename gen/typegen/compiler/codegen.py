@@ -231,7 +231,7 @@ class CodeGenerator:
             offset = offset + 3
           else:
             file.write(
-                f'  obj.{member.id} = betoh<{c_type}>(TRY(region.Copy<{c_type}>({offset_str})));\n')
+                f'  obj.{member.id} = TRY(region.Read<{c_type}>({offset_str}));\n')
             offset = offset + self._get_type_size(member.type.id)
 
       elif isinstance(member.type, CheckedArrayTypeExpression):
@@ -244,7 +244,7 @@ class CodeGenerator:
           condition_type = self._get_first_field_type(inner_type_expr)
           write(file, f"""
             size_t {member.id}_offset = 0;
-            while (TRY(region.Copy<{condition_type}>({offset_str} + {member.id}_offset)) != 0) {{
+            while (TRY(region.Read<{condition_type}>({offset_str} + {member.id}_offset)) != 0) {{
           """, indent=2)
         else:
           write(file, f"""
@@ -261,7 +261,7 @@ class CodeGenerator:
         """, indent=2)
         else:
           write(file, f"""
-            obj.{member.id}.push_back(betoh<{c_type}>(TRY(region.Copy<{c_type}>({offset_str} + {member.id}_offset))));
+            obj.{member.id}.push_back(TRY(region.Read<{c_type}>({offset_str} + {member.id}_offset)));
             {member.id}_offset += sizeof({c_type});
           }}
         """, indent=2)
@@ -311,7 +311,7 @@ class CodeGenerator:
       """, indent=indent)
     else:
       write(file, f"""
-        RETURN_IF_ERROR(region.Write<{c_type}>(total_offset, htobe({name})));
+        RETURN_IF_ERROR(region.Write<{c_type}>(total_offset, {name}));
         total_offset += sizeof({c_type});
       """, indent=indent)
 

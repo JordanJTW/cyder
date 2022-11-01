@@ -1,0 +1,17 @@
+// The in memory representation of the jump-table header structure from:
+// http://0.0.0.0:8000/docs/mac/runtimehtml/RTArch-118.html#MARKER-9-35
+struct SegmentTableHeader {
+  above_a5: u32;
+  below_a5: u32;
+  table_size: u32;
+  table_offset: u32;
+}
+
+// Writes out a loaded entry as described in:
+// http://0.0.0.0:8000/docs/mac/runtimehtml/RTArch-118.html#MARKER-9-38
+struct SegmentTableEntry {
+  segment_id: u16;
+  // FIXME: Allow constant values in typegen
+  jmp_instr: u16;
+  address: u32;
+}

@@ -20,7 +20,7 @@ class TypegenIntegrationTests : public ::testing::Test {
 
   template <typename T>
   void WriteToRegion(T value) {
-    auto status = region_.Write<T>(offset_, htobe<T>(value));
+    auto status = region_.Write<T>(offset_, value);
     CHECK(status.ok()) << std::move(status).message();
     offset_ += sizeof(T);
   }

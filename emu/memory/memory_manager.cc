@@ -2,7 +2,6 @@
 
 #include <iomanip>
 
-#include "core/endian_helpers.h"
 #include "core/logging.h"
 #include "core/memory_region.h"
 #include "emu/memory/memory_map.h"
@@ -32,7 +31,7 @@ Handle MemoryManager::AllocateHandle(uint32_t size, std::string tag) {
   handle_offset_ += sizeof(Handle);
   LOG(INFO) << "Handles used: " << handle_offset_ / sizeof(Handle);
 
-  CHECK(kSystemMemory.Write<uint32_t>(handle, htobe32(block)).ok());
+  CHECK(kSystemMemory.Write<uint32_t>(handle, block).ok());
 
   HandleMetadata metadata;
   metadata.tag = std::move(tag);
@@ -47,11 +46,11 @@ Handle MemoryManager::AllocateHandle(uint32_t size, std::string tag) {
 Handle MemoryManager::AllocateHandleForRegion(const core::MemoryRegion& region,
                                               std::string tag) {
   Handle handle = AllocateHandle(region.size(), tag);
-  size_t load_addr = be32toh(MUST(kSystemMemory.Copy<uint32_t>(handle)));
+  size_t load_addr = MUST(kSystemMemory.Read<uint32_t>(handle));
 
   for (size_t i = 0; i < region.size(); ++i) {
     CHECK(kSystemMemory
-              .Write<uint8_t>(load_addr + i, MUST(region.Copy<uint8_t>(i)))
+              .Write<uint8_t>(load_addr + i, MUST(region.Read<uint8_t>(i)))
               .ok());
   }
   return handle;
@@ -62,7 +61,7 @@ Ptr MemoryManager::GetPtrForHandle(Handle handle) {
   CHECK(entry != handle_to_metadata_.cend())
       << "Handle (0x" << std::hex << handle << ") can not be found.";
 
-  auto current_ptr = be32toh(MUST(kSystemMemory.Copy<uint32_t>(entry->first)));
+  auto current_ptr = MUST(kSystemMemory.Read<uint32_t>(entry->first));
 
   const HandleMetadata& metadata = entry->second;
   CHECK_EQ(current_ptr, metadata.start);
@@ -76,7 +75,7 @@ core::MemoryRegion MemoryManager::GetRegionForHandle(Handle handle) {
       << "Handle (0x" << std::hex << handle << ") can not be found.";
 
   const HandleMetadata& metadata = entry->second;
-  auto current_ptr = be32toh(MUST(kSystemMemory.Copy<uint32_t>(entry->first)));
+  auto current_ptr = MUST(kSystemMemory.Read<uint32_t>(entry->first));
   CHECK_EQ(current_ptr, metadata.start);
 
   return MUST(kSystemMemory.Create(absl::StrCat("Handle[", metadata.tag, "]"),
@@ -126,8 +125,7 @@ bool MemoryManager::SetApplLimit(Ptr last_addr) {
     LOG(WARNING) << "Requested more heap memory than available";
     return false;
   }
-  auto status =
-      kSystemMemory.Write<Ptr>(GlobalVars::ApplLimit, htobe(last_addr));
+  auto status = kSystemMemory.Write<Ptr>(GlobalVars::ApplLimit, last_addr);
   CHECK(status.ok()) << std::move(status).message();
   return true;
 }

@@ -110,8 +110,7 @@ absl::Status TrapManager::PerformTrapEntry() {
   /*status_register=*/TRY(Pop<uint16_t>());
   auto instruction_ptr = TRY(Pop<uint32_t>());
 
-  uint16_t trap_op =
-      be16toh(TRY(memory::kSystemMemory.Copy<uint16_t>(instruction_ptr)));
+  uint16_t trap_op = TRY(memory::kSystemMemory.Read<uint16_t>(instruction_ptr));
 
   if (IsAutoPopSet(trap_op)) {
     // Clear the bit so that GetTrapName() works below
@@ -250,7 +249,7 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
       for (size_t i = 0; i < byte_count; ++i) {
         RETURN_IF_ERROR(memory::kSystemMemory.Write<uint8_t>(
             dest_ptr + i,
-            TRY(memory::kSystemMemory.Copy<uint8_t>(source_ptr + i))));
+            TRY(memory::kSystemMemory.Read<uint8_t>(source_ptr + i))));
       }
       // Return result code "noErr"
       m68k_set_reg(M68K_REG_D0, 0);
@@ -544,8 +543,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto port_var = TRY(Pop<Ptr>());
       LOG(INFO) << "TRAP GetPort(VAR port: 0x" << std::hex << port_var << ")";
 
-      RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(
-          port_var, htobe<Ptr>(TRY(port::GetThePort()))));
+      RETURN_IF_ERROR(
+          memory::kSystemMemory.Write<Ptr>(port_var, TRY(port::GetThePort())));
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-37.html
@@ -715,8 +714,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       int16_t angle = (360 + result);
       angle = (angle + 90) % 360;
 
-      RETURN_IF_ERROR(memory::kSystemMemory.Write<Integer>(
-          angle_var, htobe<Integer>(angle)));
+      RETURN_IF_ERROR(memory::kSystemMemory.Write<Integer>(angle_var, angle));
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-50.html
@@ -731,7 +729,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       pt.x += offset.x;
       pt.y += offset.y;
 
-      RETURN_IF_ERROR(memory::kSystemMemory.Write<Point>(pt_var, pt));
+      RETURN_IF_ERROR(WriteType<Point>(pt, memory::kSystemMemory, pt_var));
       return absl::OkStatus();
     }
 
@@ -811,8 +809,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                 << ")";
 
       uint32_t a5_world = m68k_get_reg(/*context=*/NULL, M68K_REG_A5);
-      RETURN_IF_ERROR(memory::kSystemMemory.Write<uint32_t>(
-          a5_world, htobe<Ptr>(globalPtr)));
+      RETURN_IF_ERROR(
+          memory::kSystemMemory.Write<uint32_t>(a5_world, globalPtr));
 
       Rect screen_bounds;
       screen_bounds.top = 0;
@@ -897,8 +895,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
           WriteType<Region>(visible_region, region_memory, /*offset=*/0));
 
       // FIXME: Properly maintain the full WindowList ordered by z-index
-      RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(
-          GlobalVars::WindowList, htobe<Ptr>(window_storage)));
+      RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(GlobalVars::WindowList,
+                                                       window_storage));
 
       // Focus (activate) the most recently created window
       event_manager_.QueueEvent(/*what=*/6 /*updateEvent*/,
@@ -926,8 +924,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-243.html
     case Trap::FrontWindow: {
       LOG(INFO) << "TRAP FrontWindow()";
-      auto front_window = betoh<Ptr>(
-          TRY(memory::kSystemMemory.Copy<Ptr>(GlobalVars::WindowList)));
+      auto front_window =
+          TRY(memory::kSystemMemory.Read<Ptr>(GlobalVars::WindowList));
       return TrapReturn<Ptr>(front_window);
     }
 

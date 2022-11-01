@@ -4,19 +4,11 @@
 
 #include "absl/status/statusor.h"
 #include "emu/memory/memory_manager.h"
+#include "emu/segment_types.h"
 #include "resource_group.h"
 #include "resource_manager.h"
 
 namespace cyder {
-
-// The in memory representation of the jump-table header structure from:
-// http://mirror.informatimago.com/next/developer.apple.com/documentation/mac/runtimehtml/RTArch-118.html#MARKER-9-35
-struct InMemoryTableHeader {
-  uint32_t above_a5;
-  uint32_t below_a5;
-  uint32_t table_size;
-  uint32_t table_offset;
-};
 
 // Loads 'CODE' segments into kSystemMemory
 class SegmentLoader final {
@@ -32,12 +24,12 @@ class SegmentLoader final {
   absl::StatusOr<Ptr> Load(uint16_t);
 
  private:
-  SegmentLoader(memory::MemoryManager&, ResourceManager&, InMemoryTableHeader);
+  SegmentLoader(memory::MemoryManager&, ResourceManager&, SegmentTableHeader);
 
   memory::MemoryManager& memory_manager_;
   ResourceManager& resource_manager_;
 
-  const InMemoryTableHeader table_header_;
+  const SegmentTableHeader table_header_;
 };
 
 }  // namespace cyder
