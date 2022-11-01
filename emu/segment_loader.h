@@ -4,7 +4,7 @@
 
 #include "absl/status/statusor.h"
 #include "emu/memory/memory_manager.h"
-#include "emu/segment_types.h"
+#include "emu/segment_types.tdef.h"
 #include "resource_group.h"
 #include "resource_manager.h"
 

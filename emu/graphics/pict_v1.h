@@ -5,7 +5,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "core/memory_region.h"
-#include "emu/graphics/grafport_types.h"
+#include "emu/graphics/grafport_types.tdef.h"
 
 namespace cyder {
 namespace graphics {

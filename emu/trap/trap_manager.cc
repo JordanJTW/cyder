@@ -9,7 +9,7 @@
 #include "absl/strings/string_view.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
-#include "emu/graphics/grafport_types.h"
+#include "emu/graphics/grafport_types.tdef.h"
 #include "emu/graphics/graphics_helpers.h"
 #include "emu/graphics/pict_v1.h"
 #include "emu/graphics/quickdraw.h"

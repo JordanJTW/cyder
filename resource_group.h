@@ -9,7 +9,7 @@
 #include "absl/strings/string_view.h"
 #include "core/memory_region.h"
 #include "resource.h"
-#include "resource_types.h"
+#include "resource_types.tdef.h"
 
 namespace rsrcloader {
 

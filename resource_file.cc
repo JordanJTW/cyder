@@ -15,7 +15,7 @@
 #include "core/logging.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
-#include "resource_types.h"
+#include "resource_types.tdef.h"
 
 namespace rsrcloader {
 namespace {

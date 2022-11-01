@@ -5,7 +5,7 @@ file(GLOB_RECURSE TYPEGEN_SRC ${CMAKE_SOURCE_DIR}/gen/typegen/*.py)
 
 # ! typegen: generates types based on a defintion file
 macro(typegen target_name type_definition)
-  get_filename_component(output_name ${type_definition} NAME_WE)
+  get_filename_component(output_name ${type_definition} NAME)
 
   add_custom_command(
     OUTPUT ${output_name}.cc ${output_name}.h

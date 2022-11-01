@@ -2,7 +2,7 @@
 
 #include <queue>
 
-#include "emu/graphics/grafport_types.h"
+#include "emu/graphics/grafport_types.tdef.h"
 
 namespace cyder {
 

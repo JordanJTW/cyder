@@ -2,7 +2,7 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
-#include "emu/segment_types.h"
+#include "emu/segment_types.tdef.h"
 #include "gen/trap_names.h"
 #include "resource_file.h"
 #include "third_party/musashi/src/m68k.h"

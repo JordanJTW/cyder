@@ -6,7 +6,7 @@
 #include <string>
 
 #include "core/memory_region.h"
-#include "gen/typegen/generated_types.h"
+#include "gen/typegen/generated_types.tdef.h"
 
 namespace cyder {
 namespace memory {
