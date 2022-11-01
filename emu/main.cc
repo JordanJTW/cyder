@@ -13,7 +13,6 @@
 #include "emu/event_manager.h"
 #include "emu/memory/memory_manager.h"
 #include "emu/memory/memory_map.h"
-#include "emu/memory/stack_monitor.h"
 #include "emu/segment_loader.h"
 #include "emu/trap/trap_manager.h"
 #include "gen/global_names.h"
@@ -94,15 +93,12 @@ unsigned int m68k_read_memory_32(unsigned int address) {
   return MUST(cyder::memory::kSystemMemory.Read<uint32_t>(address));
 }
 
-cyder::memory::StackMonitor stack_monitor;
-
 void m68k_write_memory_8(unsigned int address, unsigned int value) {
   cyder::memory::CheckWriteAccess(address, value);
   LOG_IF(INFO, memory_write_log)
       << std::hex << __func__ << "(" << address << ": " << value << ")";
   CHECK(cyder::memory::kSystemMemory.Write<uint8_t>(address, value).ok())
       << " unable to write " << std::hex << value << " to " << address;
-  stack_monitor.MaybeHandleWrite(address, value, /*size=*/1);
 }
 void m68k_write_memory_16(unsigned int address, unsigned int value) {
   cyder::memory::CheckWriteAccess(address, value);
@@ -110,7 +106,6 @@ void m68k_write_memory_16(unsigned int address, unsigned int value) {
       << std::hex << __func__ << "(" << address << ": " << value << ")";
   CHECK(cyder::memory::kSystemMemory.Write<uint16_t>(address, value).ok())
       << " unable to write " << std::hex << value << " to " << address;
-  stack_monitor.MaybeHandleWrite(address, value, /*size=*/2);
 }
 void m68k_write_memory_32(unsigned int address, unsigned int value) {
   cyder::memory::CheckWriteAccess(address, value);
@@ -118,14 +113,11 @@ void m68k_write_memory_32(unsigned int address, unsigned int value) {
       << std::hex << __func__ << "(" << address << ": " << value << ")";
   CHECK(cyder::memory::kSystemMemory.Write<uint32_t>(address, value).ok())
       << " unable to write " << std::hex << value << " to " << address;
-  stack_monitor.MaybeHandleWrite(address, value, /*size=*/4);
 }
 
 cyder::memory::MemoryManager* memory_manager_ptr;
 
 void cpu_instr_callback(unsigned int pc) {
-  stack_monitor.UpdateStackState();
-
   if (pc == break_on_line) {
     LOG(INFO) << "Breakpoint!";
     breakpoint = true;
