@@ -7,12 +7,14 @@
 namespace cyder {
 namespace port {
 
-absl::StatusOr<Ptr> GetQDGlobals();
+absl::StatusOr<Ptr> GetQDGlobalsPtr();
+absl::StatusOr<QDGlobals> GetQDGlobals();
 
 absl::StatusOr<Ptr> GetThePort();
 absl::Status SetThePort(Ptr port);
 
 absl::StatusOr<Point> GetLocalToGlobalOffset();
+absl::StatusOr<Rect> ConvertLocalToGlobal(Rect rect);
 
 }  // namespace port
 }  // namespace cyder

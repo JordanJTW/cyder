@@ -6,20 +6,11 @@
 #include "core/logging.h"
 #include "core/status_helpers.h"
 #include "emu/graphics/copybits.h"
+#include "emu/graphics/graphics_helpers.h"
 
 namespace cyder {
 namespace graphics {
 namespace {
-
-Rect NormalizeRect(Rect rect) {
-  uint16_t offset_x = rect.left;
-  uint16_t offset_y = rect.top;
-  rect.left -= offset_x;
-  rect.right -= offset_x;
-  rect.top -= offset_y;
-  rect.bottom -= offset_y;
-  return rect;
-}
 
 Rect RelativeTo(Rect container, Rect target) {
   uint16_t offset_x = container.left;

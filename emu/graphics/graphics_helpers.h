@@ -13,3 +13,17 @@ inline int PixelWidthToBytes(int width_px) {
 inline int FrameRectToBytes(const Rect& rect) {
   return rect.bottom * PixelWidthToBytes(rect.right);
 }
+
+// Offset |rect| by the given offsets
+inline Rect MoveRect(Rect rect, int16_t offset_x, int16_t offset_y) {
+  rect.left += offset_x;
+  rect.right += offset_x;
+  rect.top += offset_y;
+  rect.bottom += offset_y;
+  return rect;
+}
+
+// Normalize the |rect| so that its origin is at (0, 0) with the same dimensions
+inline Rect NormalizeRect(Rect rect) {
+  return MoveRect(rect, -rect.left, -rect.top);
+}

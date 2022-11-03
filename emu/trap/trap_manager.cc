@@ -571,12 +571,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = TRY(PopRef<Rect>());
       LOG(INFO) << "TRAP PaintRect(rect: " << rect << ")";
 
-      auto offset = TRY(port::GetLocalToGlobalOffset());
-      rect.left += offset.x;
-      rect.right += offset.x;
-      rect.top += offset.y;
-      rect.bottom += offset.y;
-
+      rect = TRY(port::ConvertLocalToGlobal(rect));
       // FIXME: Paint with the color set for QuickDraw (A5 World?)
       DrawRect(renderer_, rect, kForegroundColor);
       return absl::OkStatus();
@@ -586,12 +581,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = TRY(PopRef<Rect>());
       LOG(INFO) << "TRAP EraseRect(rect: " << rect << ")";
 
-      auto offset = TRY(port::GetLocalToGlobalOffset());
-      rect.left += offset.x;
-      rect.right += offset.x;
-      rect.top += offset.y;
-      rect.bottom += offset.y;
-
+      rect = TRY(port::ConvertLocalToGlobal(rect));
       // FIXME: Clear with the color set for QuickDraw (A5 World?)
       DrawRect(renderer_, rect, kBackgroundColor);
       return absl::OkStatus();
@@ -608,12 +598,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = TRY(PopRef<Rect>());
       LOG(INFO) << "TRAP PaintOval(rect: " << rect << ")";
 
-      auto offset = TRY(port::GetLocalToGlobalOffset());
-      rect.left += offset.x;
-      rect.right += offset.x;
-      rect.top += offset.y;
-      rect.bottom += offset.y;
-
+      rect = TRY(port::ConvertLocalToGlobal(rect));
       // FIXME: Paint with the color set for QuickDraw (A5 World?)
       DrawRect(renderer_, rect, kForegroundColor);
       return absl::OkStatus();
@@ -623,12 +608,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = TRY(PopRef<Rect>());
       LOG(INFO) << "TRAP EraseOval(rect: " << rect << ")";
 
-      auto offset = TRY(port::GetLocalToGlobalOffset());
-      rect.left += offset.x;
-      rect.right += offset.x;
-      rect.top += offset.y;
-      rect.bottom += offset.y;
-
+      rect = TRY(port::ConvertLocalToGlobal(rect));
       // FIXME: Clear with the color set for QuickDraw (A5 World?)
       DrawRect(renderer_, rect, kBackgroundColor);
       return absl::OkStatus();
@@ -684,11 +664,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG(INFO) << "TRAP OffsetRect(r: { " << rect << " } @ 0x" << std::hex
                 << rect_ptr << std::dec << ", dh: " << dh << ", dv: " << dv
                 << ")";
-      rect.left += dh;
-      rect.right += dh;
-      rect.top += dv;
-      rect.bottom += dv;
 
+      rect = MoveRect(rect, dh, dv);
       RETURN_IF_ERROR(WriteType<Rect>(rect, memory::kSystemMemory, rect_ptr));
       return absl::OkStatus();
     }
@@ -873,6 +850,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                 << std::hex << window_storage << ", behind: 0x" << behind_window
                 << ")";
 
+      // If NULL is passed as |window_storage|, allocate space for the record.
       if (window_storage == 0) {
         window_storage = memory_manager_.Allocate(WindowRecord::fixed_size);
       }
@@ -883,16 +861,53 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto resource = TRY(ReadType<WIND>(resource_region, /*offset=*/0));
       LOG(INFO) << "WIND: { " << resource << " }";
 
-      // FIXME: Fill in the rest of the WindowRecord (including GrafPort!)
-      Region visible_region;
-      visible_region.region_size = 8;
-      visible_region.bounding_box = resource.initial_rect;
+      auto port_frame = NormalizeRect(resource.initial_rect);
 
-      auto region_handle = memory_manager_.AllocateHandle(visible_region.size(),
-                                                          "VisibleRegion");
-      auto region_memory = memory_manager_.GetRegionForHandle(region_handle);
-      RETURN_IF_ERROR(
-          WriteType<Region>(visible_region, region_memory, /*offset=*/0));
+      // Returns handle to a new Region which represents the local dimensions:
+      auto create_port_region =
+          [&](const std::string& name) -> absl::StatusOr<Handle> {
+        Region region;
+        region.region_size = Rect::fixed_size;
+        region.bounding_box = port_frame;
+
+        auto handle = memory_manager_.AllocateHandle(region.size(), name);
+        auto memory = memory_manager_.GetRegionForHandle(handle);
+        RETURN_IF_ERROR(WriteType<Region>(region, memory, /*offset=*/0));
+        return handle;
+      };
+
+      auto globals = TRY(port::GetQDGlobals());
+
+      // FIXME: Fill in the rest of the WindowRecord (including GrafPort!)
+      GrafPort port;
+      // The |portBits.bounds| links the local and global coordinate systems
+      // by offseting the screen bounds so that |portRect| appears at (0, 0).
+      // For instance, if the window is meant to be drawn at (60, 60) global
+      // then the origin of |portBits.bounds| is (-60, -60) local and
+      // |portRect| has an origin of (0, 0) in local coordinates.
+      //
+      // See "Imaging with QuickDraw" Figure 2-4 for more details
+      port.port_bits.bounds =
+          MoveRect(globals.screen_bits.bounds, -resource.initial_rect.left,
+                   -resource.initial_rect.top);
+      port.port_rect = port_frame;
+      // FIXME: This assumes the entire window is visible at creation
+      port.visible_region = TRY(create_port_region("VisibleRegion"));
+
+      WindowRecord record;
+      record.port = std::move(port);
+      record.window_kind = 8 /*userKind*/;
+      record.is_visible = (resource.is_visible != 0);
+      record.has_close = (resource.has_close != 0);
+      record.reference_constant = resource.reference_constant;
+      record.content_region = TRY(create_port_region("ContentRegion"));
+
+      RESTRICT_FIELD_ACCESS(
+          WindowRecord, window_storage,
+          WindowRecordFields::port + GrafPortFields::visible_region);
+
+      RETURN_IF_ERROR(WriteType<WindowRecord>(record, memory::kSystemMemory,
+                                              window_storage));
 
       // FIXME: Properly maintain the full WindowList ordered by z-index
       RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(GlobalVars::WindowList,
@@ -902,23 +917,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       event_manager_.QueueEvent(/*what=*/6 /*updateEvent*/,
                                 /*message=*/window_storage);
 
-      GrafPort port;
-      port.port_rect = resource.initial_rect;
-      port.visible_region = region_handle;
+      std::cout << "Window: { " << record << " }";
 
-      WindowRecord record;
-      record.port = std::move(port);
-      record.window_kind = 8 /*userKind*/;
-      record.is_visible = (resource.is_visible != 0);
-      record.has_close = (resource.has_close != 0);
-      record.reference_constant = resource.reference_constant;
-
-      RESTRICT_FIELD_ACCESS(
-          WindowRecord, window_storage,
-          WindowRecordFields::port + GrafPortFields::visible_region);
-
-      RETURN_IF_ERROR(WriteType<WindowRecord>(record, memory::kSystemMemory,
-                                              window_storage));
       return TrapReturn<Ptr>(window_storage);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-243.html
@@ -948,7 +948,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG(INFO) << "TRAP FillRgn(region: { " << region << " } @ 0x" << std::hex
                 << region_handle << ", pattern: { " << pattern << " })";
 
-      DrawRect(renderer_, region.bounding_box, kBackgroundColor);
+      auto region_frame = TRY(port::ConvertLocalToGlobal(region.bounding_box));
+      DrawRect(renderer_, region_frame, kBackgroundColor);
       return absl::OkStatus();
     }
 
