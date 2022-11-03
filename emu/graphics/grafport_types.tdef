@@ -8,16 +8,16 @@ type RegionHandle: Handle;
 
 // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-57.html#HEADING57-39
 struct Point {
-  x: Integer;
-  y: Integer;
+  x: i16;
+  y: i16;
 }
 
 // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-57.html#HEADING57-39
 struct Rect {
-  top: Integer;
-  left: Integer;
-  bottom: Integer; 
-  right: Integer; 
+  top: i16;
+  left: i16;
+  bottom: i16; 
+  right: i16; 
 }
 
 // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-57.html#HEADING57-39
