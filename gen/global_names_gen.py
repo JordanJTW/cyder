@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from curses import meta
 import os
 import re
 import sys
@@ -106,13 +105,15 @@ def main():
     for address, metadata in address_to_metadata.items():
       for item in metadata:
         f.write(f"\n  {item['name']} = 0x{address:X},")
-    f.write('\n};')
+    f.write('\n};\n')
+
+    f.write('GlobalVars GetGlobalVar(uint32_t address);\n')
 
   # Write the .cc
   with open(cc_path, 'w') as f:
     f.write(CC_HEADER)
 
-    # GetTrapName:
+    # GetGlobalVarName:
     f.write(
         """
 const char* GetGlobalVarName(uint32_t address) {
@@ -148,6 +149,39 @@ const char* GetGlobalVarName(uint32_t address) {
     f.write("""
       LOG(WARNING) << "Unknown global variable address: 0x" << std::hex << address;
       return nullptr;
+  }
+}""")
+
+    # GetGlobalVar:
+    f.write(
+        """
+GlobalVars GetGlobalVar(uint32_t address) {
+  switch (address) {""")
+
+    for address, metadata in address_to_metadata.items():
+      if all(item['is_region'] for item in metadata):
+        continue
+
+      f.write(f'\n    case 0x{address:x}: return {metadata[0]["name"]};')
+
+    f.write("""
+    default:
+    """)
+
+    for address, metadata in address_to_metadata.items():
+      if not any(item['is_region'] for item in metadata):
+        continue
+
+      end_region = address + metadata[0]['size']
+      f.write(f"""
+      if (address >= 0x{address:x} && address < 0x{end_region:x}) {{
+        return {metadata[0]['name']};
+      }}
+      """)
+
+    f.write("""
+      LOG(FATAL) << "Unknown global variable address: 0x" << std::hex << address;
+      return MonkeyLives;
   }
 }""")
 

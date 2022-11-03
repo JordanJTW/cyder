@@ -32,6 +32,24 @@ struct RegionEntry {
 std::vector<RegionEntry> log_read_regions;
 std::vector<RegionEntry> log_write_regions;
 
+constexpr GlobalVars kWhitelistReadGlobalVars[] = {
+    GlobalVars::CurApName, GlobalVars::CurStackBase, GlobalVars::FPState,
+    // `TST.W HpChk` appears in a few programs and may be related to
+    // MPW which reuses this location for its own purposes?
+    GlobalVars::HpChk,
+    // This appears directly after `CurApName` region in memory and is
+    // fairly consistently read while reading `CurApName`... it seems like
+    // `CurApName` may actually extend to 34 bytes and not 32?
+    GlobalVars::SaveSegHandle};
+
+constexpr GlobalVars kWhitelistWriteGlobalVars[] = {GlobalVars::FPState};
+
+#define RETURN_IF_WHITELISTED(address, whitelist)                \
+  if (std::find(std::begin(whitelist), std::end(whitelist),      \
+                GetGlobalVar(address)) != std::end(whitelist)) { \
+    return;                                                      \
+  }
+
 bool ShouldLogAccess(const RegionEntry& entry, uint32_t address) {
   size_t relative_offset = address - entry.start;
   return std::none_of(
@@ -84,8 +102,10 @@ void CheckReadAccess(uint32_t address) {
   // System Globals
   if (within_region(kSystemGlobalsLowStart, kSystemGlobalsLowEnd) ||
       within_region(kSystemGlobalsHighStart, kSystemGlobalsHighEnd)) {
-    LOG(WARNING) << "Read system global at 0x" << std::hex << address << ": "
-                 << GetGlobalVarName(address);
+    RETURN_IF_WHITELISTED(address, kWhitelistReadGlobalVars);
+
+    LOG(FATAL) << "Read system global at 0x" << std::hex << address << ": "
+               << GetGlobalVarName(address);
     return;
   }
 
@@ -179,8 +199,10 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
   // System Globals
   if (within_region(kSystemGlobalsLowStart, kSystemGlobalsLowEnd) ||
       within_region(kSystemGlobalsHighStart, kSystemGlobalsHighEnd)) {
-    LOG(WARNING) << "Write system global at 0x" << std::hex << address << ": "
-                 << GetGlobalVarName(address) << " = 0x" << value;
+    RETURN_IF_WHITELISTED(address, kWhitelistWriteGlobalVars);
+
+    LOG(FATAL) << "Write system global at 0x" << std::hex << address << ": "
+               << GetGlobalVarName(address) << " = 0x" << value;
     return;
   }
 
@@ -250,7 +272,8 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
   }
 
   if (address > kLastEmulatedSubroutineAddress) {
-    LOG(FATAL) << "Writing to address reserved for native function calls: 0x"
+    LOG(FATAL) << "Writing to address reserved for native "
+                  "function calls: 0x"
                << std::hex << address << " = 0x" << value;
     return;
   }
