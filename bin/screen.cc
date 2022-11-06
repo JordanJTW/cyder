@@ -62,6 +62,9 @@ class BitmapScreen {
           << "Start inset: " << (int)start_offset
           << " Mask: " << std::bitset<8>(kMask[start_offset]);
 
+      // Clear the pixels to be written to 0
+      bitmap_[start_byte] &= ~kMask[start_offset];
+      // Draw the masked pattern
       bitmap_[start_byte] |= (kMask[start_offset] & pattern);
       remaining_pixels -= (CHAR_BIT - start_offset);
       start_byte += 1;
@@ -77,6 +80,9 @@ class BitmapScreen {
     // Handle any left over pixels which do not consume a full byte
     uint8_t end_outset = remaining_pixels % CHAR_BIT;
     if (end_outset) {
+      // Clear the pixels to be written to 0
+      bitmap_[start_byte + full_bytes] &= kMask[end_outset];
+      // Draw the masked pattern
       bitmap_[start_byte + full_bytes] |= (~kMask[end_outset] & pattern);
       LOG_IF(INFO, kVerbose) << "End outset: " << (int)end_outset
                              << " Mask: " << std::bitset<8>(~kMask[end_outset]);
