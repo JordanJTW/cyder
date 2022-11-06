@@ -53,8 +53,12 @@ class BitmapScreen {
       // middle of the start byte.
       int byte_aligned_size = start_offset + (end - start);
       if (byte_aligned_size <= CHAR_BIT) {
-        bitmap_[start_byte] |=
-            (kMask[start_offset] & ~kMask[byte_aligned_size] & pattern);
+        // Calculate a mask so that only the bits in the middle are on
+        uint8_t byte_mask = kMask[start_offset] & ~kMask[byte_aligned_size];
+        // Clear the pixels to be written to 0
+        bitmap_[start_byte] &= ~byte_mask;
+        // Draw the masked pattern
+        bitmap_[start_byte] |= (byte_mask & pattern);
         return;
       }
 
