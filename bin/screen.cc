@@ -15,6 +15,10 @@ namespace {
 constexpr SDL_Color kOnColor = {0xFF, 0xFF, 0xFF, 0xFF};
 constexpr SDL_Color kOffColor = {0x00, 0x00, 0x00, 0xFF};
 
+constexpr uint8_t kBlack[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+constexpr uint8_t kGrey[8] = {0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55};
+constexpr uint8_t kWhite[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
 constexpr size_t kScreenWidth = 512;
 constexpr size_t kScreenHeight = 384;
 
@@ -104,13 +108,13 @@ class BitmapScreen {
     return surface;
   }
 
-  void FillRect(const Rect& rect, uint8_t pattern[8]) {
+  void FillRect(const Rect& rect, const uint8_t pattern[8]) {
     for (int16_t row = rect.top; row < rect.bottom; ++row) {
       FillRow(row, rect.left, rect.right, pattern[row % 8]);
     }
   }
 
-  void FillEllipse(const Rect& rect, uint8_t pattern[8]) {
+  void FillEllipse(const Rect& rect, const uint8_t pattern[8]) {
     int half_width = (rect.right - rect.left) / 2;
     int half_height = (rect.bottom - rect.top) / 2;
     int origin_x = rect.left + half_width;
@@ -192,19 +196,15 @@ absl::Status Main(const core::Args& args) {
   fill_rect.left = 0;
   fill_rect.right = kScreenWidth;
 
-  uint8_t pattern[8] = {0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55};
-
-  screen.FillRect(fill_rect, pattern);
-
-  uint8_t black[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-  uint8_t white[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+  screen.FillRect(fill_rect, kGrey);
 
   Rect window_rect;
   window_rect.top = 60;
   window_rect.left = 60;
   window_rect.bottom = 120;
   window_rect.right = 120;
-  screen.FillRect(window_rect, white);
+  screen.FillRect(window_rect, kWhite);
+  screen.FillEllipse(window_rect, kBlack);
 
   bool should_exit = false;
   bool is_drag = false;
@@ -256,8 +256,9 @@ absl::Status Main(const core::Args& args) {
             window_rect.left = event.button.x / kScaleFactor;
             window_rect.bottom = event.button.y / kScaleFactor + height;
             window_rect.right = event.button.x / kScaleFactor + width;
-            screen.FillRect(fill_rect, pattern);
-            screen.FillRect(window_rect, white);
+            screen.FillRect(fill_rect, kGrey);
+            screen.FillRect(window_rect, kWhite);
+            screen.FillEllipse(window_rect, kBlack);
             LOG(INFO) << "To: " << window_rect;
           }
           is_drag = false;
@@ -270,8 +271,8 @@ absl::Status Main(const core::Args& args) {
             window_rect.left = event.motion.x / kScaleFactor;
             window_rect.bottom = event.motion.y / kScaleFactor + height;
             window_rect.right = event.motion.x / kScaleFactor + width;
-            screen.FillRect(fill_rect, pattern);
-            screen.FillRect(window_rect, white);
+            screen.FillRect(fill_rect, kGrey);
+            screen.FillEllipse(window_rect, kWhite);
           }
           break;
       }
