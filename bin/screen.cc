@@ -110,6 +110,47 @@ class BitmapScreen {
     }
   }
 
+  void FillEllipse(const Rect& rect, uint8_t pattern[8]) {
+    int half_width = (rect.right - rect.left) / 2;
+    int half_height = (rect.bottom - rect.top) / 2;
+    int origin_x = rect.left + half_width;
+    int origin_y = rect.top + half_height;
+
+    // Pre-calculate squares for formula below
+    int hh = half_height * half_height;
+    int ww = half_width * half_width;
+    int hhww = hh * ww;
+
+    int last_offset = half_width;
+    int slope_dx = 0;
+
+    // Fill the horrizontal center row of the ellipse.
+    // The rest of the ellipse is mirrored over this central line.
+    FillRow(origin_y, rect.left, rect.right, pattern[half_height % 8]);
+
+    for (int row = 1; row <= half_height; ++row) {
+      // Calculate the new offset from the vertical center for each row
+      // exploiting the fact that each new row will differ from the last
+      // by at least the same slope line as the last (give or take 1 to
+      // account for integer math).
+      int offset = last_offset - (slope_dx - 1);
+      for (; offset > 0; --offset) {
+        if (offset * offset * hh + row * row * ww <= hhww)
+          break;
+      }
+
+      // Fill rows mirrored over center line taking care to ensure the
+      // fill pattern starts at the top of the ellipse and follows down.
+      FillRow(origin_y - row, origin_x - offset, origin_x + offset,
+              pattern[(half_height - row) % 8]);
+      FillRow(origin_y + row, origin_x - offset, origin_x + offset,
+              pattern[(half_height + row) % 8]);
+
+      slope_dx = last_offset - offset;
+      last_offset = offset;
+    }
+  }
+
   void PrintBitmap() const {
     for (size_t i = 0; i < bitmap_size_; ++i) {
       std::cout << std::bitset<8>(bitmap_[i]);
