@@ -15,9 +15,10 @@ namespace {
 constexpr SDL_Color kOnColor = {0xFF, 0xFF, 0xFF, 0xFF};
 constexpr SDL_Color kOffColor = {0x00, 0x00, 0x00, 0xFF};
 
-constexpr uint8_t kBlack[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+// The Macintosh screen behaves like paper (white background / black foreground)
+constexpr uint8_t kWhite[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 constexpr uint8_t kGrey[8] = {0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55};
-constexpr uint8_t kWhite[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+constexpr uint8_t kBlack[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 constexpr size_t kScreenWidth = 512;
 constexpr size_t kScreenHeight = 384;
@@ -103,7 +104,7 @@ class BitmapScreen {
         SDL_PIXELFORMAT_INDEX1MSB);
     surface->pixels = bitmap_;
 
-    static SDL_Color colors[2] = {kOffColor, kOnColor};
+    static SDL_Color colors[2] = {kOnColor, kOffColor};
     SDL_SetPaletteColors(surface->format->palette, colors, 0, 2);
     return surface;
   }
