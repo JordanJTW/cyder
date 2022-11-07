@@ -171,6 +171,15 @@ class BitmapScreen {
   uint8_t* const bitmap_;
 };
 
+Rect NewRect(int16_t x, int16_t y, int16_t width, int16_t height) {
+  Rect rect;
+  rect.top = y;
+  rect.bottom = y + height;
+  rect.left = x;
+  rect.right = x + width;
+  return rect;
+}
+
 }  // namespace
 
 absl::Status Main(const core::Args& args) {
@@ -190,30 +199,35 @@ absl::Status Main(const core::Args& args) {
 
   BitmapScreen screen(kScreenWidth, kScreenHeight);
 
-  Rect fill_rect;
-  fill_rect.top = 0;
-  fill_rect.bottom = kScreenHeight;
-  fill_rect.left = 0;
-  fill_rect.right = kScreenWidth;
-
+  auto fill_rect = NewRect(0, 0, kScreenWidth, kScreenHeight);
   screen.FillRect(fill_rect, kGrey);
 
-  Rect window_rect;
-  window_rect.top = 60;
-  window_rect.left = 60;
-  window_rect.bottom = 120;
-  window_rect.right = 120;
+  auto window_rect = NewRect(60, 60, 60, 60);
   screen.FillRect(window_rect, kWhite);
   screen.FillEllipse(window_rect, kBlack);
 
   bool should_exit = false;
   bool is_drag = false;
+  int drag_offset_x = 0;
+  int drag_offset_y = 0;
 
   auto within_rect = [](Rect rect, Sint32 x, Sint32 y) {
     return x >= int(rect.left * kScaleFactor) &&
            x <= int(rect.right * kScaleFactor) &&
            y >= int(rect.top * kScaleFactor) &&
            y <= int(rect.bottom * kScaleFactor);
+  };
+
+  auto drag_rect = [&](Rect& rect, Sint32 x, Sint32 y) {
+    size_t width = rect.right - rect.left;
+    size_t height = rect.bottom - rect.top;
+    x = (x / kScaleFactor) - drag_offset_x;
+    y = (y / kScaleFactor) - drag_offset_y;
+
+    x = x < 0 ? x = 0 : x > kScreenWidth - width ? kScreenWidth - width : x;
+    y = y < 0 ? y = 0 : y > kScreenHeight - height ? kScreenHeight - height : y;
+
+    rect = NewRect(x, y, width, height);
   };
 
   SDL_Event event;
@@ -245,17 +259,15 @@ absl::Status Main(const core::Args& args) {
         case SDL_MOUSEBUTTONDOWN:
           if (within_rect(window_rect, event.button.x, event.button.y)) {
             LOG(INFO) << "From: " << window_rect;
+            drag_offset_x = (event.button.x / kScaleFactor) - window_rect.left;
+            drag_offset_y = (event.button.y / kScaleFactor) - window_rect.top;
             is_drag = true;
           }
           break;
         case SDL_MOUSEBUTTONUP:
           if (is_drag) {
-            size_t width = window_rect.right - window_rect.left;
-            size_t height = window_rect.bottom - window_rect.top;
-            window_rect.top = event.button.y / kScaleFactor;
-            window_rect.left = event.button.x / kScaleFactor;
-            window_rect.bottom = event.button.y / kScaleFactor + height;
-            window_rect.right = event.button.x / kScaleFactor + width;
+            drag_rect(window_rect, event.button.x, event.button.y);
+
             screen.FillRect(fill_rect, kGrey);
             screen.FillRect(window_rect, kWhite);
             screen.FillEllipse(window_rect, kBlack);
@@ -265,12 +277,8 @@ absl::Status Main(const core::Args& args) {
           break;
         case SDL_MOUSEMOTION:
           if (is_drag) {
-            size_t width = window_rect.right - window_rect.left;
-            size_t height = window_rect.bottom - window_rect.top;
-            window_rect.top = event.motion.y / kScaleFactor;
-            window_rect.left = event.motion.x / kScaleFactor;
-            window_rect.bottom = event.motion.y / kScaleFactor + height;
-            window_rect.right = event.motion.x / kScaleFactor + width;
+            drag_rect(window_rect, event.motion.x, event.motion.y);
+
             screen.FillRect(fill_rect, kGrey);
             screen.FillEllipse(window_rect, kWhite);
           }
