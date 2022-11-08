@@ -13,7 +13,7 @@ find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 
 add_executable(screen screen.cc)
-target_link_libraries(screen CORE_LIB MAIN_LIB PICT_LIB GRAFPORT_TYPES TYPEGEN_PRELUDE)
+target_link_libraries(screen CORE_LIB MAIN_LIB PICT_LIB SCREEN_LIB GRAFPORT_TYPES TYPEGEN_PRELUDE)
 target_link_libraries(screen ${SDL2_LIBRARIES})
 
 add_executable(viewpict viewpict.cc)
