@@ -27,3 +27,20 @@ inline Rect MoveRect(Rect rect, int16_t offset_x, int16_t offset_y) {
 inline Rect NormalizeRect(Rect rect) {
   return MoveRect(rect, -rect.left, -rect.top);
 }
+
+inline int16_t RectWidth(const Rect& rect) {
+  return rect.right - rect.left;
+}
+
+inline int16_t RectHeight(const Rect& rect) {
+  return rect.bottom - rect.top;
+}
+
+inline Rect NewRect(int16_t x, int16_t y, int16_t width, int16_t height) {
+  Rect rect;
+  rect.top = y;
+  rect.bottom = y + height;
+  rect.left = x;
+  rect.right = x + width;
+  return rect;
+}

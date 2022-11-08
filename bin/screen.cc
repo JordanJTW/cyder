@@ -7,10 +7,15 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
+#include "emu/graphics/copybits.h"
 #include "emu/graphics/grafport_types.tdef.h"
 #include "emu/graphics/graphics_helpers.h"
+#include "emu/graphics/pict_v1.h"
 
 namespace {
+
+using ::cyder::graphics::GetPICTFrame;
+using ::cyder::graphics::ParsePICTv1;
 
 constexpr SDL_Color kOnColor = {0xFF, 0xFF, 0xFF, 0xFF};
 constexpr SDL_Color kOffColor = {0x00, 0x00, 0x00, 0xFF};
@@ -116,8 +121,8 @@ class BitmapScreen {
   }
 
   void FillEllipse(const Rect& rect, const uint8_t pattern[8]) {
-    int half_width = (rect.right - rect.left) / 2;
-    int half_height = (rect.bottom - rect.top) / 2;
+    int half_width = RectWidth(rect) / 2;
+    int half_height = RectHeight(rect) / 2;
     int origin_x = rect.left + half_width;
     int origin_y = rect.top + half_height;
 
@@ -156,6 +161,25 @@ class BitmapScreen {
     }
   }
 
+  void CopyBits(const uint8_t* src,
+                const Rect& src_rect,
+                const Rect& dst_rect) {
+    int16_t height = RectHeight(dst_rect);
+    int16_t width = RectWidth(dst_rect);
+
+    // FIXME: Allow scaling between source/destination rects
+    CHECK(height == RectHeight(src_rect) && width == RectWidth(src_rect))
+        << "Source and destination MUST have the same dimensions";
+
+    for (int row = 0; row < height; ++row) {
+      int src_row_offset = PixelWidthToBytes(width) * row;
+      int dst_row_offset = PixelWidthToBytes(width_) * (dst_rect.top + row);
+
+      bitarray_copy(src + src_row_offset, /*src_offset=*/0, width,
+                    bitmap_ + dst_row_offset, dst_rect.left);
+    }
+  }
+
   void PrintBitmap() const {
     for (size_t i = 0; i < bitmap_size_; ++i) {
       std::cout << std::bitset<8>(bitmap_[i]);
@@ -179,6 +203,36 @@ Rect NewRect(int16_t x, int16_t y, int16_t width, int16_t height) {
   rect.left = x;
   rect.right = x + width;
   return rect;
+}
+
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+
+absl::Status LoadFileError(absl::string_view file_path) {
+  return absl::InternalError(
+      absl::StrCat("Error loading: '", file_path, "': ", strerror(errno)));
+}
+
+// FIXME: This logic is copy-pasted multiple places; merge into MemoryRegion?
+absl::StatusOr<core::MemoryRegion> LoadFile(const std::string& path) {
+  int fd = open(path.c_str(), O_RDONLY);
+  if (fd < 0) {
+    return LoadFileError(path);
+  }
+
+  struct stat status;
+  if (fstat(fd, &status) < 0) {
+    return LoadFileError(path);
+  }
+
+  size_t size = status.st_size;
+  void* mmap_ptr = mmap(0, size, PROT_READ, MAP_PRIVATE, fd, /*offset=*/0);
+  if (mmap_ptr == MAP_FAILED) {
+    return LoadFileError(path);
+  }
+  return core::MemoryRegion(mmap_ptr, size);
 }
 
 }  // namespace
@@ -207,6 +261,19 @@ absl::Status Main(const core::Args& args) {
   screen.FillRect(window_rect, kWhite);
   screen.FillEllipse(window_rect, kBlack);
 
+  auto region = TRY(LoadFile(TRY(args.GetArg(1, "FILENAME"))));
+  auto frame = TRY(GetPICTFrame(region));
+
+  size_t picture_size = FrameRectToBytes(frame);
+  uint8_t picture[picture_size];
+  std::memset(picture, 0, picture_size);
+
+  RETURN_IF_ERROR(ParsePICTv1(region, /*output=*/picture));
+  auto picture_rect = NewRect(kScreenWidth - RectWidth(frame),
+                              kScreenHeight - RectHeight(frame),
+                              RectWidth(frame), RectHeight(frame));
+  screen.CopyBits(picture, frame, picture_rect);
+
   bool should_exit = false;
   bool is_drag = false;
   int drag_offset_x = 0;
@@ -220,8 +287,8 @@ absl::Status Main(const core::Args& args) {
   };
 
   auto drag_rect = [&](Rect& rect, Sint32 x, Sint32 y) {
-    size_t width = rect.right - rect.left;
-    size_t height = rect.bottom - rect.top;
+    int16_t width = RectWidth(rect);
+    int16_t height = RectHeight(rect);
     x = (x / kScaleFactor) - drag_offset_x;
     y = (y / kScaleFactor) - drag_offset_y;
 
@@ -272,6 +339,7 @@ absl::Status Main(const core::Args& args) {
             screen.FillRect(fill_rect, kGrey);
             screen.FillRect(window_rect, kWhite);
             screen.FillEllipse(window_rect, kBlack);
+            screen.CopyBits(picture, frame, picture_rect);
             LOG(INFO) << "To: " << window_rect;
           }
           is_drag = false;
@@ -282,12 +350,15 @@ absl::Status Main(const core::Args& args) {
 
             screen.FillRect(fill_rect, kGrey);
             screen.FillEllipse(window_rect, kWhite);
+            screen.CopyBits(picture, frame, picture_rect);
           }
           break;
       }
     }
   }
 
+  // FIXME: Allow MemoryRegion to own memory and properly free it?
+  munmap(const_cast<uint8_t*>(region.raw_ptr()), region.size());
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
   SDL_Quit();

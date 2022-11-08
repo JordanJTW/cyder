@@ -24,19 +24,19 @@
     }                                                                          \
   } while (0)
 
-static void bitarray_copy(const unsigned char* src_org,
+static void bitarray_copy(const uint8_t* src_org,
                           int src_offset,
                           int src_len,
-                          unsigned char* dst_org,
+                          uint8_t* dst_org,
                           int dst_offset) {
-  static const unsigned char mask[] = {0x00, 0x80, 0xc0, 0xe0, 0xf0,
-                                       0xf8, 0xfc, 0xfe, 0xff};
-  static const unsigned char mask_xor[] = {0xff, 0x7f, 0x3f, 0x1f, 0x0f,
-                                           0x07, 0x03, 0x01, 0x00};
+  static const uint8_t mask[] = {0x00, 0x80, 0xc0, 0xe0, 0xf0,
+                                 0xf8, 0xfc, 0xfe, 0xff};
+  static const uint8_t mask_xor[] = {0xff, 0x7f, 0x3f, 0x1f, 0x0f,
+                                     0x07, 0x03, 0x01, 0x00};
 
   if (src_len) {
-    const unsigned char* src;
-    unsigned char* dst;
+    const uint8_t* src;
+    uint8_t* dst;
     int src_offset_modulo, dst_offset_modulo;
 
     src = src_org + (src_offset / CHAR_BIT);
@@ -49,7 +49,7 @@ static void bitarray_copy(const unsigned char* src_org,
       int byte_len;
       int src_len_modulo;
       if (src_offset_modulo) {
-        unsigned char c;
+        uint8_t c;
 
         c = mask_xor[dst_offset_modulo] & *src++;
 
@@ -73,7 +73,7 @@ static void bitarray_copy(const unsigned char* src_org,
       int bit_diff_ls, bit_diff_rs;
       int byte_len;
       int src_len_modulo;
-      unsigned char c;
+      uint8_t c;
       // Line things up on destination
       if (src_offset_modulo > dst_offset_modulo) {
         bit_diff_ls = src_offset_modulo - dst_offset_modulo;
