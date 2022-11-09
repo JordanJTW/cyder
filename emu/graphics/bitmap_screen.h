@@ -12,7 +12,7 @@ namespace graphics {
 // All coordinates are mapped from the upper-left hand corner at (0, 0).
 class BitmapScreen {
  public:
-  BitmapScreen(size_t width, size_t height);
+  BitmapScreen(int width, int height);
   ~BitmapScreen();
 
   // Fill |rect| with the given bit |pattern|
@@ -22,7 +22,7 @@ class BitmapScreen {
   void FillEllipse(const Rect& rect, const uint8_t pattern[8]);
 
   // Fill the pixels from |start| to |end| on the given |row| with bit |pattern|
-  void FillRow(size_t row, int16_t start, int16_t end, uint8_t pattern);
+  void FillRow(int row, int16_t start, int16_t end, uint8_t pattern);
 
   // Copy a bit image from |src| with dimensions |src_rect| to |dst_rect|
   void CopyBits(const uint8_t* src, const Rect& src_rect, const Rect& dst_rect);
@@ -31,9 +31,9 @@ class BitmapScreen {
   const uint8_t* const bits() const { return bitmap_; }
 
  private:
-  const size_t width_;
-  const size_t height_;
-  const size_t bitmap_size_;
+  const int width_;
+  const int height_;
+  const int bitmap_size_;
   uint8_t* const bitmap_;
 };
 

@@ -124,10 +124,6 @@ absl::Status Main(const core::Args& args) {
     int16_t height = RectHeight(rect);
     x = (x / kScaleFactor) - drag_offset_x;
     y = (y / kScaleFactor) - drag_offset_y;
-
-    x = x < 0 ? x = 0 : x > kScreenWidth - width ? kScreenWidth - width : x;
-    y = y < 0 ? y = 0 : y > kScreenHeight - height ? kScreenHeight - height : y;
-
     rect = NewRect(x, y, width, height);
   };
 

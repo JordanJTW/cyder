@@ -14,7 +14,7 @@ static const bool kVerbose = false;
 
 }  // namespace
 
-BitmapScreen::BitmapScreen(size_t width, size_t height)
+BitmapScreen::BitmapScreen(int width, int height)
     : width_(width),
       height_(height),
       bitmap_size_(PixelWidthToBytes(width) * height),
@@ -73,7 +73,7 @@ void BitmapScreen::FillEllipse(const Rect& rect, const uint8_t pattern[8]) {
   }
 }
 
-void BitmapScreen::FillRow(size_t row,
+void BitmapScreen::FillRow(int row,
                            int16_t start,
                            int16_t end,
                            uint8_t pattern) {
@@ -81,7 +81,7 @@ void BitmapScreen::FillRow(size_t row,
                                         0b00011111, 0b00001111, 0b00000111,
                                         0b00000011, 0b00000001, 0b00000000};
 
-  size_t start_byte = row * PixelWidthToBytes(width_) + (start / CHAR_BIT);
+  int start_byte = row * PixelWidthToBytes(width_) + (start / CHAR_BIT);
 
   LOG_IF(INFO, kVerbose) << "Start byte: " << start_byte;
 
@@ -91,6 +91,9 @@ void BitmapScreen::FillRow(size_t row,
   // the next pixel is gauranteed to appear at the start of the next byte.
   uint8_t start_offset = start % CHAR_BIT;
   if (start_offset) {
+    CHECK_LT(start_byte, bitmap_size_)
+        << "Attemping to draw outside array bounds";
+
     // Handles a corner case where the |start| and |end| both occur in the
     // middle of the start byte.
     int byte_aligned_size = start_offset + (end - start);
@@ -118,6 +121,9 @@ void BitmapScreen::FillRow(size_t row,
   // Now we are byte aligned so try to write out as many full bytes as we can
   int full_bytes = remaining_pixels / CHAR_BIT;
   if (full_bytes) {
+    CHECK_LT(start_byte + full_bytes - 1, bitmap_size_)
+        << "Attemping to draw outside array bounds";
+
     LOG_IF(INFO, kVerbose) << "Full bytes: " << full_bytes;
     std::memset(bitmap_ + start_byte, pattern, full_bytes);
   }
@@ -125,6 +131,9 @@ void BitmapScreen::FillRow(size_t row,
   // Handle any left over pixels which do not consume a full byte
   uint8_t end_outset = remaining_pixels % CHAR_BIT;
   if (end_outset) {
+    CHECK_LT(start_byte + full_bytes, bitmap_size_)
+        << "Attemping to draw outside array bounds";
+
     // Clear the pixels to be written to 0
     bitmap_[start_byte + full_bytes] &= kMask[end_outset];
     // Draw the masked pattern
@@ -154,7 +163,7 @@ void BitmapScreen::CopyBits(const uint8_t* src,
 }
 
 void BitmapScreen::PrintBitmap() const {
-  for (size_t i = 0; i < bitmap_size_; ++i) {
+  for (int i = 0; i < bitmap_size_; ++i) {
     std::cout << std::bitset<8>(bitmap_[i]);
     if ((i + 1) % PixelWidthToBytes(width_) == 0) {
       std::cout << std::endl;
