@@ -11,6 +11,8 @@
 #include "core/status_helpers.h"
 #include "core/status_main.h"
 #include "emu/event_manager.h"
+#include "emu/graphics/bitmap_screen.h"
+#include "emu/graphics/graphics_helpers.h"
 #include "emu/memory/memory_manager.h"
 #include "emu/memory/memory_map.h"
 #include "emu/segment_loader.h"
@@ -37,6 +39,16 @@ constexpr size_t break_on_line = 0;
 
 bool single_step = false;
 bool breakpoint = false;
+
+constexpr SDL_Color kOnColor = {0xFF, 0xFF, 0xFF, 0xFF};
+constexpr SDL_Color kOffColor = {0x00, 0x00, 0x00, 0xFF};
+
+constexpr size_t kScreenWidth = 512;
+constexpr size_t kScreenHeight = 384;
+constexpr size_t kScaleFactor = 1;
+
+constexpr uint8_t kGreyPattern[8] = {0xAA, 0x55, 0xAA, 0x55,
+                                     0xAA, 0x55, 0xAA, 0x55};
 
 typedef std::function<absl::Status(uint32_t)> on_address_callback_t;
 
@@ -178,10 +190,21 @@ void PrintFrameTiming(std::ostream& os = std::cout, float period = 2.0f) {
 using cyder::EventManager;
 using cyder::ResourceManager;
 using cyder::SegmentLoader;
+using cyder::graphics::BitmapScreen;
 using cyder::memory::kSystemMemory;
 using cyder::memory::MemoryManager;
 using cyder::trap::TrapManager;
 using rsrcloader::ResourceFile;
+
+SDL_Surface* const MakeSurface(const BitmapScreen& screen) {
+  static SDL_Surface* const surface = SDL_CreateRGBSurfaceWithFormat(
+      SDL_SWSURFACE, kScreenWidth, kScreenHeight, 1, SDL_PIXELFORMAT_INDEX1MSB);
+  surface->pixels = const_cast<uint8_t*>(screen.bits());
+
+  static SDL_Color colors[2] = {kOnColor, kOffColor};
+  SDL_SetPaletteColors(surface->format->palette, colors, 0, 2);
+  return surface;
+}
 
 absl::Status Main(const core::Args& args) {
   auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
@@ -198,17 +221,34 @@ absl::Status Main(const core::Args& args) {
   LOG(INFO) << "Initialize PC: " << std::hex << pc;
   LOG(INFO) << "Memory Map: " << cyder::memory::MemoryMapToStr();
 
+  BitmapScreen screen(kScreenWidth, kScreenHeight);
+
+  // Draw classic Mac OS grey baground pattern
+  auto screen_rect = NewRect(0, 0, kScreenWidth, kScreenHeight);
+  screen.FillRect(screen_rect, kGreyPattern);
+
   SDL_Init(SDL_INIT_VIDEO);
-  SDL_Window* window = SDL_CreateWindow("Cyder", SDL_WINDOWPOS_UNDEFINED,
-                                        SDL_WINDOWPOS_UNDEFINED, 512, 384, 0);
+
+  int window_width = int(kScreenWidth * kScaleFactor);
+  int window_height = int(kScreenHeight * kScaleFactor);
+
+  SDL_Window* window =
+      SDL_CreateWindow("Cyder", SDL_WINDOWPOS_UNDEFINED,
+                       SDL_WINDOWPOS_UNDEFINED, window_width, window_height, 0);
+
+  CHECK(window) << "Failing to create window: " << SDL_GetError();
 
   SDL_Renderer* renderer =
-      SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+      SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+
+  CHECK(renderer) << "Failing to create renderer: " << SDL_GetError();
+
+  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
 
   EventManager event_manager;
 
   TrapManager trap_manager(memory_manager, resource_manager, segment_loader,
-                           event_manager, renderer);
+                           event_manager, screen);
   on_emulated_subroutine = std::bind(&TrapManager::DispatchEmulatedSubroutine,
                                      &trap_manager, std::placeholders::_1);
 
@@ -278,9 +318,6 @@ absl::Status Main(const core::Args& args) {
   RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(GlobalVars::CurStackBase,
                                                 cyder::memory::kStackStart));
 
-  SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
-                                           SDL_TEXTUREACCESS_TARGET, 512, 384);
-
   SDL_Event event;
   bool should_exit = false;
   while (!should_exit) {
@@ -288,13 +325,16 @@ absl::Status Main(const core::Args& args) {
     SDL_RenderClear(renderer);
 
     if (!single_step) {
-      SDL_SetRenderTarget(renderer, texture);
       m68k_execute(100000);
-      SDL_SetRenderTarget(renderer, NULL);
     }
+
+    SDL_Texture* texture =
+        SDL_CreateTextureFromSurface(renderer, MakeSurface(screen));
+    CHECK(texture) << "Failed to create texture: " << SDL_GetError();
 
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
+    SDL_DestroyTexture(texture);
 
     while (SDL_PollEvent(&event)) {
       switch (event.type) {
@@ -309,7 +349,6 @@ absl::Status Main(const core::Args& args) {
     PrintFrameTiming();
   }
 
-  SDL_DestroyTexture(texture);
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
   SDL_Quit();

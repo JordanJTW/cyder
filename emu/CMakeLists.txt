@@ -19,6 +19,7 @@ target_link_libraries(
   MUSASHI_LIB
   PICT_LIB
   rsrcfork
+  SCREEN_LIB
   GLOBAL_NAMES
   GRAPHICS_LIB
   TRAP_NAMES

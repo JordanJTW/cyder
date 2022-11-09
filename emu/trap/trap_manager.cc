@@ -1,4 +1,4 @@
-#include "trap_manager.h"
+#include "emu/trap/trap_manager.h"
 
 #include <SDL.h>
 
@@ -26,30 +26,12 @@ namespace cyder {
 namespace trap {
 namespace {
 
-constexpr SDL_Color kBackgroundColor = {0xFF, 0xFF, 0xFF, 0xFF};
-constexpr SDL_Color kForegroundColor = {0x00, 0x00, 0x00, 0xFF};
-
 using rsrcloader::GetTypeName;
 
-void DrawRect(SDL_Renderer* renderer,
-              const Rect& rect,
-              const SDL_Color& color) {
-  SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-
-  int width = (rect.right - rect.left);
-  int height = (rect.bottom - rect.top);
-
-  if (width < 0 || height < 0)
-    return;
-
-  SDL_Rect sdl_rect = {
-      .x = rect.left,
-      .y = rect.top,
-      .w = width,
-      .h = height,
-  };
-  SDL_RenderFillRect(renderer, &sdl_rect);
-}
+constexpr uint8_t kBackgroundPattern[8] = {0x00, 0x00, 0x00, 0x00,
+                                           0x00, 0x00, 0x00, 0x00};
+constexpr uint8_t kForegroundPattern[8] = {0xFF, 0xFF, 0xFF, 0xFF,
+                                           0xFF, 0xFF, 0xFF, 0xFF};
 
 absl::Status HandleLoadSegmentTrap(SegmentLoader& segment_loader,
                                    Ptr& return_address) {
@@ -69,14 +51,12 @@ TrapManager::TrapManager(memory::MemoryManager& memory_manager,
                          ResourceManager& resource_manager,
                          SegmentLoader& segment_loader,
                          EventManager& event_manager,
-                         SDL_Renderer* renderer)
+                         graphics::BitmapScreen& bitmap_screen)
     : memory_manager_(memory_manager),
       resource_manager_(resource_manager),
       segment_loader_(segment_loader),
       event_manager_(event_manager),
-      renderer_(renderer) {
-  CHECK(renderer);
-}
+      bitmap_screen_(bitmap_screen) {}
 
 absl::Status TrapManager::DispatchEmulatedSubroutine(uint32_t address) {
   switch (address) {
@@ -572,8 +552,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG(INFO) << "TRAP PaintRect(rect: " << rect << ")";
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
+
       // FIXME: Paint with the color set for QuickDraw (A5 World?)
-      DrawRect(renderer_, rect, kForegroundColor);
+      bitmap_screen_.FillRect(rect, kForegroundPattern);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-100.html
@@ -583,7 +564,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
       // FIXME: Clear with the color set for QuickDraw (A5 World?)
-      DrawRect(renderer_, rect, kBackgroundColor);
+      bitmap_screen_.FillRect(rect, kBackgroundPattern);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-63.html
@@ -600,7 +581,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
       // FIXME: Paint with the color set for QuickDraw (A5 World?)
-      DrawRect(renderer_, rect, kForegroundColor);
+      bitmap_screen_.FillEllipse(rect, kForegroundPattern);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-112.html
@@ -610,7 +591,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
       // FIXME: Clear with the color set for QuickDraw (A5 World?)
-      DrawRect(renderer_, rect, kBackgroundColor);
+      bitmap_screen_.FillEllipse(rect, kBackgroundPattern);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-86.html
@@ -949,7 +930,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                 << region_handle << ", pattern: { " << pattern << " })";
 
       auto region_frame = TRY(port::ConvertLocalToGlobal(region.bounding_box));
-      DrawRect(renderer_, region_frame, kBackgroundColor);
+      bitmap_screen_.FillRect(region_frame, kBackgroundPattern);
       return absl::OkStatus();
     }
 
@@ -972,32 +953,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       RETURN_IF_ERROR(graphics::ParsePICTv1(pict_data, /*output=*/picture));
 
-      SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(
-          SDL_SWSURFACE, pict_frame.right, pict_frame.bottom, 1,
-          SDL_PIXELFORMAT_INDEX1MSB);
-      surface->pixels = picture;
-
       auto offset = TRY(port::GetLocalToGlobalOffset());
+      auto target_rect = MoveRect(dst_rect, offset.x, offset.y);
 
-      if (surface != NULL) {
-        SDL_Color colors[2] = {kBackgroundColor, kForegroundColor};
-        SDL_SetPaletteColors(surface->format->palette, colors, 0, 2);
-
-        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer_, surface);
-        if (texture == NULL)
-          LOG(FATAL) << SDL_GetError();
-
-        SDL_Rect texture_rect;
-        texture_rect.x = offset.x + dst_rect.left;  // the x coordinate
-        texture_rect.y = offset.y + dst_rect.top;   // the y coordinate
-        texture_rect.w =
-            dst_rect.right - dst_rect.left;  // the width of the texture
-        texture_rect.h =
-            dst_rect.bottom - dst_rect.top;  // the height of the texture
-
-        SDL_RenderCopy(renderer_, texture, NULL, &texture_rect);
-      }
-
+      bitmap_screen_.CopyBits(picture, pict_frame, target_rect);
       return absl::OkStatus();
     }
 

@@ -27,6 +27,9 @@ class BitmapScreen {
   // Copy a bit image from |src| with dimensions |src_rect| to |dst_rect|
   void CopyBits(const uint8_t* src, const Rect& src_rect, const Rect& dst_rect);
   void PrintBitmap() const;
+  
+  int height() const { return height_; }
+  int width() const { return width_; }
 
   const uint8_t* const bits() const { return bitmap_; }
 

@@ -134,16 +134,9 @@ absl::Status Main(const core::Args& args) {
 
     SDL_Texture* texture =
         SDL_CreateTextureFromSurface(renderer, MakeSurface(screen));
-    if (texture == NULL)
-      LOG(FATAL) << SDL_GetError();
+    CHECK(texture) << "Failed to create texture: " << SDL_GetError();
 
-    static SDL_Rect rect = {
-        .x = 0,
-        .y = 0,
-        .w = window_width,
-        .h = window_height,
-    };
-    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
     SDL_DestroyTexture(texture);
 
     SDL_RenderPresent(renderer);
