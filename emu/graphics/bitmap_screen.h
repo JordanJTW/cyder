@@ -35,6 +35,8 @@ class BitmapScreen {
   const int height_;
   const int bitmap_size_;
   uint8_t* const bitmap_;
+
+  Rect clip_rect_;
 };
 
 }  // namespace graphics

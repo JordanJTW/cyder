@@ -20,6 +20,7 @@ BitmapScreen::BitmapScreen(int width, int height)
       bitmap_size_(PixelWidthToBytes(width) * height),
       bitmap_(new uint8_t[bitmap_size_]) {
   std::memset(bitmap_, 0, bitmap_size_);
+  clip_rect_ = NewRect(0, 0, width, height);
 }
 
 BitmapScreen::~BitmapScreen() {
@@ -80,6 +81,20 @@ void BitmapScreen::FillRow(int row,
   static const unsigned char kMask[] = {0b11111111, 0b01111111, 0b00111111,
                                         0b00011111, 0b00001111, 0b00000111,
                                         0b00000011, 0b00000001, 0b00000000};
+
+  // Handle clipping for the shapes. If the requested |row| is outside of the
+  // clip region then ignore it. Ensure |start| and |end| are bound to the
+  // extents of the clip region and ignore negative sized rows.
+  if (row < clip_rect_.top || row >= clip_rect_.bottom) {
+    return;
+  }
+
+  start = std::max(start, clip_rect_.left);
+  end = std::min(end, clip_rect_.right);
+
+  if (start >= end) {
+    return;
+  }
 
   int start_byte = row * PixelWidthToBytes(width_) + (start / CHAR_BIT);
 
