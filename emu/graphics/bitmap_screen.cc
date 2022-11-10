@@ -168,12 +168,30 @@ void BitmapScreen::CopyBits(const uint8_t* src,
   CHECK(height == RectHeight(src_rect) && width == RectWidth(src_rect))
       << "Source and destination MUST have the same dimensions";
 
-  for (int row = 0; row < height; ++row) {
-    int src_row_offset = PixelWidthToBytes(width) * row;
-    int dst_row_offset = PixelWidthToBytes(width_) * (dst_rect.top + row);
+  // Calculate the number of pixels outside of |clip_rect_| on each side:
+  Rect clip_offset;
+  clip_offset.top = std::max(0, clip_rect_.top - dst_rect.top);
+  clip_offset.bottom = std::max(0, dst_rect.bottom - clip_rect_.bottom);
+  clip_offset.left = std::max(0, clip_rect_.left - dst_rect.left);
+  clip_offset.right = std::max(0, dst_rect.right - clip_rect_.right);
 
-    bitarray_copy(src + src_row_offset, /*src_offset=*/0, width,
-                  bitmap_ + dst_row_offset, dst_rect.left);
+  // Account for the portion of the bitmap outside of |clip_rect_|
+  int16_t clipped_height = height - (clip_offset.top + clip_offset.bottom);
+  int16_t clipped_width = width - (clip_offset.left + clip_offset.right);
+
+  // Is there anything left to draw? :P
+  if (clipped_height <= 0 || clipped_width <= 0) {
+    return;
+  }
+
+  for (int row = 0; row < clipped_height; ++row) {
+    int src_row_offset = PixelWidthToBytes(width) * (row + clip_offset.top);
+    int dst_row_offset =
+        PixelWidthToBytes(width_) * (row + dst_rect.top + clip_offset.top);
+
+    bitarray_copy(src + src_row_offset, /*src_offset=*/clip_offset.left,
+                  /*src_length=*/clipped_width, bitmap_ + dst_row_offset,
+                  /*dst_offset=*/dst_rect.left + clip_offset.left);
   }
 }
 
