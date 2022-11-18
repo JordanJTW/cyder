@@ -930,6 +930,29 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       // FIXME: Check other regions according to docs
       return TrapReturn<int16_t>(0 /*inDesk*/);
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-270.html
+    case Trap::GetWRefCon: {
+      auto the_window = TRY(PopRef<WindowRecord>());
+      LOG(INFO) << "TRAP GetWRefCon(theWindow: { " << std::hex << the_window
+                << " })";
+      return TrapReturn<uint32_t>(the_window.reference_constant);
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-269.html
+    case Trap::SetWRefCon: {
+      auto data = TRY(Pop<uint32_t>());
+      auto the_window_ptr = TRY(Pop<Ptr>());
+      auto the_window =
+          TRY(ReadType<WindowRecord>(memory::kSystemMemory, the_window_ptr));
+
+      LOG(INFO) << "TRAP SetWRefCon(theWindow: { " << the_window << " } @ 0x"
+                << std::hex << the_window_ptr << ", data: " << std::dec << data
+                << ")";
+
+      the_window.reference_constant = data;
+      RETURN_IF_ERROR(WriteType<WindowRecord>(the_window, memory::kSystemMemory,
+                                              the_window_ptr));
+      return absl::OkStatus();
+    }
 
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
     case Trap::BeginUpDate: {
