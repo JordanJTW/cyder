@@ -907,8 +907,19 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
           TRY(memory::kSystemMemory.Read<Ptr>(GlobalVars::WindowList));
       return TrapReturn<Ptr>(front_window);
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-242.html
+    case Trap::FindWindow: {
+      auto the_window_var = TRY(Pop<Ptr>());
+      auto the_point = TRY(PopType<Point>());
 
-      // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
+      LOG(INFO) << "TRAP FindWindow(thePoint: { " << the_point
+                << " }, VAR theWindow: 0x" << std::hex << the_window_var << ")";
+
+      // FIXME: Check other regions according to docs
+      return TrapReturn<int16_t>(0 /*inDesk*/);
+    }
+
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
     case Trap::BeginUpDate: {
       auto the_window = TRY(Pop<Ptr>());
       LOG(INFO) << "TRAP BeginUpdate(theWindow: 0x" << std::hex << the_window
