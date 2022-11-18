@@ -1003,6 +1003,14 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       bitmap_screen_.CopyBits(picture, pict_frame, target_rect);
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-351.html
+    case Trap::GetPicture: {
+      auto pict_id = TRY(Pop<Integer>());
+      LOG(INFO) << "TRAP GetPicture(picId: " << pict_id << ")";
+
+      Handle handle = resource_manager_.GetResource('PICT', pict_id);
+      return TrapReturn<Handle>(handle);
+    }
 
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
     case Trap::EndUpDate: {
