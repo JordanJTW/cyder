@@ -17,6 +17,7 @@
 #include "emu/memory/memory_map.h"
 #include "emu/menu_manager.h"
 #include "emu/segment_loader.h"
+#include "emu/trap/stack_helpers.h"
 #include "emu/trap/trap_manager.h"
 #include "gen/global_names.h"
 #include "gen/trap_names.h"
@@ -322,6 +323,10 @@ absl::Status Main(const core::Args& args) {
   RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(GlobalVars::CurStackBase,
                                                 cyder::memory::kStackStart));
 
+  
+  RETURN_IF_ERROR(cyder::trap::Push<uint32_t>(
+      cyder::memory::kBaseToolboxTrapAddress +
+      (Trap::ExitToShell & 0x03FF) * sizeof(uint16_t)));
   SDL_Event event;
   bool should_exit = false;
   while (!should_exit) {

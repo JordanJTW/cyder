@@ -519,6 +519,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Processes/Processes-51.html
     case Trap::ExitToShell: {
       LOG(INFO) << "TRAP ExitToShell()";
+      LOG(INFO) << "Have a nice day! 🐙";
       exit(0);
       return absl::OkStatus();
     }
