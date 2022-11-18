@@ -51,11 +51,13 @@ TrapManager::TrapManager(memory::MemoryManager& memory_manager,
                          ResourceManager& resource_manager,
                          SegmentLoader& segment_loader,
                          EventManager& event_manager,
+                         MenuManager& menu_manager,
                          graphics::BitmapScreen& bitmap_screen)
     : memory_manager_(memory_manager),
       resource_manager_(resource_manager),
       segment_loader_(segment_loader),
       event_manager_(event_manager),
+      menu_manager_(menu_manager),
       bitmap_screen_(bitmap_screen) {}
 
 absl::Status TrapManager::DispatchEmulatedSubroutine(uint32_t address) {
@@ -491,6 +493,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto the_menu = TRY(Pop<Handle>());
       LOG(INFO) << "TRAP InsertMenu(beforeId: " << before_id << ", theMenu: 0x"
                 << std::hex << the_menu << ")";
+
+      auto menu = TRY(ReadType<MenuResource>(
+          memory_manager_.GetRegionForHandle(the_menu), 0));
+      menu_manager_.InsertMenu(menu);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-147.html
@@ -504,6 +510,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-130.html
     case Trap::DrawMenuBar: {
       LOG(INFO) << "TRAP DrawMenuBar()";
+      menu_manager_.DrawMenuBar();
       return absl::OkStatus();
     }
 
@@ -914,6 +921,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       LOG(INFO) << "TRAP FindWindow(thePoint: { " << the_point
                 << " }, VAR theWindow: 0x" << std::hex << the_window_var << ")";
+
+      if (menu_manager_.IsInMenuBar(the_point)) {
+        return TrapReturn<int16_t>(1 /*inMenuBar*/);
+      }
 
       // FIXME: Check other regions according to docs
       return TrapReturn<int16_t>(0 /*inDesk*/);

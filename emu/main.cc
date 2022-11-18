@@ -15,6 +15,7 @@
 #include "emu/graphics/graphics_helpers.h"
 #include "emu/memory/memory_manager.h"
 #include "emu/memory/memory_map.h"
+#include "emu/menu_manager.h"
 #include "emu/segment_loader.h"
 #include "emu/trap/trap_manager.h"
 #include "gen/global_names.h"
@@ -188,6 +189,7 @@ void PrintFrameTiming(std::ostream& os = std::cout, float period = 2.0f) {
 }
 
 using cyder::EventManager;
+using cyder::MenuManager;
 using cyder::ResourceManager;
 using cyder::SegmentLoader;
 using cyder::graphics::BitmapScreen;
@@ -223,6 +225,8 @@ absl::Status Main(const core::Args& args) {
 
   BitmapScreen screen(kScreenWidth, kScreenHeight);
 
+  MenuManager menu_manager(screen);
+
   // Draw classic Mac OS grey baground pattern
   auto screen_rect = NewRect(0, 0, kScreenWidth, kScreenHeight);
   screen.FillRect(screen_rect, kGreyPattern);
@@ -248,7 +252,7 @@ absl::Status Main(const core::Args& args) {
   EventManager event_manager;
 
   TrapManager trap_manager(memory_manager, resource_manager, segment_loader,
-                           event_manager, screen);
+                           event_manager, menu_manager, screen);
   on_emulated_subroutine = std::bind(&TrapManager::DispatchEmulatedSubroutine,
                                      &trap_manager, std::placeholders::_1);
 
