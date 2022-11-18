@@ -17,9 +17,23 @@ class MenuManager {
   void DrawMenuBar() const;
 
   bool IsInMenuBar(Point point) const;
+
+  void NativeMenuSelect(int x,
+                        int y,
+                        std::function<void(uint32_t)> on_selected);
+
+  void OnMouseMove(int x, int y);
+  void OnMouseUp(int x, int y);
+
  private:
+  uint32_t GetSelected(int menu_index, uint16_t item_index);
+
   graphics::BitmapScreen& screen_;
   std::vector<MenuResource> menus_;
+
+  std::function<void(uint32_t)> on_selected_;
+  uint8_t* previous_bitmap_;
+  Rect previous_rect_;
 };
 
 }  // namespace cyder

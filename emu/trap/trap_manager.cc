@@ -22,6 +22,8 @@
 #include "resource.h"
 #include "third_party/musashi/src/m68k.h"
 
+extern bool single_step;
+
 namespace cyder {
 namespace trap {
 namespace {
@@ -529,6 +531,29 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       RETURN_IF_ERROR(WriteType<absl::string_view>(
           menu.items[item].title, memory::kSystemMemory, item_string_var));
 
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-133.html
+    case Trap::MenuSelect: {
+      auto start_pt = TRY(PopType<Point>());
+
+      LOG(INFO) << "TRAP MenuSelect(startPt: { " << start_pt << " })";
+
+      m68k_end_timeslice();
+      single_step = true;
+
+      menu_manager_.NativeMenuSelect(
+          start_pt.x, start_pt.y, [](uint32_t selected) {
+            CHECK(TrapReturn<uint32_t>(selected).ok());
+            single_step = false;
+          });
+
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-136.html
+    case Trap::HiliteMenu: {
+      auto menu_id = TRY(Pop<Integer>());
+      LOG(INFO) << "TRAP HiliteMenu(menuId: " << menu_id << ")";
       return absl::OkStatus();
     }
 

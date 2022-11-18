@@ -353,6 +353,12 @@ absl::Status Main(const core::Args& args) {
         case SDL_MOUSEBUTTONDOWN:
           event_manager.QueueMouseDown(event.button.x, event.button.y);
           break;
+        case SDL_MOUSEMOTION:
+          menu_manager.OnMouseMove(event.motion.x, event.motion.y);
+          break;
+        case SDL_MOUSEBUTTONUP:
+          menu_manager.OnMouseUp(event.button.x, event.button.y);
+          break;
         case SDL_QUIT:
           should_exit = true;
           break;
