@@ -513,6 +513,24 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       menu_manager_.DrawMenuBar();
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-152.html
+    case Trap::GetMenuItemText: {
+      auto item_string_var = TRY(Pop<Ptr>());
+      auto item = TRY(Pop<uint16_t>());
+      auto the_menu = TRY(Pop<Handle>());
+
+      LOG(INFO) << "TRAP GetMenuItemText(theMenu: 0x" << std::hex << the_menu
+                << ", item: " << std::dec << item << ", VAR itemString: 0x"
+                << std::hex << item_string_var << ")";
+
+      auto menu = TRY(ReadType<MenuResource>(
+          memory_manager_.GetRegionForHandle(the_menu), 0));
+
+      RETURN_IF_ERROR(WriteType<absl::string_view>(
+          menu.items[item].title, memory::kSystemMemory, item_string_var));
+
+      return absl::OkStatus();
+    }
 
     // =================  Process Manager  ====================
 
