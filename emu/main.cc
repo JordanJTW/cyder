@@ -341,6 +341,9 @@ absl::Status Main(const core::Args& args) {
         case SDL_KEYDOWN:
           single_step = false;
           break;
+        case SDL_MOUSEBUTTONDOWN:
+          event_manager.QueueMouseDown(event.button.x, event.button.y);
+          break;
         case SDL_QUIT:
           should_exit = true;
           break;

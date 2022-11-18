@@ -6,11 +6,15 @@
 
 namespace cyder {
 
+// Implements the event queue consumed by the MacOS application.
+// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-45.html#MARKER-9-331
 class EventManager final {
  public:
   EventManager();
 
-  void QueueEvent(uint16_t what, uint32_t message);
+  void QueueWindowActivate(Ptr window);
+  void QueueWindowUpdate(Ptr window);
+  void QueueMouseDown(int x, int y);
 
   EventRecord GetNextEvent();
 

@@ -13,10 +13,28 @@ EventRecord NullEvent() {
 
 EventManager::EventManager() = default;
 
-void EventManager::QueueEvent(uint16_t what, uint32_t message) {
+void EventManager::QueueWindowActivate(Ptr window) {
   EventRecord record;
-  record.what = what;
-  record.message = message;
+  record.what = 8 /*activateEvt*/;
+  record.message = window;
+  event_queue_.push(std::move(record));
+}
+
+void EventManager::QueueWindowUpdate(Ptr window) {
+  EventRecord record;
+  record.what = 6 /*updateEvt*/;
+  record.message = window;
+  event_queue_.push(std::move(record));
+}
+
+void EventManager::QueueMouseDown(int x, int y) {
+  Point where;
+  where.x = x;
+  where.y = y;
+
+  EventRecord record;
+  record.what = 1 /*mouseDown*/;
+  record.where = std::move(where);
   event_queue_.push(std::move(record));
 }
 

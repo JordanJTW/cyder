@@ -894,11 +894,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(GlobalVars::WindowList,
                                                        window_storage));
 
-      // Focus (activate) the most recently created window
-      event_manager_.QueueEvent(/*what=*/6 /*updateEvent*/,
-                                /*message=*/window_storage);
-
-      std::cout << "Window: { " << record << " }";
+      // Focus (activate) and update the most recently created window
+      event_manager_.QueueWindowActivate(window_storage);
+      event_manager_.QueueWindowUpdate(window_storage);
 
       return TrapReturn<Ptr>(window_storage);
     }
