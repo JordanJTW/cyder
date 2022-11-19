@@ -32,7 +32,7 @@ class MenuManager {
   std::vector<MenuResource> menus_;
 
   std::function<void(uint32_t)> on_selected_;
-  uint8_t* previous_bitmap_;
+  std::unique_ptr<uint8_t[]> previous_bitmap_;
   Rect previous_rect_;
 };
 

@@ -42,7 +42,7 @@ uint32_t MenuManager::GetSelected(int menu_index, uint16_t item_index) {
 
 void MenuManager::NativeMenuSelect(int x,
                                    int y,
-                                   std::function<void(uint32_t)> on_selected) {                              
+                                   std::function<void(uint32_t)> on_selected) {
   on_selected_ = std::move(on_selected);
   OnMouseMove(x, y);
 }
@@ -64,7 +64,7 @@ void MenuManager::OnMouseMove(int x, int y) {
 
   if (!selected.has_value()) {
     DrawMenuBar();
-    screen_.CopyBits(previous_bitmap_, NormalizeRect(previous_rect_),
+    screen_.CopyBits(previous_bitmap_.get(), NormalizeRect(previous_rect_),
                      previous_rect_);
     return;
   }
@@ -75,11 +75,12 @@ void MenuManager::OnMouseMove(int x, int y) {
     width = std::max(width, int(item.title.size() * 8));
   }
 
-  screen_.CopyBits(previous_bitmap_, NormalizeRect(previous_rect_),
+  screen_.CopyBits(previous_bitmap_.get(), NormalizeRect(previous_rect_),
                    previous_rect_);
 
   previous_rect_ = NewRect(x_offset, kMenuBarHeight, width, height);
-  previous_bitmap_ = new uint8_t[height * PixelWidthToBytes(width)];
+  previous_bitmap_ = std::unique_ptr<uint8_t[]>(
+      new uint8_t[height * PixelWidthToBytes(width)]);
   for (int x = 0; x < PixelWidthToBytes(width); ++x) {
     for (int y = 0; y < height; ++y) {
       previous_bitmap_[y * PixelWidthToBytes(width) + x] =
@@ -106,7 +107,7 @@ void MenuManager::OnMouseUp(int x, int y) {
     return;
 
   if (y > kMenuBarHeight) {
-    screen_.CopyBits(previous_bitmap_, NormalizeRect(previous_rect_),
+    screen_.CopyBits(previous_bitmap_.get(), NormalizeRect(previous_rect_),
                      previous_rect_);
     auto on_selected = std::move(on_selected_);
     return on_selected(0);
@@ -117,13 +118,13 @@ void MenuManager::OnMouseUp(int x, int y) {
   for (auto& menu : menus_) {
     int new_offset = x_offset + (menu.title.size() * 8);
     if (x > x_offset && x < new_offset) {
-      screen_.CopyBits(previous_bitmap_, NormalizeRect(previous_rect_),
+      screen_.CopyBits(previous_bitmap_.get(), NormalizeRect(previous_rect_),
                        previous_rect_);
       return on_selected(menu.id << 16 | 1);
     }
     x_offset = new_offset + 6;
   }
-  screen_.CopyBits(previous_bitmap_, NormalizeRect(previous_rect_),
+  screen_.CopyBits(previous_bitmap_.get(), NormalizeRect(previous_rect_),
                    previous_rect_);
   on_selected(0);
 }
