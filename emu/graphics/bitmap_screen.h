@@ -15,19 +15,27 @@ class BitmapScreen {
   BitmapScreen(int width, int height);
   ~BitmapScreen();
 
+  enum class FillMode { Copy, XOr };
+
   // Fill |rect| with the given bit |pattern|
-  void FillRect(const Rect& rect, const uint8_t pattern[8]);
+  void FillRect(const Rect& rect,
+                const uint8_t pattern[8],
+                FillMode mode = FillMode::Copy);
 
   // Fill an ellipse contained within |rect| with bit |pattern|
   void FillEllipse(const Rect& rect, const uint8_t pattern[8]);
 
   // Fill the pixels from |start| to |end| on the given |row| with bit |pattern|
-  void FillRow(int row, int16_t start, int16_t end, uint8_t pattern);
+  void FillRow(int row,
+               int16_t start,
+               int16_t end,
+               uint8_t pattern,
+               FillMode mode = FillMode::Copy);
 
   // Copy a bit image from |src| with dimensions |src_rect| to |dst_rect|
   void CopyBits(const uint8_t* src, const Rect& src_rect, const Rect& dst_rect);
   void PrintBitmap() const;
-  
+
   int height() const { return height_; }
   int width() const { return width_; }
 

@@ -27,9 +27,11 @@ BitmapScreen::~BitmapScreen() {
   delete[] bitmap_;
 }
 
-void BitmapScreen::FillRect(const Rect& rect, const uint8_t pattern[8]) {
+void BitmapScreen::FillRect(const Rect& rect,
+                            const uint8_t pattern[8],
+                            FillMode mode) {
   for (int16_t row = rect.top; row < rect.bottom; ++row) {
-    FillRow(row, rect.left, rect.right, pattern[row % 8]);
+    FillRow(row, rect.left, rect.right, pattern[row % 8], mode);
   }
 }
 
@@ -77,7 +79,8 @@ void BitmapScreen::FillEllipse(const Rect& rect, const uint8_t pattern[8]) {
 void BitmapScreen::FillRow(int row,
                            int16_t start,
                            int16_t end,
-                           uint8_t pattern) {
+                           uint8_t pattern,
+                           FillMode mode) {
   static const unsigned char kMask[] = {0b11111111, 0b01111111, 0b00111111,
                                         0b00011111, 0b00001111, 0b00000111,
                                         0b00000011, 0b00000001, 0b00000000};
@@ -102,6 +105,23 @@ void BitmapScreen::FillRow(int row,
 
   int remaining_pixels = (end - start);
 
+  // Sets the given |index| to the pattern AND'd with |mask|.
+  auto set_index_with_mask = [&](int index, uint8_t mask) {
+    using FillMode = BitmapScreen::FillMode;
+
+    switch (mode) {
+      case FillMode::Copy:
+        // Clear the pixels to be written
+        bitmap_[index] &= ~mask;
+        // Draw the masked pattern
+        bitmap_[index] |= (mask & pattern);
+        break;
+      case FillMode::XOr:
+        bitmap_[index] ^= (mask & pattern);
+        break;
+    }
+  };
+
   // Handles a |start| offset which is not byte aligned. Once this is handled
   // the next pixel is gauranteed to appear at the start of the next byte.
   uint8_t start_offset = start % CHAR_BIT;
@@ -113,22 +133,16 @@ void BitmapScreen::FillRow(int row,
     // middle of the start byte.
     int byte_aligned_size = start_offset + (end - start);
     if (byte_aligned_size <= CHAR_BIT) {
-      // Calculate a mask so that only the bits in the middle are on
+      // Calculate a mask so that only the bits in the middle are set
       uint8_t byte_mask = kMask[start_offset] & ~kMask[byte_aligned_size];
-      // Clear the pixels to be written to 0
-      bitmap_[start_byte] &= ~byte_mask;
-      // Draw the masked pattern
-      bitmap_[start_byte] |= (byte_mask & pattern);
+      set_index_with_mask(start_byte, byte_mask);
       return;
     }
 
     LOG_IF(INFO, kVerbose) << "Start inset: " << (int)start_offset
                            << " Mask: " << std::bitset<8>(kMask[start_offset]);
 
-    // Clear the pixels to be written to 0
-    bitmap_[start_byte] &= ~kMask[start_offset];
-    // Draw the masked pattern
-    bitmap_[start_byte] |= (kMask[start_offset] & pattern);
+    set_index_with_mask(start_byte, kMask[start_offset]);
     remaining_pixels -= (CHAR_BIT - start_offset);
     start_byte += 1;
   }
@@ -140,7 +154,16 @@ void BitmapScreen::FillRow(int row,
         << "Attemping to draw outside array bounds";
 
     LOG_IF(INFO, kVerbose) << "Full bytes: " << full_bytes;
-    std::memset(bitmap_ + start_byte, pattern, full_bytes);
+    switch (mode) {
+      case FillMode::Copy:
+        std::memset(bitmap_ + start_byte, pattern, full_bytes);
+        break;
+      case FillMode::XOr:
+        for (int i = 0; i < full_bytes; ++i) {
+          bitmap_[start_byte + i] ^= pattern;
+        }
+        break;
+    }
   }
 
   // Handle any left over pixels which do not consume a full byte
@@ -149,10 +172,7 @@ void BitmapScreen::FillRow(int row,
     CHECK_LT(start_byte + full_bytes, bitmap_size_)
         << "Attemping to draw outside array bounds";
 
-    // Clear the pixels to be written to 0
-    bitmap_[start_byte + full_bytes] &= kMask[end_outset];
-    // Draw the masked pattern
-    bitmap_[start_byte + full_bytes] |= (~kMask[end_outset] & pattern);
+    set_index_with_mask(start_byte + full_bytes, ~kMask[end_outset]);
     LOG_IF(INFO, kVerbose) << "End outset: " << (int)end_outset
                            << " Mask: " << std::bitset<8>(~kMask[end_outset]);
   }
