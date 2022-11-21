@@ -521,6 +521,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto item = TRY(Pop<uint16_t>());
       auto the_menu = TRY(Pop<Handle>());
 
+      CHECK_GT(item, 0) << "Menu item is not expected to be 0-indexed";
+
       LOG(INFO) << "TRAP GetMenuItemText(theMenu: 0x" << std::hex << the_menu
                 << ", item: " << std::dec << item << ", VAR itemString: 0x"
                 << std::hex << item_string_var << ")";
@@ -529,7 +531,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
           memory_manager_.GetRegionForHandle(the_menu), 0));
 
       RETURN_IF_ERROR(WriteType<absl::string_view>(
-          menu.items[item].title, memory::kSystemMemory, item_string_var));
+          menu.items[item - 1].title, memory::kSystemMemory, item_string_var));
 
       return absl::OkStatus();
     }
