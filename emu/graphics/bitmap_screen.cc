@@ -215,6 +215,17 @@ void BitmapScreen::CopyBits(const uint8_t* src,
   }
 }
 
+void BitmapScreen::FrameRect(const Rect& rect, const uint8_t pattern[8]) {
+  // FIXME: Account for clipping, invalid |rect|s, and proper |pattern| support
+  FillRow(rect.top, rect.left, rect.right, pattern[0], FillMode::Copy);
+  FillRow(rect.bottom - 1, rect.left, rect.right, pattern[0], FillMode::Copy);
+
+  for (int row = rect.top + 1; row < rect.bottom - 1; ++row) {
+    FillRow(row, rect.left, rect.left + 1, pattern[0], FillMode::Copy);
+    FillRow(row, rect.right - 1, rect.right, pattern[0], FillMode::Copy);
+  }
+}
+
 void BitmapScreen::PrintBitmap() const {
   for (int i = 0; i < bitmap_size_; ++i) {
     std::cout << std::bitset<8>(bitmap_[i]);

@@ -32,6 +32,10 @@ class BitmapScreen {
                uint8_t pattern,
                FillMode mode = FillMode::Copy);
 
+  // Draw a 1-pixel border of |pattern[0]| within |rect|
+  // FIXME: Support various "pen" widths and account for clipping
+  void FrameRect(const Rect& rect, const uint8_t pattern[8]);
+
   // Copy a bit image from |src| with dimensions |src_rect| to |dst_rect|
   void CopyBits(const uint8_t* src, const Rect& src_rect, const Rect& dst_rect);
   void PrintBitmap() const;

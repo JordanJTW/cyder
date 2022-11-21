@@ -76,6 +76,7 @@ MenuPopUp::MenuPopUp(graphics::BitmapScreen& screen,
   }
 
   screen_.FillRect(popup_rect_, kMenuPopUpPattern);
+  screen_.FrameRect(popup_rect_, kHighLightPattern);
 
   int y_offset = popup_rect_.top;
   for (const auto& item : menu_.items) {
