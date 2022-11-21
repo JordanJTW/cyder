@@ -76,9 +76,9 @@ absl::Status Main(const core::Args& args) {
   int window_width = int(kScreenWidth * kScaleFactor);
   int window_height = int(kScreenHeight * kScaleFactor);
 
-  SDL_Window* const window =
-      SDL_CreateWindow("Screen", SDL_WINDOWPOS_UNDEFINED,
-                       SDL_WINDOWPOS_UNDEFINED, window_width, window_height, 0);
+  SDL_Window* const window = SDL_CreateWindow(
+      "Screen", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width,
+      window_height, SDL_WINDOW_ALLOW_HIGHDPI);
 
   SDL_Renderer* const renderer =
       SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);

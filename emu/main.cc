@@ -237,9 +237,9 @@ absl::Status Main(const core::Args& args) {
   int window_width = int(kScreenWidth * kScaleFactor);
   int window_height = int(kScreenHeight * kScaleFactor);
 
-  SDL_Window* window =
-      SDL_CreateWindow("Cyder", SDL_WINDOWPOS_UNDEFINED,
-                       SDL_WINDOWPOS_UNDEFINED, window_width, window_height, 0);
+  SDL_Window* window = SDL_CreateWindow(
+      "Cyder", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width,
+      window_height, SDL_WINDOW_ALLOW_HIGHDPI);
 
   CHECK(window) << "Failing to create window: " << SDL_GetError();
 
@@ -323,7 +323,6 @@ absl::Status Main(const core::Args& args) {
   RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(GlobalVars::CurStackBase,
                                                 cyder::memory::kStackStart));
 
-  
   RETURN_IF_ERROR(cyder::trap::Push<uint32_t>(
       cyder::memory::kBaseToolboxTrapAddress +
       (Trap::ExitToShell & 0x03FF) * sizeof(uint16_t)));
