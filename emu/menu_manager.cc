@@ -12,6 +12,9 @@ constexpr uint8_t kMenuPattern[8] = {0x00, 0x00, 0x00, 0x00,
                                      0x00, 0x00, 0x00, 0x00};
 
 constexpr int kMenuBarHeight = 20;
+constexpr int kMenuBarWidthPadding = 3;
+constexpr int kMenuBarItemWidthPadding = 3;
+constexpr int kMenuBarItemHeightPadding = 6;
 
 }  // namespace
 
@@ -25,19 +28,16 @@ void MenuManager::DrawMenuBar() const {
   auto menu_rect = NewRect(0, 0, screen_.width(), kMenuBarHeight);
   screen_.FillRect(menu_rect, kMenuPattern);
 
-  int x_offset = 6;
+  int x_offset = kMenuBarWidthPadding;
   for (auto& menu : menus_) {
-    DrawString(screen_, menu.title, x_offset, 6);
-    x_offset += (menu.title.size() * 8) + 6;
+    DrawString(screen_, menu.title, x_offset + kMenuBarItemWidthPadding,
+               kMenuBarItemHeightPadding);
+    x_offset += (menu.title.size() * 8) + (kMenuBarItemWidthPadding * 2);
   }
 }
 
 bool MenuManager::IsInMenuBar(Point point) const {
   return point.y < kMenuBarHeight;
-}
-
-uint32_t MenuManager::GetSelected(int menu_index, uint16_t item_index) {
-  return menus_[menu_index].id << 16 | item_index;
 }
 
 void MenuManager::NativeMenuSelect(int x,
@@ -48,85 +48,59 @@ void MenuManager::NativeMenuSelect(int x,
 }
 
 void MenuManager::OnMouseMove(int x, int y) {
-  if (!on_selected_ || y > kMenuBarHeight)
+  if (!on_selected_) {
     return;
+  }
 
-  int x_offset = 6;
-  absl::optional<MenuResource> selected;
+  int x_offset = kMenuBarWidthPadding;
   for (auto& menu : menus_) {
-    int new_offset = x_offset + (menu.title.size() * 8);
-    if (x > x_offset && x < new_offset) {
-      selected = menu;
+    int menu_bar_item_width =
+        (menu.title.size() * 8) + (kMenuBarItemWidthPadding * 2);
+
+    int next_x_offset = x_offset + menu_bar_item_width;
+    if (x > x_offset && x < next_x_offset && y < kMenuBarHeight) {
+      if (popup_menu_ && popup_menu_->id() == menu.id) {
+        return;
+      }
+
+      // Needs to be cleared first so that the background bitmap is restored
+      // in the RAII-types destructor before we create a new one.
+      popup_menu_.reset();
+
+      popup_menu_ = absl::make_unique<MenuPopUp>(
+          screen_, menu,
+          NewRect(x_offset, 0, menu_bar_item_width, kMenuBarHeight));
       break;
     }
-    x_offset = new_offset + 6;
+    x_offset = next_x_offset;
   }
-
-  if (!selected.has_value()) {
-    DrawMenuBar();
-    screen_.CopyBits(previous_bitmap_.get(), NormalizeRect(previous_rect_),
-                     previous_rect_);
-    return;
-  }
-
-  int width = 0, height = 0;
-  for (const auto& item : selected->items) {
-    height += 10;
-    width = std::max(width, int(item.title.size() * 8));
-  }
-
-  screen_.CopyBits(previous_bitmap_.get(), NormalizeRect(previous_rect_),
-                   previous_rect_);
-
-  previous_rect_ = NewRect(x_offset, kMenuBarHeight, width, height);
-  previous_bitmap_ = std::unique_ptr<uint8_t[]>(
-      new uint8_t[height * PixelWidthToBytes(width)]);
-  for (int x = 0; x < PixelWidthToBytes(width); ++x) {
-    for (int y = 0; y < height; ++y) {
-      previous_bitmap_[y * PixelWidthToBytes(width) + x] =
-          screen_.bits()[(kMenuBarHeight + y) *
-                             PixelWidthToBytes(screen_.width()) +
-                         x + x_offset];
-    }
-  }
-
-  screen_.FillRect(previous_rect_, kMenuPattern);
-
-  int y_offset = kMenuBarHeight;
-  for (const auto& item : selected->items) {
-    DrawString(screen_, item.title, x_offset, y_offset);
-    y_offset += 10;
-  }
-
-  auto string = absl::StrCat("(x: ", x, ", y: ", y, "): ", selected->id);
-  DrawString(screen_, string, screen_.width() - (string.length() * 8) - 6, 6);
+  if (popup_menu_)
+    popup_menu_->GetHoveredMenuItem(x, y);
 }
 
 void MenuManager::OnMouseUp(int x, int y) {
-  if (!on_selected_)
+  if (!on_selected_) {
     return;
-
-  if (y > kMenuBarHeight) {
-    screen_.CopyBits(previous_bitmap_.get(), NormalizeRect(previous_rect_),
-                     previous_rect_);
-    auto on_selected = std::move(on_selected_);
-    return on_selected(0);
   }
 
   auto on_selected = std::move(on_selected_);
-  int x_offset = 6;
-  for (auto& menu : menus_) {
-    int new_offset = x_offset + (menu.title.size() * 8);
-    if (x > x_offset && x < new_offset) {
-      screen_.CopyBits(previous_bitmap_.get(), NormalizeRect(previous_rect_),
-                       previous_rect_);
-      return on_selected(menu.id << 16 | 1);
-    }
-    x_offset = new_offset + 6;
+  on_selected_ = nullptr;
+
+  // Once the mouse is released all popups should disappear and selection
+  // should be finished. Transferring ownership of RAII-type |popup_menu_|
+  // ensures it is _always_ cleaned up no matter which return.
+  auto popup_menu = std::move(popup_menu_);
+
+  if (!popup_menu) {
+    return on_selected(0);
   }
-  screen_.CopyBits(previous_bitmap_.get(), NormalizeRect(previous_rect_),
-                   previous_rect_);
-  on_selected(0);
+
+  uint16_t item_index = popup_menu->GetHoveredMenuItem(x, y);
+  if (item_index == MenuPopUp::kNoMenuItem) {
+    return on_selected(0);
+  }
+
+  on_selected(popup_menu->id() << 16 | item_index);
 }
 
 }  // namespace cyder
