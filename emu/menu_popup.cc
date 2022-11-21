@@ -87,6 +87,8 @@ MenuPopUp::MenuPopUp(graphics::BitmapScreen& screen,
 }
 
 MenuPopUp::~MenuPopUp() {
+  // We do not want to invert this rect once |saved_bitmap_| is restored...
+  hovered_rect_.reset();
   screen_.CopyBits(saved_bitmap_.get(), NormalizeRect(popup_rect_),
                    popup_rect_);
 }
