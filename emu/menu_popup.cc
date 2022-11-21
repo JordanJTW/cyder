@@ -94,10 +94,10 @@ MenuPopUp::~MenuPopUp() {
 }
 
 uint16_t MenuPopUp::GetHoveredMenuItem(int x, int y) {
-  if (x < popup_rect_.left || x > popup_rect_.right)
+  if (x < popup_rect_.left || x >= popup_rect_.right)
     return kNoMenuItem;
 
-  if (y < popup_rect_.top || y > popup_rect_.bottom)
+  if (y < popup_rect_.top || y >= popup_rect_.bottom)
     return kNoMenuItem;
 
   uint16_t item_index = (y - popup_rect_.top) / (kMenuItemHeight);
