@@ -9,7 +9,7 @@ add_subdirectory(trap)
 
 typegen(SEGMENT_TYPES segment_types.tdef)
 
-add_executable(emu main.cc event_manager.cc menu_manager.cc menu_popup.cc native_bridge.cc resource_manager.cc segment_loader.cc)
+add_executable(emu main.cc event_manager.cc menu_manager.cc menu_popup.cc native_bridge.cc resource_manager.cc segment_loader.cc window_manager.cc)
 target_link_libraries(
   emu
   CORE_LIB

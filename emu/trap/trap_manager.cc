@@ -54,12 +54,14 @@ TrapManager::TrapManager(memory::MemoryManager& memory_manager,
                          SegmentLoader& segment_loader,
                          EventManager& event_manager,
                          MenuManager& menu_manager,
+                         WindowManager& window_manager,
                          graphics::BitmapScreen& bitmap_screen)
     : memory_manager_(memory_manager),
       resource_manager_(resource_manager),
       segment_loader_(segment_loader),
       event_manager_(event_manager),
       menu_manager_(menu_manager),
+      window_manager_(window_manager),
       bitmap_screen_(bitmap_screen) {}
 
 absl::Status TrapManager::DispatchEmulatedSubroutine(uint32_t address) {

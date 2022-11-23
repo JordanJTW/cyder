@@ -20,6 +20,7 @@
 #include "emu/segment_loader.h"
 #include "emu/trap/stack_helpers.h"
 #include "emu/trap/trap_manager.h"
+#include "emu/window_manager.h"
 #include "gen/global_names.h"
 #include "gen/trap_names.h"
 #include "resource_file.h"
@@ -195,6 +196,7 @@ using cyder::MenuManager;
 using cyder::NativeBridge;
 using cyder::ResourceManager;
 using cyder::SegmentLoader;
+using cyder::WindowManager;
 using cyder::graphics::BitmapScreen;
 using cyder::memory::kSystemMemory;
 using cyder::memory::MemoryManager;
@@ -254,8 +256,9 @@ absl::Status Main(const core::Args& args) {
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
 
   EventManager event_manager;
+  WindowManager window_manager;
   TrapManager trap_manager(memory_manager, resource_manager, segment_loader,
-                           event_manager, menu_manager, screen);
+                           event_manager, menu_manager, window_manager, screen);
   on_emulated_subroutine = std::bind(&TrapManager::DispatchEmulatedSubroutine,
                                      &trap_manager, std::placeholders::_1);
 

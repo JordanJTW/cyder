@@ -7,6 +7,7 @@
 #include "emu/memory/memory_manager.h"
 #include "emu/menu_manager.h"
 #include "emu/segment_loader.h"
+#include "emu/window_manager.h"
 #include "resource_file.h"
 
 struct SDL_Renderer;
@@ -22,6 +23,7 @@ class TrapManager {
               SegmentLoader& segment_loader,
               EventManager& event_manager,
               MenuManager& menu_manager,
+              WindowManager& window_manager,
               graphics::BitmapScreen& bitmap_screen);
 
   absl::Status DispatchEmulatedSubroutine(uint32_t address);
@@ -43,6 +45,7 @@ class TrapManager {
   SegmentLoader& segment_loader_;
   EventManager& event_manager_;
   MenuManager& menu_manager_;
+  WindowManager& window_manager_;
   graphics::BitmapScreen& bitmap_screen_;
 
   std::map<uint16_t, uint32_t> patch_trap_addresses_;
