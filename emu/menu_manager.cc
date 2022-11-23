@@ -18,7 +18,9 @@ constexpr int kMenuBarItemHeightPadding = 6;
 
 }  // namespace
 
-MenuManager::MenuManager(graphics::BitmapScreen& screen) : screen_(screen) {}
+MenuManager::MenuManager(graphics::BitmapScreen& screen,
+                         NativeBridge& native_bridge)
+    : screen_(screen), native_bridge_(native_bridge) {}
 
 void MenuManager::InsertMenu(MenuResource menu) {
   menus_.push_back(std::move(menu));
@@ -44,6 +46,7 @@ void MenuManager::NativeMenuSelect(int x,
                                    int y,
                                    std::function<void(uint32_t)> on_selected) {
   on_selected_ = std::move(on_selected);
+  native_bridge_.StartNativeMouseControl(this);
   OnMouseMove(x, y);
 }
 

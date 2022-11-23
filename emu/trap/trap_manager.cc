@@ -541,13 +541,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       LOG(INFO) << "TRAP MenuSelect(startPt: { " << start_pt << " })";
 
-      m68k_end_timeslice();
-      single_step = true;
-
       menu_manager_.NativeMenuSelect(
           start_pt.x, start_pt.y, [](uint32_t selected) {
             CHECK(TrapReturn<uint32_t>(selected).ok());
-            single_step = false;
           });
 
       return absl::OkStatus();

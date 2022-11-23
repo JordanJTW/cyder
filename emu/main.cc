@@ -16,6 +16,7 @@
 #include "emu/memory/memory_manager.h"
 #include "emu/memory/memory_map.h"
 #include "emu/menu_manager.h"
+#include "emu/native_bridge.h"
 #include "emu/segment_loader.h"
 #include "emu/trap/stack_helpers.h"
 #include "emu/trap/trap_manager.h"
@@ -191,6 +192,7 @@ void PrintFrameTiming(std::ostream& os = std::cout, float period = 2.0f) {
 
 using cyder::EventManager;
 using cyder::MenuManager;
+using cyder::NativeBridge;
 using cyder::ResourceManager;
 using cyder::SegmentLoader;
 using cyder::graphics::BitmapScreen;
@@ -225,8 +227,9 @@ absl::Status Main(const core::Args& args) {
   LOG(INFO) << "Memory Map: " << cyder::memory::MemoryMapToStr();
 
   BitmapScreen screen(kScreenWidth, kScreenHeight);
+  NativeBridge native_bridge;
 
-  MenuManager menu_manager(screen);
+  MenuManager menu_manager(screen, native_bridge);
 
   // Draw classic Mac OS grey baground pattern
   auto screen_rect = NewRect(0, 0, kScreenWidth, kScreenHeight);
@@ -251,7 +254,6 @@ absl::Status Main(const core::Args& args) {
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
 
   EventManager event_manager;
-
   TrapManager trap_manager(memory_manager, resource_manager, segment_loader,
                            event_manager, menu_manager, screen);
   on_emulated_subroutine = std::bind(&TrapManager::DispatchEmulatedSubroutine,
@@ -353,10 +355,10 @@ absl::Status Main(const core::Args& args) {
           event_manager.QueueMouseDown(event.button.x, event.button.y);
           break;
         case SDL_MOUSEMOTION:
-          menu_manager.OnMouseMove(event.motion.x, event.motion.y);
+          native_bridge.OnMouseMove(event.motion.x, event.motion.y);
           break;
         case SDL_MOUSEBUTTONUP:
-          menu_manager.OnMouseUp(event.button.x, event.button.y);
+          native_bridge.OnMouseUp(event.button.x, event.button.y);
           break;
         case SDL_QUIT:
           should_exit = true;
