@@ -970,8 +970,12 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return TrapReturn<int16_t>(1 /*inMenuBar*/);
       }
 
+      // FIXME: This assumes there is one window and it is always being dragged
+      RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(
+          the_window_var,
+          TRY(memory::kSystemMemory.Read<Ptr>(GlobalVars::WindowList))));
       // FIXME: Check other regions according to docs
-      return TrapReturn<int16_t>(0 /*inDesk*/);
+      return TrapReturn<int16_t>(4 /*inDrag*/);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-270.html
     case Trap::GetWRefCon: {
@@ -1060,6 +1064,20 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto the_window = TRY(Pop<Ptr>());
       LOG(INFO) << "TRAP EndUpdate(theWindow: 0x" << std::hex << the_window
                 << ")";
+      return absl::OkStatus();
+    }
+
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-245.html
+    case Trap::DragWindow: {
+      auto bounds_rect = TRY(PopRef<Rect>());
+      auto start_pt = TRY(PopType<Point>());
+      auto the_window = TRY(Pop<Ptr>());
+
+      std::cout << "TRAP DragWindow(theWindow: 0x" << std::hex << the_window
+                << ", startPt: { " << std::dec << start_pt
+                << " }, boundsRect: { " << bounds_rect << " })" << std::endl;
+
+      window_manager_.NativeDragWindow(the_window, start_pt.x, start_pt.y);
       return absl::OkStatus();
     }
 

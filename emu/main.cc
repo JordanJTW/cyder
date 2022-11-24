@@ -256,7 +256,7 @@ absl::Status Main(const core::Args& args) {
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
 
   EventManager event_manager;
-  WindowManager window_manager;
+  WindowManager window_manager(native_bridge, event_manager, screen);
   TrapManager trap_manager(memory_manager, resource_manager, segment_loader,
                            event_manager, menu_manager, window_manager, screen);
   on_emulated_subroutine = std::bind(&TrapManager::DispatchEmulatedSubroutine,
