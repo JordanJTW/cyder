@@ -21,14 +21,14 @@ class MemoryManager {
                                  std::string tag);
   bool Deallocate(Handle handle);
 
-  std::string GetTag(Handle handle);
-  Handle GetHandleThatContains(uint32_t address);
+  std::string GetTag(Handle handle) const;
+  Handle GetHandleThatContains(uint32_t address) const;
 
-  Ptr GetPtrForHandle(Handle handle);
+  Ptr GetPtrForHandle(Handle handle) const;
 
-  core::MemoryRegion GetRegionForHandle(Handle handle);
+  core::MemoryRegion GetRegionForHandle(Handle handle) const;
 
-  uint32_t GetHandleSize(Handle handle);
+  uint32_t GetHandleSize(Handle handle) const;
 
   bool SetApplLimit(Ptr last_addr);
 

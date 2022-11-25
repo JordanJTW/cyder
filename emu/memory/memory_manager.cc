@@ -56,7 +56,7 @@ Handle MemoryManager::AllocateHandleForRegion(const core::MemoryRegion& region,
   return handle;
 }
 
-Ptr MemoryManager::GetPtrForHandle(Handle handle) {
+Ptr MemoryManager::GetPtrForHandle(Handle handle) const {
   auto entry = handle_to_metadata_.find(handle);
   CHECK(entry != handle_to_metadata_.cend())
       << "Handle (0x" << std::hex << handle << ") can not be found.";
@@ -69,7 +69,7 @@ Ptr MemoryManager::GetPtrForHandle(Handle handle) {
   return current_ptr;
 }
 
-core::MemoryRegion MemoryManager::GetRegionForHandle(Handle handle) {
+core::MemoryRegion MemoryManager::GetRegionForHandle(Handle handle) const {
   auto entry = handle_to_metadata_.find(handle);
   CHECK(entry != handle_to_metadata_.cend())
       << "Handle (0x" << std::hex << handle << ") can not be found.";
@@ -94,7 +94,7 @@ bool MemoryManager::Deallocate(Handle handle) {
   return true;
 }
 
-std::string MemoryManager::GetTag(Handle handle) {
+std::string MemoryManager::GetTag(Handle handle) const {
   auto entry = handle_to_metadata_.find(handle);
   if (entry == handle_to_metadata_.cend()) {
     return {};
@@ -102,7 +102,7 @@ std::string MemoryManager::GetTag(Handle handle) {
   return entry->second.tag;
 }
 
-Handle MemoryManager::GetHandleThatContains(uint32_t address) {
+Handle MemoryManager::GetHandleThatContains(uint32_t address) const {
   for (const auto& entry : handle_to_metadata_) {
     if (address < entry.second.end && address >= entry.second.start) {
       return entry.first;
@@ -111,7 +111,7 @@ Handle MemoryManager::GetHandleThatContains(uint32_t address) {
   return 0;
 }
 
-uint32_t MemoryManager::GetHandleSize(Handle handle) {
+uint32_t MemoryManager::GetHandleSize(Handle handle) const {
   auto entry = handle_to_metadata_.find(handle);
   if (entry == handle_to_metadata_.cend()) {
     NOTREACHED() << "Handle 0x" << std::hex << handle << " does not exist!";
