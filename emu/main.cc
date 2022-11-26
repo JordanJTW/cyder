@@ -194,6 +194,7 @@ void PrintFrameTiming(std::ostream& os = std::cout, float period = 2.0f) {
 using cyder::EventManager;
 using cyder::MenuManager;
 using cyder::NativeBridge;
+using cyder::NewRect;
 using cyder::ResourceManager;
 using cyder::SegmentLoader;
 using cyder::WindowManager;

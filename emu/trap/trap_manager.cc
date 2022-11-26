@@ -697,7 +697,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                 << rect_ptr << std::dec << ", dh: " << dh << ", dv: " << dv
                 << ")";
 
-      rect = MoveRect(rect, dh, dv);
+      rect = OffsetRect(rect, dh, dv);
       RETURN_IF_ERROR(WriteType<Rect>(rect, memory::kSystemMemory, rect_ptr));
       return absl::OkStatus();
     }
@@ -920,7 +920,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       //
       // See "Imaging with QuickDraw" Figure 2-4 for more details
       port.port_bits.bounds =
-          MoveRect(globals.screen_bits.bounds, -resource.initial_rect.left,
+          OffsetRect(globals.screen_bits.bounds, -resource.initial_rect.left,
                    -resource.initial_rect.top);
       port.port_rect = port_frame;
       // FIXME: This assumes the entire window is visible at creation
@@ -1045,7 +1045,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       RETURN_IF_ERROR(graphics::ParsePICTv1(pict_data, /*output=*/picture));
 
       auto offset = TRY(port::GetLocalToGlobalOffset());
-      auto target_rect = MoveRect(dst_rect, offset.x, offset.y);
+      auto target_rect = OffsetRect(dst_rect, offset.x, offset.y);
 
       bitmap_screen_.CopyBits(picture, pict_frame, target_rect);
       return absl::OkStatus();

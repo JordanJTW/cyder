@@ -48,7 +48,7 @@ absl::StatusOr<Point> GetLocalToGlobalOffset() {
 
 absl::StatusOr<Rect> ConvertLocalToGlobal(Rect rect) {
   auto offset = TRY(GetLocalToGlobalOffset());
-  return MoveRect(rect, offset.x, offset.y);
+  return OffsetRect(rect, offset.x, offset.y);
 }
 
 }  // namespace port

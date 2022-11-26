@@ -2,6 +2,8 @@
 
 #include <climits>
 
+namespace cyder {
+
 // Get the number of bytes needed to represent |width_px| at 1 bit-per-pixel
 inline int PixelWidthToBytes(int width_px) {
   int width_bytes = width_px / CHAR_BIT;
@@ -15,7 +17,7 @@ inline int FrameRectToBytes(const Rect& rect) {
 }
 
 // Offset |rect| by the given offsets
-inline Rect MoveRect(Rect rect, int16_t offset_x, int16_t offset_y) {
+inline Rect OffsetRect(Rect rect, int16_t offset_x, int16_t offset_y) {
   rect.left += offset_x;
   rect.right += offset_x;
   rect.top += offset_y;
@@ -25,7 +27,17 @@ inline Rect MoveRect(Rect rect, int16_t offset_x, int16_t offset_y) {
 
 // Normalize the |rect| so that its origin is at (0, 0) with the same dimensions
 inline Rect NormalizeRect(Rect rect) {
-  return MoveRect(rect, -rect.left, -rect.top);
+  return OffsetRect(rect, -rect.left, -rect.top);
+}
+
+// Return a rectangle which is just large enough to contain the provided rects
+inline Rect UnionRect(Rect r1, Rect r2) {
+  Rect urect;
+  urect.top = std::min(r1.top, r2.top);
+  urect.bottom = std::max(r1.bottom, r2.bottom);
+  urect.left = std::min(r1.left, r2.left);
+  urect.right = std::max(r1.right, r2.right);
+  return urect;
 }
 
 inline int16_t RectWidth(const Rect& rect) {
@@ -44,3 +56,5 @@ inline Rect NewRect(int16_t x, int16_t y, int16_t width, int16_t height) {
   rect.right = x + width;
   return rect;
 }
+
+}  // namespace cyder

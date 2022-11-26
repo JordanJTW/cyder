@@ -35,9 +35,9 @@ void WindowManager::OnMouseUp(int x, int y) {
   if (!target_window_ptr_)
     return;
 
-  screen_.FillRect(MoveRect(target_window_.port.port_rect,
-                            -target_window_.port.port_bits.bounds.left,
-                            -target_window_.port.port_bits.bounds.top),
+  screen_.FillRect(OffsetRect(target_window_.port.port_rect,
+                              -target_window_.port.port_bits.bounds.left,
+                              -target_window_.port.port_bits.bounds.top),
                    kGreyPattern);
 
   target_window_.port.port_bits.bounds.left = -x;
