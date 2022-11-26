@@ -32,6 +32,26 @@ class MemoryManager {
 
   bool SetApplLimit(Ptr last_addr);
 
+  template <typename Type>
+  absl::StatusOr<Type> ReadTypeFromHandle(Handle handle) const {
+    auto memory_region = GetRegionForHandle(handle);
+    return ReadType<Type>(memory_region, /*offset=*/0);
+  }
+
+  template <typename Type>
+  absl::Status WriteTypeToHandle(Type type, Handle handle) const {
+    auto memory_region = GetRegionForHandle(handle);
+    return WriteType<Type>(type, memory_region, /*offset=*/0);
+  }
+
+  template <typename Type>
+  absl::StatusOr<Handle> NewHandleFor(const Type& type, std::string tag) {
+    auto handle = AllocateHandle(type.size(), std::move(tag));
+    auto region_for_handle = GetRegionForHandle(handle);
+    RETURN_IF_ERROR(WriteType<Type>(type, region_for_handle, /*offset=*/0));
+    return handle;
+  }
+
   std::string LogHandles() {
     std::stringstream os;
     for (const auto& handle_pair : handle_to_metadata_) {

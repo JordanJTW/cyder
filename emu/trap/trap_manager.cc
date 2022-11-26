@@ -902,9 +902,15 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         region.region_size = Rect::fixed_size;
         region.bounding_box = port_frame;
 
-        auto handle = memory_manager_.AllocateHandle(region.size(), name);
+        return TRY(memory_manager_.NewHandleFor<Region>(region, name));
+      };
+
+      auto create_title_handle = [&]() -> absl::StatusOr<Handle> {
+        auto handle = memory_manager_.AllocateHandle(resource.title.size() + 1,
+                                                     "WindowTitle");
         auto memory = memory_manager_.GetRegionForHandle(handle);
-        RETURN_IF_ERROR(WriteType<Region>(region, memory, /*offset=*/0));
+        RETURN_IF_ERROR(
+            WriteType<absl::string_view>(resource.title, memory, /*offset=*/0));
         return handle;
       };
 
@@ -933,6 +939,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       record.has_close = (resource.has_close != 0);
       record.reference_constant = resource.reference_constant;
       record.content_region = TRY(create_port_region("ContentRegion"));
+      record.title_handle = TRY(create_title_handle());
+      record.structure_region = TRY(create_port_region("StructRegion"));
+      SetStructRegionAndDrawFrame(bitmap_screen_, record, memory_manager_);
 
       RESTRICT_FIELD_ACCESS(
           WindowRecord, window_storage,
@@ -970,12 +979,18 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return TrapReturn<int16_t>(1 /*inMenuBar*/);
       }
 
-      // FIXME: This assumes there is one window and it is always being dragged
-      RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(
-          the_window_var,
-          TRY(memory::kSystemMemory.Read<Ptr>(GlobalVars::WindowList))));
+      // FIXME: This assumes there is only one window (the last created)
+      auto the_active_window =
+          TRY(memory::kSystemMemory.Read<Ptr>(GlobalVars::WindowList));
+      if (window_manager_.CheckIsWindowDrag(the_active_window, the_point.x,
+                                            the_point.y)) {
+        RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(the_window_var,
+                                                         the_active_window));
+        return TrapReturn<int16_t>(4 /*inDrag*/);
+      }
+
       // FIXME: Check other regions according to docs
-      return TrapReturn<int16_t>(4 /*inDrag*/);
+      return TrapReturn<int16_t>(0 /*inDesk*/);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-270.html
     case Trap::GetWRefCon: {
