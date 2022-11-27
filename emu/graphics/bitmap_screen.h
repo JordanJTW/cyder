@@ -43,13 +43,13 @@ class BitmapScreen {
   int height() const { return height_; }
   int width() const { return width_; }
 
-  const uint8_t* const bits() const { return bitmap_; }
+  const uint8_t* const bits() const { return bitmap_.get(); }
 
  private:
   const int width_;
   const int height_;
   const int bitmap_size_;
-  uint8_t* const bitmap_;
+  const std::unique_ptr<uint8_t[]> bitmap_;
 
   Rect clip_rect_;
 };

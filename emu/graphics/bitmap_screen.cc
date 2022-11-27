@@ -18,14 +18,12 @@ BitmapScreen::BitmapScreen(int width, int height)
     : width_(width),
       height_(height),
       bitmap_size_(PixelWidthToBytes(width) * height),
-      bitmap_(new uint8_t[bitmap_size_]) {
-  std::memset(bitmap_, 0, bitmap_size_);
+      bitmap_(absl::make_unique<uint8_t[]>(bitmap_size_)) {
+  std::memset(bitmap_.get(), 0, bitmap_size_);
   clip_rect_ = NewRect(0, 0, width, height);
 }
 
-BitmapScreen::~BitmapScreen() {
-  delete[] bitmap_;
-}
+BitmapScreen::~BitmapScreen() = default;
 
 void BitmapScreen::FillRect(const Rect& rect,
                             const uint8_t pattern[8],
@@ -156,7 +154,7 @@ void BitmapScreen::FillRow(int row,
     LOG_IF(INFO, kVerbose) << "Full bytes: " << full_bytes;
     switch (mode) {
       case FillMode::Copy:
-        std::memset(bitmap_ + start_byte, pattern, full_bytes);
+        std::memset(bitmap_.get() + start_byte, pattern, full_bytes);
         break;
       case FillMode::XOr:
         for (int i = 0; i < full_bytes; ++i) {
@@ -210,7 +208,7 @@ void BitmapScreen::CopyBits(const uint8_t* src,
         PixelWidthToBytes(width_) * (row + dst_rect.top + clip_offset.top);
 
     bitarray_copy(src + src_row_offset, /*src_offset=*/clip_offset.left,
-                  /*src_length=*/clipped_width, bitmap_ + dst_row_offset,
+                  /*src_length=*/clipped_width, bitmap_.get() + dst_row_offset,
                   /*dst_offset=*/dst_rect.left + clip_offset.left);
   }
 }
