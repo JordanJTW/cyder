@@ -1,6 +1,5 @@
 #include "emu/window_manager.h"
 
-#include "emu/graphics/copybits.h"
 #include "emu/graphics/font/basic_font.h"
 #include "emu/graphics/graphics_helpers.h"
 #include "emu/memory/memory_map.h"
@@ -72,29 +71,18 @@ void WindowManager::OnMouseMove(int x, int y) {
   int16_t outline_rect_height = RectHeight(outline_rect_);
 
   if (!saved_bitmap_) {
-    saved_bitmap_ = absl::make_unique<uint8_t[]>(
-        PixelWidthToBytes(outline_rect_width) * outline_rect_height);
+    saved_bitmap_ = absl::make_unique<BitmapScreen>(outline_rect_width,
+                                                    outline_rect_height);
   } else {
-    screen_.CopyBits(saved_bitmap_.get(), NormalizeRect(outline_rect_),
-                     outline_rect_);
+    screen_.CopyBitmap(*saved_bitmap_, NormalizeRect(outline_rect_),
+                       outline_rect_);
   }
 
   outline_rect_ = NewRect(x + target_offset_.x, y + target_offset_.y,
                           outline_rect_width, outline_rect_height);
 
-  // FIXME: Make BitmapScreen more generic and allow copying to/from?
-  for (int row = 0; row < outline_rect_height; ++row) {
-    int src_row_offset =
-        PixelWidthToBytes(screen_.width()) * (outline_rect_.top + row);
-    int dst_row_offset = PixelWidthToBytes(outline_rect_width) * row;
-
-    bitarray_copy(screen_.bits() + src_row_offset,
-                  /*src_offset=*/outline_rect_.left,
-                  /*src_length=*/outline_rect_width,
-                  saved_bitmap_.get() + dst_row_offset,
-                  /*dst_offset=*/0);
-  }
-
+  saved_bitmap_->CopyBitmap(screen_, outline_rect_,
+                            NormalizeRect(outline_rect_));
   screen_.FrameRect(outline_rect_, kBlackPattern);
 }
 void WindowManager::OnMouseUp(int x, int y) {
@@ -103,8 +91,8 @@ void WindowManager::OnMouseUp(int x, int y) {
 
   // If window drag outline was drawn, restore the bitmap before anything else
   if (saved_bitmap_) {
-    screen_.CopyBits(saved_bitmap_.get(), NormalizeRect(outline_rect_),
-                     outline_rect_);
+    screen_.CopyBitmap(*saved_bitmap_, NormalizeRect(outline_rect_),
+                       outline_rect_);
   }
 
   auto struct_region =

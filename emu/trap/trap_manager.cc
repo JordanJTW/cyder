@@ -1063,7 +1063,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto offset = TRY(port::GetLocalToGlobalOffset());
       auto target_rect = OffsetRect(dst_rect, offset.x, offset.y);
 
-      bitmap_screen_.CopyBits(picture, pict_frame, target_rect);
+      bitmap_screen_.CopyBits(picture, pict_frame, pict_frame, target_rect);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-351.html

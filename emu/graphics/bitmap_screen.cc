@@ -177,6 +177,7 @@ void BitmapScreen::FillRow(int row,
 }
 
 void BitmapScreen::CopyBits(const uint8_t* src,
+                            const Rect& src_dims,
                             const Rect& src_rect,
                             const Rect& dst_rect) {
   int16_t height = RectHeight(dst_rect);
@@ -202,12 +203,16 @@ void BitmapScreen::CopyBits(const uint8_t* src,
     return;
   }
 
+  // TODO: What should happen if |src_rect| is outside of |src_dims|?
+  int16_t src_width = RectWidth(src_dims);
   for (int row = 0; row < clipped_height; ++row) {
-    int src_row_offset = PixelWidthToBytes(width) * (row + clip_offset.top);
+    int src_row_offset =
+        PixelWidthToBytes(src_width) * (row + src_rect.top + clip_offset.top);
     int dst_row_offset =
         PixelWidthToBytes(width_) * (row + dst_rect.top + clip_offset.top);
 
-    bitarray_copy(src + src_row_offset, /*src_offset=*/clip_offset.left,
+    bitarray_copy(src + src_row_offset,
+                  /*src_offset=*/src_rect.left + clip_offset.left,
                   /*src_length=*/clipped_width, bitmap_.get() + dst_row_offset,
                   /*dst_offset=*/dst_rect.left + clip_offset.left);
   }
@@ -227,6 +232,13 @@ void BitmapScreen::FrameRect(const Rect& rect, const uint8_t pattern[8]) {
     FillRow(row, rect.left, rect.left + kWidth, pattern[0], FillMode::Copy);
     FillRow(row, rect.right - kWidth, rect.right, pattern[0], FillMode::Copy);
   }
+}
+
+void BitmapScreen::CopyBitmap(const BitmapScreen& bitmap,
+                              const Rect& src_rect,
+                              const Rect& dst_rect) {
+  auto src_dims = NewRect(0, 0, bitmap.width(), bitmap.height());
+  CopyBits(bitmap.bits(), src_dims, src_rect, dst_rect);
 }
 
 void BitmapScreen::PrintBitmap() const {

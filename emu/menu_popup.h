@@ -42,7 +42,7 @@ class MenuPopUp {
   AutoHiliteRect anchor_hilite_;
   const Rect popup_rect_;
 
-  std::unique_ptr<uint8_t[]> saved_bitmap_;
+  graphics::BitmapScreen saved_bitmap_;
   std::unique_ptr<AutoHiliteRect> hovered_rect_;
 };
 

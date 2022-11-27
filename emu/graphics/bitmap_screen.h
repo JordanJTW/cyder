@@ -40,8 +40,17 @@ class BitmapScreen {
   // FIXME: Support various "pen" widths and account for clipping
   void FrameRect(const Rect& rect, const uint8_t pattern[8]);
 
-  // Copy a bit image from |src| with dimensions |src_rect| to |dst_rect|
-  void CopyBits(const uint8_t* src, const Rect& src_rect, const Rect& dst_rect);
+  // Given a |src| bitmap image with dimensions |src_dims|, copy the area
+  // |src_rect| to |dst_rect| with-in the current bitmap
+  void CopyBits(const uint8_t* src,
+                const Rect& src_dims,
+                const Rect& src_rect,
+                const Rect& dst_rect);
+
+  void CopyBitmap(const BitmapScreen& bitmap,
+                  const Rect& src_rect,
+                  const Rect& dst_rect);
+
   void PrintBitmap() const;
 
   int height() const { return height_; }

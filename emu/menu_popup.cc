@@ -1,6 +1,5 @@
 #include "emu/menu_popup.h"
 
-#include "emu/graphics/copybits.h"
 #include "emu/graphics/font/basic_font.h"
 #include "emu/graphics/graphics_helpers.h"
 
@@ -57,23 +56,8 @@ MenuPopUp::MenuPopUp(graphics::BitmapScreen& screen,
       anchor_rect_(std::move(anchor_rect)),
       anchor_hilite_(anchor_rect_, screen_),
       popup_rect_(GetPopUpBounds(menu_, anchor_rect_)),
-      saved_bitmap_(absl::make_unique<uint8_t[]>(
-          RectHeight(popup_rect_) *
-          PixelWidthToBytes(RectWidth(popup_rect_)))) {
-  int width = RectWidth(popup_rect_);
-  int height = RectHeight(popup_rect_);
-
-  // FIXME: Make BitmapScreen more generic and allow copying to/from?
-  for (int row = 0; row < height; ++row) {
-    int src_row_offset =
-        PixelWidthToBytes(screen_.width()) * (popup_rect_.top + row);
-    int dst_row_offset = PixelWidthToBytes(width) * row;
-
-    bitarray_copy(screen_.bits() + src_row_offset,
-                  /*src_offset=*/popup_rect_.left,
-                  /*src_length=*/width, saved_bitmap_.get() + dst_row_offset,
-                  /*dst_offset=*/0);
-  }
+      saved_bitmap_(RectWidth(popup_rect_), RectHeight(popup_rect_)) {
+  saved_bitmap_.CopyBitmap(screen_, popup_rect_, NormalizeRect(popup_rect_));
 
   screen_.FillRect(popup_rect_, kMenuPopUpPattern);
   screen_.FrameRect(popup_rect_, kHighLightPattern);
@@ -89,8 +73,7 @@ MenuPopUp::MenuPopUp(graphics::BitmapScreen& screen,
 MenuPopUp::~MenuPopUp() {
   // We do not want to invert this rect once |saved_bitmap_| is restored...
   hovered_rect_.reset();
-  screen_.CopyBits(saved_bitmap_.get(), NormalizeRect(popup_rect_),
-                   popup_rect_);
+  screen_.CopyBitmap(saved_bitmap_, NormalizeRect(popup_rect_), popup_rect_);
 }
 
 uint16_t MenuPopUp::GetHoveredMenuItem(int x, int y) {

@@ -34,9 +34,9 @@ class WindowManager : public MouseListener {
   Ptr target_window_ptr_{0};
   WindowRecord target_window_;
   Point target_offset_;
-  
-  std::unique_ptr<uint8_t[]> saved_bitmap_;
+
   Rect outline_rect_;
+  std::unique_ptr<graphics::BitmapScreen> saved_bitmap_;
 };
 
 void SetStructRegionAndDrawFrame(graphics::BitmapScreen& screen,
