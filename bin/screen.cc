@@ -4,13 +4,17 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
-#include "emu/graphics/bitmap_screen.h"
+#include "emu/graphics/bitmap_image.h"
 #include "emu/graphics/grafport_types.tdef.h"
 #include "emu/graphics/graphics_helpers.h"
 #include "emu/graphics/pict_v1.h"
 
 namespace {
 
+using ::cyder::FrameRectToBytes;
+using ::cyder::NewRect;
+using ::cyder::RectHeight;
+using ::cyder::RectWidth;
 using ::cyder::graphics::BitmapImage;
 using ::cyder::graphics::GetPICTFrame;
 using ::cyder::graphics::ParsePICTv1;
@@ -105,7 +109,7 @@ absl::Status Main(const core::Args& args) {
   auto picture_rect = NewRect(kScreenWidth - RectWidth(frame),
                               kScreenHeight - RectHeight(frame),
                               RectWidth(frame), RectHeight(frame));
-  screen.CopyBits(picture, frame, picture_rect);
+  screen.CopyBits(picture, frame, frame, picture_rect);
 
   bool should_exit = false;
   bool is_drag = false;
@@ -161,7 +165,7 @@ absl::Status Main(const core::Args& args) {
             screen.FillRect(fill_rect, kGrey);
             screen.FillRect(window_rect, kWhite);
             screen.FillEllipse(window_rect, kBlack);
-            screen.CopyBits(picture, frame, picture_rect);
+            screen.CopyBits(picture, frame, frame, picture_rect);
             LOG(INFO) << "To: " << window_rect;
           }
           is_drag = false;
@@ -172,7 +176,7 @@ absl::Status Main(const core::Args& args) {
 
             screen.FillRect(fill_rect, kGrey);
             screen.FillEllipse(window_rect, kWhite);
-            screen.CopyBits(picture, frame, picture_rect);
+            screen.CopyBits(picture, frame, frame, picture_rect);
           }
           break;
       }

@@ -18,6 +18,8 @@
 #include "emu/graphics/pict_v1.h"
 #include "gen/typegen/typegen_prelude.h"
 
+using ::cyder::FrameRectToBytes;
+using ::cyder::PixelWidthToBytes;
 using ::cyder::graphics::GetPICTFrame;
 using ::cyder::graphics::ParsePICTv1;
 
