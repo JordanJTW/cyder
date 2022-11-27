@@ -40,6 +40,12 @@ inline Rect UnionRect(Rect r1, Rect r2) {
   return urect;
 }
 
+// Return True if |parent| contains |child|, otherwise return False
+inline bool ContainsRect(const Rect& parent, const Rect& child) {
+  return parent.top <= child.top && parent.left <= child.left &&
+         parent.bottom >= child.bottom && parent.right >= child.right;
+}
+
 inline int16_t RectWidth(const Rect& rect) {
   return rect.right - rect.left;
 }
