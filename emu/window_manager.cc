@@ -5,6 +5,7 @@
 #include "emu/memory/memory_map.h"
 
 using ::cyder::graphics::BitmapScreen;
+using ::cyder::graphics::TempClipRect;
 using ::cyder::memory::MemoryManager;
 
 namespace cyder {
@@ -23,6 +24,12 @@ constexpr uint8_t kTitleBarPattern[8] = {0xFF, 0x00, 0xFF, 0x00,
                                          0xFF, 0x00, 0xFF, 0x00};
 
 constexpr uint16_t kFrameTitleHeight = 16u;
+
+// Return a clip region which represents the entire screen minus the menu bar
+// FIXME: Grab this from the WinMgr's GrafPort::clip_region (once we have one)?
+inline Rect CalculateDesktopRegion(const BitmapScreen& screen) {
+  return NewRect(0, 20, screen.width(), screen.height() - 20);
+}
 
 }  // namespace
 
@@ -67,6 +74,8 @@ bool WindowManager::CheckIsWindowDrag(Ptr window_ptr, int x, int y) const {
 }
 
 void WindowManager::OnMouseMove(int x, int y) {
+  TempClipRect _(screen_, CalculateDesktopRegion(screen_));
+
   int16_t outline_rect_width = RectWidth(outline_rect_);
   int16_t outline_rect_height = RectHeight(outline_rect_);
 
@@ -88,6 +97,8 @@ void WindowManager::OnMouseMove(int x, int y) {
 void WindowManager::OnMouseUp(int x, int y) {
   if (!target_window_ptr_)
     return;
+
+  TempClipRect _(screen_, CalculateDesktopRegion(screen_));
 
   // If window drag outline was drawn, restore the bitmap before anything else
   if (saved_bitmap_) {

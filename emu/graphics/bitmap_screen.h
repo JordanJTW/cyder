@@ -67,5 +67,19 @@ class BitmapScreen {
   Rect clip_rect_;
 };
 
+// RAII class to temporarily override the clip rect then restore it
+class TempClipRect final {
+ public:
+  TempClipRect(BitmapScreen& screen, const Rect& clip_rect)
+      : screen_(screen), saved_clip_rect_(screen_.GetClipRect()) {
+    screen_.SetClipRect(clip_rect);
+  }
+  ~TempClipRect() { screen_.SetClipRect(saved_clip_rect_); }
+
+ private:
+  BitmapScreen& screen_;
+  Rect saved_clip_rect_;
+};
+
 }  // namespace graphics
 }  // namespace cyder
