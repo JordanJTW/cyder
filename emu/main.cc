@@ -357,12 +357,14 @@ absl::Status Main(const core::Args& args) {
           single_step = false;
           break;
         case SDL_MOUSEBUTTONDOWN:
+          SDL_SetWindowGrab(window, SDL_TRUE);
           event_manager.QueueMouseDown(event.button.x, event.button.y);
           break;
         case SDL_MOUSEMOTION:
           native_bridge.OnMouseMove(event.motion.x, event.motion.y);
           break;
         case SDL_MOUSEBUTTONUP:
+          SDL_SetWindowGrab(window, SDL_FALSE);
           native_bridge.OnMouseUp(event.button.x, event.button.y);
           break;
         case SDL_QUIT:
