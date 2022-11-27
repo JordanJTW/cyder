@@ -15,6 +15,10 @@ class BitmapScreen {
   BitmapScreen(int width, int height);
   ~BitmapScreen();
 
+  // Get/set the global clip |rect| within which drawing is allowed
+  const Rect& GetClipRect() const { return clip_rect_; }
+  void SetClipRect(const Rect& rect) { clip_rect_ = rect; }
+
   enum class FillMode { Copy, XOr };
 
   // Fill |rect| with the given bit |pattern|
