@@ -1,4 +1,4 @@
-#include "emu/graphics/bitmap_screen.h"
+#include "emu/graphics/bitmap_image.h"
 
 #include <bitset>
 
@@ -14,7 +14,7 @@ static const bool kVerbose = false;
 
 }  // namespace
 
-BitmapScreen::BitmapScreen(int width, int height)
+BitmapImage::BitmapImage(int width, int height)
     : width_(width),
       height_(height),
       bitmap_size_(PixelWidthToBytes(width) * height),
@@ -23,9 +23,9 @@ BitmapScreen::BitmapScreen(int width, int height)
   clip_rect_ = NewRect(0, 0, width, height);
 }
 
-BitmapScreen::~BitmapScreen() = default;
+BitmapImage::~BitmapImage() = default;
 
-void BitmapScreen::FillRect(const Rect& rect,
+void BitmapImage::FillRect(const Rect& rect,
                             const uint8_t pattern[8],
                             FillMode mode) {
   for (int16_t row = rect.top; row < rect.bottom; ++row) {
@@ -33,7 +33,7 @@ void BitmapScreen::FillRect(const Rect& rect,
   }
 }
 
-void BitmapScreen::FillEllipse(const Rect& rect, const uint8_t pattern[8]) {
+void BitmapImage::FillEllipse(const Rect& rect, const uint8_t pattern[8]) {
   int half_width = RectWidth(rect) / 2;
   int half_height = RectHeight(rect) / 2;
   int origin_x = rect.left + half_width;
@@ -74,7 +74,7 @@ void BitmapScreen::FillEllipse(const Rect& rect, const uint8_t pattern[8]) {
   }
 }
 
-void BitmapScreen::FillRow(int row,
+void BitmapImage::FillRow(int row,
                            int16_t start,
                            int16_t end,
                            uint8_t pattern,
@@ -105,7 +105,7 @@ void BitmapScreen::FillRow(int row,
 
   // Sets the given |index| to the pattern AND'd with |mask|.
   auto set_index_with_mask = [&](int index, uint8_t mask) {
-    using FillMode = BitmapScreen::FillMode;
+    using FillMode = BitmapImage::FillMode;
 
     switch (mode) {
       case FillMode::Copy:
@@ -176,7 +176,7 @@ void BitmapScreen::FillRow(int row,
   }
 }
 
-void BitmapScreen::CopyBits(const uint8_t* src,
+void BitmapImage::CopyBits(const uint8_t* src,
                             const Rect& src_dims,
                             const Rect& src_rect,
                             const Rect& dst_rect) {
@@ -218,7 +218,7 @@ void BitmapScreen::CopyBits(const uint8_t* src,
   }
 }
 
-void BitmapScreen::FrameRect(const Rect& rect, const uint8_t pattern[8]) {
+void BitmapImage::FrameRect(const Rect& rect, const uint8_t pattern[8]) {
   constexpr uint16_t kWidth = 1u;
   // FIXME: Account for clipping, invalid |rect|s, and proper |pattern| support
   for (int row = rect.top; row < rect.top + kWidth; ++row) {
@@ -234,14 +234,14 @@ void BitmapScreen::FrameRect(const Rect& rect, const uint8_t pattern[8]) {
   }
 }
 
-void BitmapScreen::CopyBitmap(const BitmapScreen& bitmap,
+void BitmapImage::CopyBitmap(const BitmapImage& bitmap,
                               const Rect& src_rect,
                               const Rect& dst_rect) {
   auto src_dims = NewRect(0, 0, bitmap.width(), bitmap.height());
   CopyBits(bitmap.bits(), src_dims, src_rect, dst_rect);
 }
 
-void BitmapScreen::PrintBitmap() const {
+void BitmapImage::PrintBitmap() const {
   for (int i = 0; i < bitmap_size_; ++i) {
     std::cout << std::bitset<8>(bitmap_[i]);
     if ((i + 1) % PixelWidthToBytes(width_) == 0) {

@@ -4,7 +4,7 @@
 #include "emu/graphics/graphics_helpers.h"
 #include "emu/memory/memory_map.h"
 
-using ::cyder::graphics::BitmapScreen;
+using ::cyder::graphics::BitmapImage;
 using ::cyder::graphics::TempClipRect;
 using ::cyder::memory::MemoryManager;
 
@@ -27,7 +27,7 @@ constexpr uint16_t kFrameTitleHeight = 16u;
 
 // Return a clip region which represents the entire screen minus the menu bar
 // FIXME: Grab this from the WinMgr's GrafPort::clip_region (once we have one)?
-inline Rect CalculateDesktopRegion(const BitmapScreen& screen) {
+inline Rect CalculateDesktopRegion(const BitmapImage& screen) {
   return NewRect(0, 20, screen.width(), screen.height() - 20);
 }
 
@@ -35,7 +35,7 @@ inline Rect CalculateDesktopRegion(const BitmapScreen& screen) {
 
 WindowManager::WindowManager(NativeBridge& native_bridge,
                              EventManager& event_manager,
-                             BitmapScreen& screen,
+                             BitmapImage& screen,
                              const MemoryManager& memory)
     : native_bridge_(native_bridge),
       event_manager_(event_manager),
@@ -80,7 +80,7 @@ void WindowManager::OnMouseMove(int x, int y) {
   int16_t outline_rect_height = RectHeight(outline_rect_);
 
   if (!saved_bitmap_) {
-    saved_bitmap_ = absl::make_unique<BitmapScreen>(outline_rect_width,
+    saved_bitmap_ = absl::make_unique<BitmapImage>(outline_rect_width,
                                                     outline_rect_height);
   } else {
     screen_.CopyBitmap(*saved_bitmap_, NormalizeRect(outline_rect_),
@@ -127,7 +127,7 @@ void WindowManager::OnMouseUp(int x, int y) {
   saved_bitmap_.reset();
 }
 
-void SetStructRegionAndDrawFrame(BitmapScreen& screen,
+void SetStructRegionAndDrawFrame(BitmapImage& screen,
                                  WindowRecord& window,
                                  const MemoryManager& memory) {
   constexpr uint16_t kFrameWidth = 1u;

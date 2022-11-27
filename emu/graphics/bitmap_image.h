@@ -8,12 +8,12 @@
 namespace cyder {
 namespace graphics {
 
-// Represents a physical bitmap (1 bit-per-pixel) display to be drawn to.
+// Represents a bitmap (1 bit-per-pixel) image.
 // All coordinates are mapped from the upper-left hand corner at (0, 0).
-class BitmapScreen {
+class BitmapImage {
  public:
-  BitmapScreen(int width, int height);
-  ~BitmapScreen();
+  BitmapImage(int width, int height);
+  ~BitmapImage();
 
   // Get/set the global clip |rect| within which drawing is allowed
   const Rect& GetClipRect() const { return clip_rect_; }
@@ -47,7 +47,7 @@ class BitmapScreen {
                 const Rect& src_rect,
                 const Rect& dst_rect);
 
-  void CopyBitmap(const BitmapScreen& bitmap,
+  void CopyBitmap(const BitmapImage& bitmap,
                   const Rect& src_rect,
                   const Rect& dst_rect);
 
@@ -70,14 +70,14 @@ class BitmapScreen {
 // RAII class to temporarily override the clip rect then restore it
 class TempClipRect final {
  public:
-  TempClipRect(BitmapScreen& screen, const Rect& clip_rect)
+  TempClipRect(BitmapImage& screen, const Rect& clip_rect)
       : screen_(screen), saved_clip_rect_(screen_.GetClipRect()) {
     screen_.SetClipRect(clip_rect);
   }
   ~TempClipRect() { screen_.SetClipRect(saved_clip_rect_); }
 
  private:
-  BitmapScreen& screen_;
+  BitmapImage& screen_;
   Rect saved_clip_rect_;
 };
 

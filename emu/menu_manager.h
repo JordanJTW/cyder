@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "emu/graphics/bitmap_screen.h"
+#include "emu/graphics/bitmap_image.h"
 #include "emu/menu_popup.h"
 #include "emu/mouse_listener.h"
 #include "emu/native_bridge.h"
@@ -14,7 +14,7 @@ namespace cyder {
 
 class MenuManager : public MouseListener {
  public:
-  MenuManager(graphics::BitmapScreen& screen, NativeBridge& native_bridge);
+  MenuManager(graphics::BitmapImage& screen, NativeBridge& native_bridge);
 
   void InsertMenu(MenuResource menu);
   void DrawMenuBar() const;
@@ -30,7 +30,7 @@ class MenuManager : public MouseListener {
   void OnMouseUp(int x, int y);
 
  private:
-  graphics::BitmapScreen& screen_;
+  graphics::BitmapImage& screen_;
   NativeBridge& native_bridge_;
   std::vector<MenuResource> menus_;
 

@@ -56,14 +56,14 @@ TrapManager::TrapManager(memory::MemoryManager& memory_manager,
                          EventManager& event_manager,
                          MenuManager& menu_manager,
                          WindowManager& window_manager,
-                         graphics::BitmapScreen& bitmap_screen)
+                         graphics::BitmapImage& bitmap_screen)
     : memory_manager_(memory_manager),
       resource_manager_(resource_manager),
       segment_loader_(segment_loader),
       event_manager_(event_manager),
       menu_manager_(menu_manager),
       window_manager_(window_manager),
-      bitmap_screen_(bitmap_screen) {}
+      screen_(bitmap_screen) {}
 
 absl::Status TrapManager::DispatchEmulatedSubroutine(uint32_t address) {
   switch (address) {
@@ -606,7 +606,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       rect = TRY(port::ConvertLocalToGlobal(rect));
 
       // FIXME: Paint with the color set for QuickDraw (A5 World?)
-      bitmap_screen_.FillRect(rect, kForegroundPattern);
+      screen_.FillRect(rect, kForegroundPattern);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-100.html
@@ -616,7 +616,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
       // FIXME: Clear with the color set for QuickDraw (A5 World?)
-      bitmap_screen_.FillRect(rect, kBackgroundPattern);
+      screen_.FillRect(rect, kBackgroundPattern);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-63.html
@@ -633,7 +633,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
       // FIXME: Paint with the color set for QuickDraw (A5 World?)
-      bitmap_screen_.FillEllipse(rect, kForegroundPattern);
+      screen_.FillEllipse(rect, kForegroundPattern);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-112.html
@@ -643,7 +643,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
       // FIXME: Clear with the color set for QuickDraw (A5 World?)
-      bitmap_screen_.FillEllipse(rect, kBackgroundPattern);
+      screen_.FillEllipse(rect, kBackgroundPattern);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-86.html
@@ -942,7 +942,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       record.content_region = TRY(create_port_region("ContentRegion"));
       record.title_handle = TRY(create_title_handle());
       record.structure_region = TRY(create_port_region("StructRegion"));
-      SetStructRegionAndDrawFrame(bitmap_screen_, record, memory_manager_);
+      SetStructRegionAndDrawFrame(screen_, record, memory_manager_);
 
       RESTRICT_FIELD_ACCESS(
           WindowRecord, window_storage,
@@ -1037,7 +1037,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                 << region_handle << ", pattern: { " << pattern << " })";
 
       auto region_frame = TRY(port::ConvertLocalToGlobal(region.bounding_box));
-      bitmap_screen_.FillRect(region_frame, kBackgroundPattern);
+      screen_.FillRect(region_frame, kBackgroundPattern);
       return absl::OkStatus();
     }
 
@@ -1063,7 +1063,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto offset = TRY(port::GetLocalToGlobalOffset());
       auto target_rect = OffsetRect(dst_rect, offset.x, offset.y);
 
-      bitmap_screen_.CopyBits(picture, pict_frame, pict_frame, target_rect);
+      screen_.CopyBits(picture, pict_frame, pict_frame, target_rect);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-351.html

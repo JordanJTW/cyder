@@ -3,7 +3,7 @@
 
 #include "absl/status/status.h"
 #include "emu/event_manager.h"
-#include "emu/graphics/bitmap_screen.h"
+#include "emu/graphics/bitmap_image.h"
 #include "emu/memory/memory_manager.h"
 #include "emu/menu_manager.h"
 #include "emu/segment_loader.h"
@@ -24,7 +24,7 @@ class TrapManager {
               EventManager& event_manager,
               MenuManager& menu_manager,
               WindowManager& window_manager,
-              graphics::BitmapScreen& bitmap_screen);
+              graphics::BitmapImage& screen);
 
   absl::Status DispatchEmulatedSubroutine(uint32_t address);
 
@@ -46,7 +46,7 @@ class TrapManager {
   EventManager& event_manager_;
   MenuManager& menu_manager_;
   WindowManager& window_manager_;
-  graphics::BitmapScreen& bitmap_screen_;
+  graphics::BitmapImage& screen_;
 
   std::map<uint16_t, uint32_t> patch_trap_addresses_;
 };

@@ -11,7 +11,7 @@
 #include "core/status_helpers.h"
 #include "core/status_main.h"
 #include "emu/event_manager.h"
-#include "emu/graphics/bitmap_screen.h"
+#include "emu/graphics/bitmap_image.h"
 #include "emu/graphics/graphics_helpers.h"
 #include "emu/memory/memory_manager.h"
 #include "emu/memory/memory_map.h"
@@ -198,13 +198,13 @@ using cyder::NewRect;
 using cyder::ResourceManager;
 using cyder::SegmentLoader;
 using cyder::WindowManager;
-using cyder::graphics::BitmapScreen;
+using cyder::graphics::BitmapImage;
 using cyder::memory::kSystemMemory;
 using cyder::memory::MemoryManager;
 using cyder::trap::TrapManager;
 using rsrcloader::ResourceFile;
 
-SDL_Surface* const MakeSurface(const BitmapScreen& screen) {
+SDL_Surface* const MakeSurface(const BitmapImage& screen) {
   static SDL_Surface* const surface = SDL_CreateRGBSurfaceWithFormat(
       SDL_SWSURFACE, kScreenWidth, kScreenHeight, 1, SDL_PIXELFORMAT_INDEX1MSB);
   surface->pixels = const_cast<uint8_t*>(screen.bits());
@@ -229,7 +229,7 @@ absl::Status Main(const core::Args& args) {
   LOG(INFO) << "Initialize PC: " << std::hex << pc;
   LOG(INFO) << "Memory Map: " << cyder::memory::MemoryMapToStr();
 
-  BitmapScreen screen(kScreenWidth, kScreenHeight);
+  BitmapImage screen(kScreenWidth, kScreenHeight);
   NativeBridge native_bridge;
 
   MenuManager menu_manager(screen, native_bridge);

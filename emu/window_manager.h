@@ -1,7 +1,7 @@
 #pragma once
 
 #include "emu/event_manager.h"
-#include "emu/graphics/bitmap_screen.h"
+#include "emu/graphics/bitmap_image.h"
 #include "emu/graphics/grafport_types.tdef.h"
 #include "emu/memory/memory_manager.h"
 #include "emu/mouse_listener.h"
@@ -14,7 +14,7 @@ class WindowManager : public MouseListener {
  public:
   WindowManager(NativeBridge& native_bridge,
                 EventManager& event_manager,
-                graphics::BitmapScreen& screen,
+                graphics::BitmapImage& screen,
                 const memory::MemoryManager& memory);
 
   void NativeDragWindow(Ptr window_ptr, int x, int y);
@@ -28,7 +28,7 @@ class WindowManager : public MouseListener {
  private:
   NativeBridge& native_bridge_;
   EventManager& event_manager_;
-  graphics::BitmapScreen& screen_;
+  graphics::BitmapImage& screen_;
   const memory::MemoryManager& memory_;
 
   Ptr target_window_ptr_{0};
@@ -36,10 +36,10 @@ class WindowManager : public MouseListener {
   Point target_offset_;
 
   Rect outline_rect_;
-  std::unique_ptr<graphics::BitmapScreen> saved_bitmap_;
+  std::unique_ptr<graphics::BitmapImage> saved_bitmap_;
 };
 
-void SetStructRegionAndDrawFrame(graphics::BitmapScreen& screen,
+void SetStructRegionAndDrawFrame(graphics::BitmapImage& screen,
                                  WindowRecord& record,
                                  const memory::MemoryManager& memory);
 

@@ -11,7 +11,7 @@
 
 namespace {
 
-using ::cyder::graphics::BitmapScreen;
+using ::cyder::graphics::BitmapImage;
 using ::cyder::graphics::GetPICTFrame;
 using ::cyder::graphics::ParsePICTv1;
 
@@ -58,7 +58,7 @@ absl::StatusOr<core::MemoryRegion> LoadFile(const std::string& path) {
   return core::MemoryRegion(mmap_ptr, size);
 }
 
-SDL_Surface* const MakeSurface(const BitmapScreen& screen) {
+SDL_Surface* const MakeSurface(const BitmapImage& screen) {
   static SDL_Surface* const surface = SDL_CreateRGBSurfaceWithFormat(
       SDL_SWSURFACE, kScreenWidth, kScreenHeight, 1, SDL_PIXELFORMAT_INDEX1MSB);
   surface->pixels = const_cast<uint8_t*>(screen.bits());
@@ -85,7 +85,7 @@ absl::Status Main(const core::Args& args) {
 
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
 
-  BitmapScreen screen(kScreenWidth, kScreenHeight);
+  BitmapImage screen(kScreenWidth, kScreenHeight);
 
   auto fill_rect = NewRect(0, 0, kScreenWidth, kScreenHeight);
   screen.FillRect(fill_rect, kGrey);

@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "emu/graphics/bitmap_screen.h"
+#include "emu/graphics/bitmap_image.h"
 #include "gen/typegen/generated_types.tdef.h"
 
 namespace cyder {
@@ -10,12 +10,12 @@ namespace cyder {
 // RAII class to invert |rect| on |screen| and undo the change on destructor
 class AutoHiliteRect {
  public:
-  AutoHiliteRect(Rect rect, graphics::BitmapScreen& screen);
+  AutoHiliteRect(Rect rect, graphics::BitmapImage& screen);
   ~AutoHiliteRect();
 
  private:
   const Rect rect_;
-  graphics::BitmapScreen& screen_;
+  graphics::BitmapImage& screen_;
 };
 
 // RAII class representing an on-screen |menu| pop-up anchored to an item in
@@ -23,7 +23,7 @@ class AutoHiliteRect {
 // be restored to what was present under the pop-up on construction.
 class MenuPopUp {
  public:
-  MenuPopUp(graphics::BitmapScreen& screen,
+  MenuPopUp(graphics::BitmapImage& screen,
             MenuResource menu,
             Rect anchor_rect);
   ~MenuPopUp();
@@ -36,13 +36,13 @@ class MenuPopUp {
   uint16_t id() const { return menu_.id; }
 
  private:
-  graphics::BitmapScreen& screen_;
+  graphics::BitmapImage& screen_;
   MenuResource menu_;
   const Rect anchor_rect_;
   AutoHiliteRect anchor_hilite_;
   const Rect popup_rect_;
 
-  graphics::BitmapScreen saved_bitmap_;
+  graphics::BitmapImage saved_bitmap_;
   std::unique_ptr<AutoHiliteRect> hovered_rect_;
 };
 

@@ -38,17 +38,17 @@ Rect GetMenuItemBounds(const Rect& popup_rect, int item_index) {
 
 }  // namespace
 
-AutoHiliteRect::AutoHiliteRect(Rect rect, graphics::BitmapScreen& screen)
+AutoHiliteRect::AutoHiliteRect(Rect rect, graphics::BitmapImage& screen)
     : rect_(std::move(rect)), screen_(screen) {
   screen_.FillRect(rect_, kHighLightPattern,
-                   graphics::BitmapScreen::FillMode::XOr);
+                   graphics::BitmapImage::FillMode::XOr);
 }
 AutoHiliteRect::~AutoHiliteRect() {
   screen_.FillRect(rect_, kHighLightPattern,
-                   graphics::BitmapScreen::FillMode::XOr);
+                   graphics::BitmapImage::FillMode::XOr);
 }
 
-MenuPopUp::MenuPopUp(graphics::BitmapScreen& screen,
+MenuPopUp::MenuPopUp(graphics::BitmapImage& screen,
                      MenuResource menu,
                      Rect anchor_rect)
     : screen_(screen),

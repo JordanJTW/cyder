@@ -18,7 +18,7 @@ constexpr int kMenuBarItemHeightPadding = 6;
 
 }  // namespace
 
-MenuManager::MenuManager(graphics::BitmapScreen& screen,
+MenuManager::MenuManager(graphics::BitmapImage& screen,
                          NativeBridge& native_bridge)
     : screen_(screen), native_bridge_(native_bridge) {}
 
