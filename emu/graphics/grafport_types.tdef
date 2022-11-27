@@ -135,3 +135,15 @@ struct EventRecord {
   where: Point;
   modifiers: Integer;
 }
+
+// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-436.html#HEADING436-0
+struct DLOG {
+  initial_rect: Rect;
+  window_definition_id: u16;
+  is_visible: u16;
+  has_close: u16;
+  reference_constant: u32;
+  item_list_id: u16;
+  title: str;
+  // Optional: position: u16 (word aligned)
+}
