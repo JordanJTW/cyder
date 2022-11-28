@@ -12,6 +12,10 @@ namespace {
 
 static const bool kVerbose = false;
 
+inline uint8_t RotateByteRight(uint8_t byte, uint16_t shift) {
+  return (byte >> shift) | (byte << (CHAR_BIT - shift));
+}
+
 }  // namespace
 
 BitmapImage::BitmapImage(int width, int height)
@@ -28,9 +32,14 @@ BitmapImage::~BitmapImage() = default;
 void BitmapImage::FillRect(const Rect& rect,
                            const uint8_t pattern[8],
                            FillMode mode) {
+  // The pattern should align with the left side of the |rect| but may not
+  // be byte aligned so we rotate the byte right by the offset to compensate
+  int16_t pattern_offset = std::max((int16_t)0, rect.left) % 8;
+
   int16_t height = RectHeight(rect);
   for (int16_t row = 0; row < height; ++row) {
-    FillRow(rect.top + row, rect.left, rect.right, pattern[row % 8], mode);
+    uint8_t swatch = RotateByteRight(pattern[row % 8], pattern_offset);
+    FillRow(rect.top + row, rect.left, rect.right, swatch, mode);
   }
 }
 
@@ -48,9 +57,14 @@ void BitmapImage::FillEllipse(const Rect& rect, const uint8_t pattern[8]) {
   int last_offset = half_width;
   int slope_dx = 0;
 
+  // The pattern should align with the left side of the |rect| but may not
+  // be byte aligned so we rotate the byte right by the offset to compensate
+  int16_t pattern_offset = std::max((int16_t)0, rect.left) % 8;
+
   // Fill the horrizontal center row of the ellipse.
   // The rest of the ellipse is mirrored over this central line.
-  FillRow(origin_y, rect.left, rect.right, pattern[half_height % 8]);
+  FillRow(origin_y, rect.left, rect.right,
+          RotateByteRight(pattern[half_height % 8], pattern_offset));
 
   for (int row = 1; row <= half_height; ++row) {
     // Calculate the new offset from the vertical center for each row
@@ -66,9 +80,9 @@ void BitmapImage::FillEllipse(const Rect& rect, const uint8_t pattern[8]) {
     // Fill rows mirrored over center line taking care to ensure the
     // fill pattern starts at the top of the ellipse and follows down.
     FillRow(origin_y - row, origin_x - offset, origin_x + offset,
-            pattern[(half_height - row) % 8]);
+            RotateByteRight(pattern[(half_height - row) % 8], pattern_offset));
     FillRow(origin_y + row, origin_x - offset, origin_x + offset,
-            pattern[(half_height + row) % 8]);
+            RotateByteRight(pattern[(half_height + row) % 8], pattern_offset));
 
     slope_dx = last_offset - offset;
     last_offset = offset;
