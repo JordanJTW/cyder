@@ -85,7 +85,7 @@ absl::Status Main(const core::Args& args) {
       window_height, SDL_WINDOW_ALLOW_HIGHDPI);
 
   SDL_Renderer* const renderer =
-      SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+      SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
 
@@ -158,6 +158,15 @@ absl::Status Main(const core::Args& args) {
             is_drag = true;
           }
           break;
+        case SDL_MOUSEMOTION:
+          if (is_drag) {
+            drag_rect(window_rect, event.motion.x, event.motion.y);
+
+            screen.FillRect(fill_rect, kGrey);
+            screen.FillEllipse(window_rect, kWhite);
+            screen.CopyBits(picture, frame, frame, picture_rect);
+          }
+          break;
         case SDL_MOUSEBUTTONUP:
           if (is_drag) {
             drag_rect(window_rect, event.button.x, event.button.y);
@@ -169,15 +178,6 @@ absl::Status Main(const core::Args& args) {
             LOG(INFO) << "To: " << window_rect;
           }
           is_drag = false;
-          break;
-        case SDL_MOUSEMOTION:
-          if (is_drag) {
-            drag_rect(window_rect, event.motion.x, event.motion.y);
-
-            screen.FillRect(fill_rect, kGrey);
-            screen.FillEllipse(window_rect, kWhite);
-            screen.CopyBits(picture, frame, frame, picture_rect);
-          }
           break;
       }
     }
