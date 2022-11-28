@@ -80,8 +80,8 @@ void WindowManager::OnMouseMove(int x, int y) {
   int16_t outline_rect_height = RectHeight(outline_rect_);
 
   if (!saved_bitmap_) {
-    saved_bitmap_ = absl::make_unique<BitmapImage>(outline_rect_width,
-                                                    outline_rect_height);
+    saved_bitmap_ =
+        absl::make_unique<BitmapImage>(outline_rect_width, outline_rect_height);
   } else {
     screen_.CopyBitmap(*saved_bitmap_, NormalizeRect(outline_rect_),
                        outline_rect_);
@@ -108,8 +108,13 @@ void WindowManager::OnMouseUp(int x, int y) {
 
   auto struct_region =
       MUST(memory_.ReadTypeFromHandle<Region>(target_window_.structure_region));
-
-  screen_.FillRect(struct_region.bounding_box, kGreyPattern);
+  {
+    // This ensures that the pattern aligns with its surroundings (based off
+    // of the top-left corner of the screen as opposed to |struct_region|).
+    TempClipRect _(screen_, struct_region.bounding_box);
+    screen_.FillRect(NewRect(0, 0, screen_.width(), screen_.height()),
+                     kGreyPattern);
+  }
 
   // TODO: What causes the +1 to be needed? (Double-clicking the title bar
   //       shifts the window up and to the left otherwise...)

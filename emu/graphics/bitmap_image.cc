@@ -26,10 +26,11 @@ BitmapImage::BitmapImage(int width, int height)
 BitmapImage::~BitmapImage() = default;
 
 void BitmapImage::FillRect(const Rect& rect,
-                            const uint8_t pattern[8],
-                            FillMode mode) {
-  for (int16_t row = rect.top; row < rect.bottom; ++row) {
-    FillRow(row, rect.left, rect.right, pattern[row % 8], mode);
+                           const uint8_t pattern[8],
+                           FillMode mode) {
+  int16_t height = RectHeight(rect);
+  for (int16_t row = 0; row < height; ++row) {
+    FillRow(rect.top + row, rect.left, rect.right, pattern[row % 8], mode);
   }
 }
 
@@ -75,10 +76,10 @@ void BitmapImage::FillEllipse(const Rect& rect, const uint8_t pattern[8]) {
 }
 
 void BitmapImage::FillRow(int row,
-                           int16_t start,
-                           int16_t end,
-                           uint8_t pattern,
-                           FillMode mode) {
+                          int16_t start,
+                          int16_t end,
+                          uint8_t pattern,
+                          FillMode mode) {
   static const unsigned char kMask[] = {0b11111111, 0b01111111, 0b00111111,
                                         0b00011111, 0b00001111, 0b00000111,
                                         0b00000011, 0b00000001, 0b00000000};
@@ -177,9 +178,9 @@ void BitmapImage::FillRow(int row,
 }
 
 void BitmapImage::CopyBits(const uint8_t* src,
-                            const Rect& src_dims,
-                            const Rect& src_rect,
-                            const Rect& dst_rect) {
+                           const Rect& src_dims,
+                           const Rect& src_rect,
+                           const Rect& dst_rect) {
   int16_t height = RectHeight(dst_rect);
   int16_t width = RectWidth(dst_rect);
 
@@ -235,8 +236,8 @@ void BitmapImage::FrameRect(const Rect& rect, const uint8_t pattern[8]) {
 }
 
 void BitmapImage::CopyBitmap(const BitmapImage& bitmap,
-                              const Rect& src_rect,
-                              const Rect& dst_rect) {
+                             const Rect& src_rect,
+                             const Rect& dst_rect) {
   auto src_dims = NewRect(0, 0, bitmap.width(), bitmap.height());
   CopyBits(bitmap.bits(), src_dims, src_rect, dst_rect);
 }
