@@ -262,6 +262,8 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
     }
     // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-75.html
     case Trap::NewPtr:
+    // All allocated pointers are cleared (and never reallocated)
+    case Trap::NewPtrClear:
     // FIXME: Should "SYS" pointers be allocated differently?
     case Trap::NewPtrSys: {
       // D0 seems to contain the argument in a sample program...
