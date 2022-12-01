@@ -15,6 +15,7 @@ class EventManager final {
   void QueueWindowActivate(Ptr window);
   void QueueWindowUpdate(Ptr window);
   void QueueMouseDown(int x, int y);
+  void QueueKeyDown();
 
   EventRecord GetNextEvent();
 

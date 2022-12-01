@@ -354,6 +354,7 @@ absl::Status Main(const core::Args& args) {
     while (SDL_PollEvent(&event)) {
       switch (event.type) {
         case SDL_KEYDOWN:
+          event_manager.QueueKeyDown();
           single_step = false;
           break;
         case SDL_MOUSEBUTTONDOWN:

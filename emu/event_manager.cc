@@ -38,6 +38,13 @@ void EventManager::QueueMouseDown(int x, int y) {
   event_queue_.push(std::move(record));
 }
 
+void EventManager::QueueKeyDown() {
+  EventRecord record;
+  record.what = 3 /*keyDown*/;
+  // FIXME: Add keycode information in EventRecord::message
+  event_queue_.push(std::move(record));
+}
+
 EventRecord EventManager::GetNextEvent() {
   if (event_queue_.empty()) {
     return NullEvent();
