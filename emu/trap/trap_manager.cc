@@ -485,6 +485,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto menu_bar = TRY(ReadType<MenuBarResource>(
           memory_manager_.GetRegionForHandle(handle), 0));
 
+      // FIXME: Should return a MenuList with MENU Handles saved
       for (ResourceId id : menu_bar.menus) {
         LOG(INFO) << "Menu Resource ID: " << id;
         Handle menu_handle = resource_manager_.GetResource('MENU', id);
@@ -526,6 +527,31 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto menu = TRY(ReadType<MenuResource>(
           memory_manager_.GetRegionForHandle(the_menu), 0));
       menu_manager_.InsertMenu(menu);
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-127.html
+    case Trap::SetMenuBar: {
+      auto menu_list_handle = TRY(Pop<Handle>());
+      LOG(INFO) << "TRAP SetMenuBar(menuList: 0x" << menu_list_handle << ")";
+
+      auto menu_list = TRY(memory_manager_.ReadTypeFromHandle<MenuBarResource>(
+          menu_list_handle));
+
+      // FIXME: The MENUs should not need to be loaded _again_ (see GetNewMBar)
+      for (ResourceId id : menu_list.menus) {
+        LOG(INFO) << "Menu Resource ID: " << id;
+        Handle menu_handle = resource_manager_.GetResource('MENU', id);
+
+        auto menu = TRY(ReadType<MenuResource>(
+            memory_manager_.GetRegionForHandle(menu_handle), 0));
+
+        menu_manager_.InsertMenu(menu);
+
+        LOG(INFO) << "Menu {" << menu << "}";
+        for (const auto& item : menu.items) {
+          LOG(INFO) << "MenuItem {" << item << "}";
+        }
+      }
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-147.html
