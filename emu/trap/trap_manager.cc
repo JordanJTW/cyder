@@ -1211,6 +1211,36 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       return absl::UnimplementedError("WIP: partial implementation");
     }
 
+    // ======================  Text Manager  =======================
+
+    // Link: http://0.0.0.0:8000/docs/mac/Text/Text-149.html
+    case Trap::TextFont: {
+      auto font = TRY(Pop<Integer>());
+      LOG(INFO) << "TRAP TextFont(font: " << font << ")";
+      // We only support one bitmap font but nice of it to ask... :P
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Text/Text-150.html
+    case Trap::TextFace: {
+      auto face = TRY(Pop<Integer>());
+      LOG(INFO) << "TRAP TextFace(face: " << face << ")";
+      // We only support one bitmap font but nice of it to ask... :P
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Text/Text-152.html
+    case Trap::TextSize: {
+      auto size = TRY(Pop<Integer>());
+      LOG(INFO) << "TRAP TextSize(size: " << size << ")";
+      // We only support one bitmap font but nice of it to ask... :P
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Text/Text-162.html
+    case Trap::CharWidth: {
+      // TODO: A single byte is based as a 16-bit value on the stack?
+      auto ch = TRY(Pop<Integer>());
+      LOG(INFO) << "TRAP CharWidth(ch: '" << (char)ch << "')";
+      return TrapReturn<Integer>(8 /*8x8 bitmap font*/);
+    }
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unimplemented Toolbox trap: '", GetTrapName(trap), "'"));
