@@ -223,6 +223,7 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
     // ===================  MemoryManager  =======================
 
     // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-103.html
+    case Trap::BlockMoveData:
     case Trap::BlockMove: {
       uint32_t source_ptr = m68k_get_reg(NULL, M68K_REG_A0);
       uint32_t dest_ptr = m68k_get_reg(NULL, M68K_REG_A1);
