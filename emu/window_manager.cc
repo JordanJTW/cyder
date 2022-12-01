@@ -220,6 +220,7 @@ void SetStructRegionAndDrawFrame(BitmapImage& screen,
   frame_rect.right = global_port_rect.right + kFrameWidth;
   frame_rect.top = global_port_rect.top - kFrameWidth;
   frame_rect.bottom = global_port_rect.bottom + kFrameWidth;
+  screen.FillRect(frame_rect, kWhitePattern);
   screen.FrameRect(frame_rect, kBlackPattern);
 
   Rect title_bar_rect = NewRect(
