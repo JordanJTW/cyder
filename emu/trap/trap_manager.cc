@@ -285,6 +285,16 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, /*noErr*/ 0);
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-31.html
+    case Trap::HLock:
+    // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-32.html
+    case Trap::HUnlock:
+    // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-33.html
+    case Trap::HPurge: {
+      // MemoryManager currently does not move or purge blocks so assume success
+      m68k_set_reg(M68K_REG_D0, /*noErr*/ 0);
+      return absl::OkStatus();
+    }
     // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-64.html
     case Trap::MaxApplZone:
     // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-65.html
