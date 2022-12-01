@@ -897,14 +897,21 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       screen_bounds.bottom = 384;
       screen_bounds.right = 512;
 
-      // FIXME: Add WARNING if `screenBits.baseAddr` is accessed
       QDGlobals qd_globals;
       qd_globals.screen_bits.bounds = screen_bounds;
 
       // `globalPtr` accounts for the size of `thePort` so must be added here
-      RETURN_IF_ERROR(WriteType<QDGlobals>(
-          qd_globals, memory::kSystemMemory,
-          globalPtr - QDGlobals::fixed_size + sizeof(Ptr)));
+      size_t qd_ptr = globalPtr - QDGlobals::fixed_size + sizeof(Ptr);
+      RETURN_IF_ERROR(
+          WriteType<QDGlobals>(qd_globals, memory::kSystemMemory, qd_ptr));
+
+      RESTRICT_FIELD_ACCESS(
+          QDGlobals, qd_ptr,
+          // TODO: Figure out a more elegant way to allow access to Rects
+          QDGlobalsFields::screen_bits + BitMapFields::bounds,
+          QDGlobalsFields::screen_bits + BitMapFields::bounds + 2,
+          QDGlobalsFields::screen_bits + BitMapFields::bounds + 4,
+          QDGlobalsFields::screen_bits + BitMapFields::bounds + 6);
 
       return absl::OkStatus();
     }
