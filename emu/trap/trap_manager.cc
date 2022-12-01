@@ -48,6 +48,17 @@ absl::Status HandleLoadSegmentTrap(SegmentLoader& segment_loader,
   return absl::OkStatus();
 }
 
+template <typename Type>
+absl::Status WithType(Ptr ptr, std::function<absl::Status(Type& type)> cb) {
+  auto type = TRY(ReadType<Type>(memory::kSystemMemory, ptr));
+  RETURN_IF_ERROR(cb(type));
+  return WriteType<Type>(type, memory::kSystemMemory, ptr);
+}
+
+absl::Status WithPort(std::function<absl::Status(GrafPort& the_port)> cb) {
+  return WithType<GrafPort>(TRY(port::GetThePort()), std::move(cb));
+}
+
 }  // namespace
 
 TrapManager::TrapManager(memory::MemoryManager& memory_manager,
@@ -810,6 +821,18 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       RETURN_IF_ERROR(WriteType<Point>(pt, memory::kSystemMemory, pt_var));
       return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-81.html
+    case Trap::MoveTo: {
+      auto v = TRY(Pop<Integer>());
+      auto h = TRY(Pop<Integer>());
+      LOG(INFO) << "TRAP MoveTo(h: " << h << ", v: " << v << ")";
+
+      return WithPort([h, v](GrafPort& port) {
+        port.pen_location.x = h;
+        port.pen_location.y = v;
+        return absl::OkStatus();
+      });
     }
 
     // ================== Resource Manager ==================
