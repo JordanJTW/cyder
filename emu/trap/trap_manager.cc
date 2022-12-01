@@ -370,6 +370,19 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
       SetTrapAddress(trap_index, trap_address);
       return absl::OkStatus();
     }
+      // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-180.html
+    case Trap::SetToolBoxTrapAddress: {
+      uint32_t trap_address = m68k_get_reg(NULL, M68K_REG_A0);
+      uint32_t trap_index = m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF;
+      LOG(INFO) << "TRAP SetToolboxTrapAddress(trapAddr: 0x" << std::hex
+                << trap_address << ", trap: '" << GetTrapName(trap_index)
+                << "')";
+
+      // FIXME: This assumes the |trap_index| is a full A-Trap but only the
+      //        index is also valid
+      SetTrapAddress(trap_index, trap_address);
+      return absl::OkStatus();
+    }
 
     // =====================  Event Manager  =======================
 
