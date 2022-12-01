@@ -238,6 +238,8 @@ absl::Status Main(const core::Args& args) {
   auto screen_rect = NewRect(0, 0, kScreenWidth, kScreenHeight);
   screen.FillRect(screen_rect, kGreyPattern);
 
+  menu_manager.DrawMenuBar();
+
   SDL_Init(SDL_INIT_VIDEO);
 
   int window_width = int(kScreenWidth * kScaleFactor);
