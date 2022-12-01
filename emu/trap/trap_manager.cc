@@ -982,73 +982,51 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                 << std::hex << window_storage << ", behind: 0x" << behind_window
                 << ")";
 
-      // If NULL is passed as |window_storage|, allocate space for the record.
-      if (window_storage == 0) {
-        window_storage = memory_manager_.Allocate(WindowRecord::fixed_size);
-      }
-
       auto resource_handle = resource_manager_.GetResource('WIND', window_id);
       auto resource_region =
           memory_manager_.GetRegionForHandle(resource_handle);
       auto resource = TRY(ReadType<WIND>(resource_region, /*offset=*/0));
       LOG(INFO) << "WIND: { " << resource << " }";
 
-      auto port_frame = NormalizeRect(resource.initial_rect);
+      window_storage = TRY(window_manager_.NewWindow(
+          window_storage, resource.initial_rect, resource.title,
+          resource.is_visible != 0, resource.has_close != 0,
+          resource.window_definition_id, behind_window,
+          resource.reference_constant));
 
-      // Returns handle to a new Region which represents the local dimensions:
-      auto create_port_region =
-          [&](const std::string& name) -> absl::StatusOr<Handle> {
-        Region region;
-        region.region_size = Rect::fixed_size;
-        region.bounding_box = port_frame;
+      // FIXME: Properly maintain the full WindowList ordered by z-index
+      RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(GlobalVars::WindowList,
+                                                       window_storage));
 
-        return TRY(memory_manager_.NewHandleFor<Region>(region, name));
-      };
+      // Focus (activate) and update the most recently created window
+      event_manager_.QueueWindowActivate(window_storage);
+      event_manager_.QueueWindowUpdate(window_storage);
 
-      auto create_title_handle = [&]() -> absl::StatusOr<Handle> {
-        auto handle = memory_manager_.AllocateHandle(resource.title.size() + 1,
-                                                     "WindowTitle");
-        auto memory = memory_manager_.GetRegionForHandle(handle);
-        RETURN_IF_ERROR(
-            WriteType<absl::string_view>(resource.title, memory, /*offset=*/0));
-        return handle;
-      };
+      return TrapReturn<Ptr>(window_storage);
+    }
+      // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-228.html
+    case Trap::NewWindow: {
+      auto reference_constant = TRY(Pop<uint32_t>());
+      auto go_away_flag = TRY(Pop<uint16_t>());
+      auto behind_window = TRY(Pop<Ptr>());
+      auto window_definition_id = TRY(Pop<int16_t>());
+      auto visible = TRY(Pop<uint16_t>());
+      auto title = TRY(PopRef<std::string>());
+      auto bounds_rect = TRY(PopRef<Rect>());
+      auto window_storage = TRY(Pop<Ptr>());
 
-      auto globals = TRY(port::GetQDGlobals());
+      LOG(INFO) << "TRAP NewWindow(wStorage: 0x" << std::hex << window_storage
+                << ", boundsRect: { " << std::dec << bounds_rect
+                << " }, title: '" << title
+                << "', visible: " << (visible ? "TRUE" : "FALSE")
+                << ", theProc: 0x" << std::hex << window_definition_id
+                << ", behind: 0x" << behind_window
+                << ", goAwayFlog: " << (go_away_flag ? "TRUE" : "FALSE")
+                << ", refCon: 0x" << reference_constant << ")";
 
-      // FIXME: Fill in the rest of the WindowRecord (including GrafPort!)
-      GrafPort port;
-      // The |portBits.bounds| links the local and global coordinate systems
-      // by offseting the screen bounds so that |portRect| appears at (0, 0).
-      // For instance, if the window is meant to be drawn at (60, 60) global
-      // then the origin of |portBits.bounds| is (-60, -60) local and
-      // |portRect| has an origin of (0, 0) in local coordinates.
-      //
-      // See "Imaging with QuickDraw" Figure 2-4 for more details
-      port.port_bits.bounds =
-          OffsetRect(globals.screen_bits.bounds, -resource.initial_rect.left,
-                     -resource.initial_rect.top);
-      port.port_rect = port_frame;
-      // FIXME: This assumes the entire window is visible at creation
-      port.visible_region = TRY(create_port_region("VisibleRegion"));
-
-      WindowRecord record;
-      record.port = std::move(port);
-      record.window_kind = 8 /*userKind*/;
-      record.is_visible = (resource.is_visible != 0);
-      record.has_close = (resource.has_close != 0);
-      record.reference_constant = resource.reference_constant;
-      record.content_region = TRY(create_port_region("ContentRegion"));
-      record.title_handle = TRY(create_title_handle());
-      record.structure_region = TRY(create_port_region("StructRegion"));
-      SetStructRegionAndDrawFrame(screen_, record, memory_manager_);
-
-      RESTRICT_FIELD_ACCESS(
-          WindowRecord, window_storage,
-          WindowRecordFields::port + GrafPortFields::visible_region);
-
-      RETURN_IF_ERROR(WriteType<WindowRecord>(record, memory::kSystemMemory,
-                                              window_storage));
+      window_storage = TRY(window_manager_.NewWindow(
+          window_storage, bounds_rect, title, visible != 0, go_away_flag != 0,
+          window_definition_id, behind_window, reference_constant));
 
       // FIXME: Properly maintain the full WindowList ordered by z-index
       RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(GlobalVars::WindowList,

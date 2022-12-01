@@ -15,7 +15,16 @@ class WindowManager : public MouseListener {
   WindowManager(NativeBridge& native_bridge,
                 EventManager& event_manager,
                 graphics::BitmapImage& screen,
-                const memory::MemoryManager& memory);
+                memory::MemoryManager& memory);
+
+  absl::StatusOr<Ptr> NewWindow(Ptr window_storage,
+                                const Rect& bounds_rect,
+                                std::string title,
+                                bool is_visible,
+                                bool has_close,
+                                int16_t window_definition_id,
+                                Ptr behind_window,
+                                uint32_t reference_constant);
 
   void NativeDragWindow(Ptr window_ptr, int x, int y);
 
@@ -29,7 +38,7 @@ class WindowManager : public MouseListener {
   NativeBridge& native_bridge_;
   EventManager& event_manager_;
   graphics::BitmapImage& screen_;
-  const memory::MemoryManager& memory_;
+  memory::MemoryManager& memory_;
 
   Ptr target_window_ptr_{0};
   WindowRecord target_window_;

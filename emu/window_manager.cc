@@ -2,6 +2,7 @@
 
 #include "emu/graphics/font/basic_font.h"
 #include "emu/graphics/graphics_helpers.h"
+#include "emu/graphics/quickdraw.h"
 #include "emu/memory/memory_map.h"
 
 using ::cyder::graphics::BitmapImage;
@@ -36,11 +37,84 @@ inline Rect CalculateDesktopRegion(const BitmapImage& screen) {
 WindowManager::WindowManager(NativeBridge& native_bridge,
                              EventManager& event_manager,
                              BitmapImage& screen,
-                             const MemoryManager& memory)
+                             MemoryManager& memory)
     : native_bridge_(native_bridge),
       event_manager_(event_manager),
       screen_(screen),
       memory_(memory) {}
+
+absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
+                                             const Rect& bounds_rect,
+                                             std::string title,
+                                             bool is_visible,
+                                             bool has_close,
+                                             int16_t window_definition_id,
+                                             Ptr behind_window,
+                                             uint32_t reference_constant) {
+  // If NULL is passed as |window_storage|, allocate space for the record.
+  if (window_storage == 0) {
+    window_storage = memory_.Allocate(WindowRecord::fixed_size);
+  }
+
+  auto port_frame = NormalizeRect(bounds_rect);
+
+  // Returns handle to a new Region which represents the local dimensions:
+  auto create_port_region =
+      [&](const std::string& name) -> absl::StatusOr<Handle> {
+    Region region;
+    region.region_size = Rect::fixed_size;
+    region.bounding_box = port_frame;
+
+    return TRY(memory_.NewHandleFor<Region>(region, name));
+  };
+
+  auto create_title_handle = [&]() -> absl::StatusOr<Handle> {
+    auto handle = memory_.AllocateHandle(title.size() + 1, "WindowTitle");
+    auto memory = memory_.GetRegionForHandle(handle);
+    RETURN_IF_ERROR(WriteType<absl::string_view>(title, memory, /*offset=*/0));
+    return handle;
+  };
+
+  auto globals = TRY(port::GetQDGlobals());
+
+  // FIXME: Fill in the rest of the WindowRecord (including GrafPort!)
+  GrafPort port;
+  // The |portBits.bounds| links the local and global coordinate systems
+  // by offseting the screen bounds so that |portRect| appears at (0, 0).
+  // For instance, if the window is meant to be drawn at (60, 60) global
+  // then the origin of |portBits.bounds| is (-60, -60) local and
+  // |portRect| has an origin of (0, 0) in local coordinates.
+  //
+  // See "Imaging with QuickDraw" Figure 2-4 for more details
+  port.port_bits.bounds = OffsetRect(globals.screen_bits.bounds,
+                                     -bounds_rect.left, -bounds_rect.top);
+  port.port_rect = port_frame;
+  // FIXME: This assumes the entire window is visible at creation
+  port.visible_region = TRY(create_port_region("VisibleRegion"));
+
+  WindowRecord record;
+  record.port = std::move(port);
+  record.window_kind = 8 /*userKind*/;
+  record.is_visible = is_visible;
+  record.has_close = has_close;
+  record.reference_constant = reference_constant;
+  record.content_region = TRY(create_port_region("ContentRegion"));
+  record.title_handle = TRY(create_title_handle());
+  record.structure_region = TRY(create_port_region("StructRegion"));
+  SetStructRegionAndDrawFrame(screen_, record, memory_);
+
+  // RESTRICT_FIELD_ACCESS(
+  //     WindowRecord, window_storage,
+  //     WindowRecordFields::port + GrafPortFields::visible_region,
+  //     WindowRecordFields::port + GrafPortFields::port_rect,
+  //     WindowRecordFields::port + GrafPortFields::port_rect + 4,
+  //     WindowRecordFields::port + GrafPortFields::text_font,
+  //     WindowRecordFields::has_zoom, WindowRecordFields::window_kind);
+
+  RETURN_IF_ERROR(
+      WriteType<WindowRecord>(record, memory::kSystemMemory, window_storage));
+  return window_storage;
+}
 
 void WindowManager::NativeDragWindow(Ptr window_ptr, int x, int y) {
   native_bridge_.StartNativeMouseControl(this);
