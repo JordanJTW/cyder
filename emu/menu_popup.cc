@@ -36,6 +36,11 @@ Rect GetMenuItemBounds(const Rect& popup_rect, int item_index) {
   return menu_item;
 }
 
+bool IsMenuItemEnabled(const MenuResource& menu, int item_index) {
+  // Contains if the `menu` itself is enabled then each of its items in order
+  return menu.state_bit_field & ((item_index + 1) << 1);
+}
+
 }  // namespace
 
 AutoHiliteRect::AutoHiliteRect(Rect rect, graphics::BitmapImage& screen)
@@ -84,6 +89,12 @@ uint16_t MenuPopUp::GetHoveredMenuItem(int x, int y) {
     return kNoMenuItem;
 
   uint16_t item_index = (y - popup_rect_.top) / (kMenuItemHeight);
+
+  if (!IsMenuItemEnabled(menu_, item_index)) {
+    hovered_rect_.reset();
+    return kNoMenuItem;
+  }
+
   hovered_rect_ = absl::make_unique<AutoHiliteRect>(
       GetMenuItemBounds(popup_rect_, item_index), screen_);
   return (item_index + 1);
