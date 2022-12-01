@@ -33,14 +33,18 @@ std::vector<RegionEntry> log_read_regions;
 std::vector<RegionEntry> log_write_regions;
 
 constexpr GlobalVars kWhitelistReadGlobalVars[] = {
-    GlobalVars::CurApName, GlobalVars::CurStackBase, GlobalVars::FPState,
+    GlobalVars::CurrentA5, GlobalVars::CurApName, GlobalVars::CurStackBase,
+    // Scratch space used by the S.A.N.E. PACK 4 (floating point ops)
+    GlobalVars::FPState,
     // `TST.W HpChk` appears in a few programs and may be related to
     // MPW which reuses this location for its own purposes?
     GlobalVars::HpChk,
     // This appears directly after `CurApName` region in memory and is
     // fairly consistently read while reading `CurApName`... it seems like
     // `CurApName` may actually extend to 34 bytes and not 32?
-    GlobalVars::SaveSegHandle};
+    GlobalVars::SaveSegHandle,
+    // Used to check if an old 64k ROM (-1) or newer ROM (positive value)
+    GlobalVars::ROM85};
 
 constexpr GlobalVars kWhitelistWriteGlobalVars[] = {GlobalVars::FPState};
 
