@@ -472,12 +472,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                 << std::hex << the_event_var << ", sleep: " << std::dec << sleep
                 << ", mouseRgn: 0x" << std::hex << mouse_region << ")";
 
-      // FIXME: Monitor the field accesses with RESTRICT_FIELD_ACCESS.
       auto event = event_manager_.GetNextEvent();
 
+      // FIXME: Monitor the field accesses with RESTRICT_FIELD_ACCESS.
       RETURN_IF_ERROR(WriteType<EventRecord>(
           std::move(event), memory::kSystemMemory, the_event_var));
-      return TrapReturn<uint16_t>(0x0000);
+      return TrapReturn<uint16_t>(event.what != 0 /*nullEvent*/ ? 0xFFFF
+                                                                : 0x0000);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-80.html
     case Trap::TickCount: {
