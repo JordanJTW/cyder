@@ -172,7 +172,8 @@ void WindowManager::OnMouseUp(int x, int y) {
   if (!target_window_ptr_)
     return;
 
-  TempClipRect _(screen_, CalculateDesktopRegion(screen_));
+  auto desktop_rect = CalculateDesktopRegion(screen_);
+  TempClipRect _(screen_, desktop_rect);
 
   // If window drag outline was drawn, restore the bitmap before anything else
   if (saved_bitmap_) {
@@ -183,9 +184,12 @@ void WindowManager::OnMouseUp(int x, int y) {
   auto struct_region =
       MUST(memory_.ReadTypeFromHandle<Region>(target_window_.structure_region));
   {
-    // This ensures that the pattern aligns with its surroundings (based off
-    // of the top-left corner of the screen as opposed to |struct_region|).
-    TempClipRect _(screen_, struct_region.bounding_box);
+    // Clip to the part of the |struct_region| _within_ the desktop rect
+    auto clip_rect = IntersectRect(desktop_rect, struct_region.bounding_box);
+    // Filling the full screen and clipping to the region ensures that the
+    // pattern aligns with its surroundings (relative to the top-left corner
+    // of the screen as opposed to |struct_region|).
+    TempClipRect _(screen_, clip_rect);
     screen_.FillRect(NewRect(0, 0, screen_.width(), screen_.height()),
                      kGreyPattern);
   }

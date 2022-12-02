@@ -32,12 +32,30 @@ inline Rect NormalizeRect(Rect rect) {
 
 // Return a rectangle which is just large enough to contain the provided rects
 inline Rect UnionRect(Rect r1, Rect r2) {
-  Rect urect;
-  urect.top = std::min(r1.top, r2.top);
-  urect.bottom = std::max(r1.bottom, r2.bottom);
-  urect.left = std::min(r1.left, r2.left);
-  urect.right = std::max(r1.right, r2.right);
-  return urect;
+  Rect rect;
+  rect.top = std::min(r1.top, r2.top);
+  rect.bottom = std::max(r1.bottom, r2.bottom);
+  rect.left = std::min(r1.left, r2.left);
+  rect.right = std::max(r1.right, r2.right);
+  return rect;
+}
+
+// Return a rectangle which represents the intersection of two rects or
+// (t: 0, l: 0, b: 0, r: 0) if there is no intersection
+inline Rect IntersectRect(Rect r1, Rect r2) {
+  Rect rect;
+  rect.top = std::max(r1.top, r2.top);
+  rect.bottom = std::min(r1.bottom, r2.bottom);
+  rect.left = std::max(r1.left, r2.left);
+  rect.right = std::min(r1.right, r2.right);
+
+  if (rect.top >= rect.bottom || rect.left >= rect.right) {
+    rect.top = 0;
+    rect.bottom = 0;
+    rect.left = 0;
+    rect.right = 0;
+  }
+  return rect;
 }
 
 // Return True if |parent| contains |child|, otherwise return False
