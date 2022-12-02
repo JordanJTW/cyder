@@ -138,16 +138,17 @@ uint8_t basic_font[128][8] = {
 
 namespace cyder {
 
-void DrawString(graphics::BitmapImage& screen,
-                const std::string& string,
-                int x,
-                int y) {
+int DrawString(graphics::BitmapImage& screen,
+               const std::string& string,
+               int x,
+               int y) {
   int x_offset = 0;
   for (int c : string) {
     screen.CopyBits(basic_font[c], NewRect(0, 0, 8, 8), NewRect(0, 0, 8, 8),
                     NewRect(x + x_offset, y, 8, 8));
     x_offset += 8;
   }
+  return x_offset;
 }
 
 }  // namespace cyder

@@ -1295,6 +1295,18 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return absl::OkStatus();
       });
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Text/Text-158.html
+    case Trap::DrawString: {
+      auto str = TRY(PopRef<std::string>());
+      LOG(INFO) << "TRAP DrawString(str: " << str << ")";
+      return WithPort([&](GrafPort& port) {
+        int width = DrawString(
+            screen_, str, port.pen_location.x - port.port_bits.bounds.left,
+            port.pen_location.y - port.port_bits.bounds.top - 8);
+        port.pen_location.x += width;
+        return absl::OkStatus();
+      });
+    }
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unimplemented Toolbox trap: '", GetTrapName(trap), "'"));
