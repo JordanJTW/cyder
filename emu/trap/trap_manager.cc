@@ -847,6 +847,17 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return absl::OkStatus();
       });
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-101.html
+    case Trap::InverRect: {
+      auto rect = TRY(PopRef<Rect>());
+      LOG(INFO) << "TRAP InvertRect(r: { " << rect << " })";
+
+      screen_.FillRect(TRY(port::ConvertLocalToGlobal(rect)),
+                       kForegroundPattern,
+                       graphics::BitmapImage::FillMode::XOr);
+
+      return absl::OkStatus();
+    }
 
     // ================== Resource Manager ==================
 
