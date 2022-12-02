@@ -10,6 +10,7 @@
 #include "absl/strings/string_view.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
+#include "emu/graphics/font/basic_font.h"
 #include "emu/graphics/grafport_types.tdef.h"
 #include "emu/graphics/graphics_helpers.h"
 #include "emu/graphics/pict_v1.h"
@@ -1253,6 +1254,21 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto ch = TRY(Pop<Integer>());
       LOG(INFO) << "TRAP CharWidth(ch: '" << (char)ch << "')";
       return TrapReturn<Integer>(8 /*8x8 bitmap font*/);
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Text/Text-157.html
+    case Trap::DrawChar: {
+      // TODO: A single byte is based as a 16-bit value on the stack?
+      auto ch = TRY(Pop<Integer>());
+      LOG(INFO) << "TRAP DrawChar(ch: '" << (char)ch << "')";
+
+      return WithPort([&](GrafPort& port) {
+        screen_.CopyBits(
+            basic_font[ch], NewRect(0, 0, 8, 8), NewRect(0, 0, 8, 8),
+            NewRect(port.pen_location.x - port.port_bits.bounds.left,
+                    port.pen_location.y - port.port_bits.bounds.top - 8, 8, 8));
+        port.pen_location.x += 8;
+        return absl::OkStatus();
+      });
     }
     default:
       return absl::UnimplementedError(absl::StrCat(
