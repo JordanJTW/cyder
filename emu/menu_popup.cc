@@ -41,6 +41,11 @@ bool IsMenuItemEnabled(const MenuResource& menu, int item_index) {
   return menu.state_bit_field & ((item_index + 1) << 1);
 }
 
+bool IsMenuItemSeparator(const MenuItemResource& item) {
+  // MenuItem's with a title which starts with "-" appear to be separators
+  return !item.title.empty() && item.title[0] == '-';
+}
+
 }  // namespace
 
 AutoHiliteRect::AutoHiliteRect(Rect rect, graphics::BitmapImage& screen)
@@ -69,8 +74,14 @@ MenuPopUp::MenuPopUp(graphics::BitmapImage& screen,
 
   int y_offset = popup_rect_.top;
   for (const auto& item : menu_.items) {
-    DrawString(screen_, item.title, popup_rect_.left + kMenuItemPaddingWidth,
-               y_offset + kMenuItemPaddingHeight);
+    if (IsMenuItemSeparator(item)) {
+      // Draw a grey line _without_ overwritting the frame around the menu
+      screen_.FillRow(y_offset + (kMenuItemHeight / 2), popup_rect_.left + 1,
+                      popup_rect_.right - 1, /*pattern=*/0xAA);
+    } else {
+      DrawString(screen_, item.title, popup_rect_.left + kMenuItemPaddingWidth,
+                 y_offset + kMenuItemPaddingHeight);
+    }
     y_offset += kMenuItemHeight;
   }
 }
