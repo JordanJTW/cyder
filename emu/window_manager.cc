@@ -103,13 +103,14 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
   record.structure_region = TRY(create_port_region("StructRegion"));
   SetStructRegionAndDrawFrame(screen_, record, memory_);
 
-  // RESTRICT_FIELD_ACCESS(
-  //     WindowRecord, window_storage,
-  //     WindowRecordFields::port + GrafPortFields::visible_region,
-  //     WindowRecordFields::port + GrafPortFields::port_rect,
-  //     WindowRecordFields::port + GrafPortFields::port_rect + 4,
-  //     WindowRecordFields::port + GrafPortFields::text_font,
-  //     WindowRecordFields::has_zoom, WindowRecordFields::window_kind);
+  RESTRICT_FIELD_ACCESS(
+      WindowRecord, window_storage,
+      WindowRecordFields::port + GrafPortFields::visible_region,
+      // TODO: Figure out a more elegant way to allow access to Rects
+      WindowRecordFields::port + GrafPortFields::port_rect,
+      WindowRecordFields::port + GrafPortFields::port_rect + 2,
+      WindowRecordFields::port + GrafPortFields::port_rect + 4,
+      WindowRecordFields::port + GrafPortFields::port_rect + 6);
 
   RETURN_IF_ERROR(
       WriteType<WindowRecord>(record, memory::kSystemMemory, window_storage));
