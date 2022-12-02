@@ -489,6 +489,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       uint32_t elapsed_ticks = elapsed_time_ms / 16;
       return TrapReturn<uint32_t>(elapsed_ticks);
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-58.html
+    case Trap::SystemTask: {
+      return absl::OkStatus();
+    }
 
     // ===================  Menu Manager  ======================
 
@@ -1307,6 +1311,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return absl::OkStatus();
       });
     }
+
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unimplemented Toolbox trap: '", GetTrapName(trap), "'"));
