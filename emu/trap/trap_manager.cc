@@ -964,6 +964,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       QDGlobals qd_globals;
       qd_globals.screen_bits.bounds = screen_bounds;
+      qd_globals.grey.upper = 0xAA55AA55;
+      qd_globals.grey.lower = 0xAA55AA55;
 
       // `globalPtr` accounts for the size of `thePort` so must be added here
       size_t qd_ptr = globalPtr - QDGlobals::fixed_size + sizeof(Ptr);
