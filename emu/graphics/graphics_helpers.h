@@ -41,7 +41,7 @@ inline Rect UnionRect(Rect r1, Rect r2) {
 }
 
 // Return a rectangle which represents the intersection of two rects or
-// (t: 0, l: 0, b: 0, r: 0) if there is no intersection
+// (t:0, l:0, b:0, r:0) if there is no intersection
 inline Rect IntersectRect(Rect r1, Rect r2) {
   Rect rect;
   rect.top = std::max(r1.top, r2.top);
@@ -56,6 +56,11 @@ inline Rect IntersectRect(Rect r1, Rect r2) {
     rect.right = 0;
   }
   return rect;
+}
+
+// Return True if |rect| is set to (t:0, l:0, b:0, r:0) and False otherwise
+inline bool IsZeroRect(const Rect& rect) {
+  return rect.top == 0 && rect.bottom == 0 && rect.left == 0 && rect.right == 0;
 }
 
 // Return True if |parent| contains |child|, otherwise return False

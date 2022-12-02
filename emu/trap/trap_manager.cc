@@ -858,6 +858,20 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-89.html
+    case Trap::SectRect: {
+      auto dst_rect_var = TRY(Pop<Ptr>());
+      auto src2 = TRY(PopRef<Rect>());
+      auto src1 = TRY(PopRef<Rect>());
+
+      LOG(INFO) << "TRAP SectRect(src1: { " << src1 << " }, src2: { " << src2
+                << " }, VAR dstRect: 0x" << dst_rect_var << ")";
+
+      auto rect = IntersectRect(src1, src2);
+      RETURN_IF_ERROR(
+          WriteType<Rect>(rect, memory::kSystemMemory, dst_rect_var));
+      return TrapReturn<uint16_t>(IsZeroRect(rect) ? 0x0000 : 0xFFFF);
+    }
 
     // ================== Resource Manager ==================
 
