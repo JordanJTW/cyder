@@ -689,6 +689,16 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       screen_.FillRect(rect, pattern);
       return absl::OkStatus();
     }
+    case Trap::FrameRect: {
+      auto rect = TRY(PopRef<Rect>());
+      LOG(INFO) << "TRAP FrameRect(rect: " << rect << ")";
+
+      rect = TRY(port::ConvertLocalToGlobal(rect));
+
+      // FIXME: Paint with the color set for QuickDraw (A5 World?)
+      screen_.FrameRect(rect, kForegroundPattern);
+      return absl::OkStatus();
+    }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-100.html
     case Trap::EraseRect: {
       auto rect = TRY(PopRef<Rect>());
