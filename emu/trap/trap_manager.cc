@@ -626,6 +626,22 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "HiliteMenu(menuId: " << menu_id << ")";
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-150.html
+    case Trap::EnableItem: {
+      auto item = TRY(Pop<int16_t>());
+      auto the_menu_handle = TRY(Pop<Handle>());
+      LOG_TRAP() << "EnableItem(theMenu: 0x" << std::hex << the_menu_handle
+                 << ", item: " << std::dec << item << ")";
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-151.html
+    case Trap::DisableItem: {
+      auto item = TRY(Pop<int16_t>());
+      auto the_menu_handle = TRY(Pop<Handle>());
+      LOG_TRAP() << "DisableItem(theMenu: 0x" << std::hex << the_menu_handle
+                 << ", item: " << std::dec << item << ")";
+      return absl::OkStatus();
+    }
 
     // =================  Process Manager  ====================
 
