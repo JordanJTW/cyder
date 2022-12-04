@@ -3,6 +3,7 @@
 #include "emu/graphics/font/basic_font.h"
 #include "emu/graphics/graphics_helpers.h"
 #include "emu/graphics/quickdraw.h"
+#include "emu/memory/memory_helpers.h"
 #include "emu/memory/memory_map.h"
 
 using ::cyder::graphics::BitmapImage;
@@ -116,6 +117,8 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
 
   RETURN_IF_ERROR(
       WriteType<WindowRecord>(record, memory::kSystemMemory, window_storage));
+
+  AddWindowToFront(window_storage);
   return window_storage;
 }
 
@@ -134,12 +137,27 @@ void WindowManager::NativeDragWindow(Ptr window_ptr, int x, int y) {
   outline_rect_ = struct_region.bounding_box;
 }
 
-bool WindowManager::CheckIsWindowDrag(Ptr window_ptr, int x, int y) const {
-  auto window_record =
-      MUST(ReadType<WindowRecord>(memory::kSystemMemory, window_ptr));
+WindowManager::RegionType WindowManager::GetWindowAt(const Point& mouse,
+                                                     Ptr& target_window) const {
+  Ptr current_window = front_window_;
+  while (current_window != 0) {
+    auto window_record =
+        MUST(ReadType<WindowRecord>(memory::kSystemMemory, current_window));
 
+    if (CheckIsWindowDrag(window_record, mouse.x, mouse.y)) {
+      target_window = current_window;
+      return RegionType::Drag;
+    }
+    current_window = window_record.next_window;
+  }
+  return RegionType::None;
+}
+
+bool WindowManager::CheckIsWindowDrag(const WindowRecord& window,
+                                      int x,
+                                      int y) const {
   auto struct_region =
-      MUST(memory_.ReadTypeFromHandle<Region>(window_record.structure_region));
+      MUST(memory_.ReadTypeFromHandle<Region>(window.structure_region));
 
   if (x < struct_region.bounding_box.left ||
       x > struct_region.bounding_box.right ||
@@ -211,6 +229,20 @@ void WindowManager::OnMouseUp(int x, int y) {
   event_manager_.QueueWindowUpdate(target_window_ptr_);
   target_window_ptr_ = 0;
   saved_bitmap_.reset();
+}
+
+void WindowManager::AddWindowToFront(Ptr window_ptr) {
+  auto previous_front = front_window_;
+  front_window_ = window_ptr;
+
+  if (previous_front != 0) {
+    auto status = WithType<WindowRecord>(window_ptr, [&](WindowRecord& record) {
+      record.next_window = previous_front;
+      return absl::OkStatus();
+    });
+    CHECK(status.ok()) << "WithType<WindowRecord>: "
+                       << std::move(status).message();
+  }
 }
 
 void SetStructRegionAndDrawFrame(BitmapImage& screen,

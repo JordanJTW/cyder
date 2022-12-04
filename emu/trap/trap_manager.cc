@@ -1107,18 +1107,16 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return TrapReturn<int16_t>(1 /*inMenuBar*/);
       }
 
-      // FIXME: This assumes there is only one window (the last created)
-      auto the_active_window =
-          TRY(memory::kSystemMemory.Read<Ptr>(GlobalVars::WindowList));
-      if (window_manager_.CheckIsWindowDrag(the_active_window, the_point.x,
-                                            the_point.y)) {
-        RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(the_window_var,
-                                                         the_active_window));
-        return TrapReturn<int16_t>(4 /*inDrag*/);
-      }
-
+      Ptr target_window = 0;
       // FIXME: Check other regions according to docs
-      return TrapReturn<int16_t>(0 /*inDesk*/);
+      switch (window_manager_.GetWindowAt(the_point, target_window)) {
+        case WindowManager::RegionType::Drag:
+          RETURN_IF_ERROR(
+              memory::kSystemMemory.Write<Ptr>(the_window_var, target_window));
+          return TrapReturn<int16_t>(4 /*inDrag*/);
+        case WindowManager::RegionType::None:
+          return TrapReturn<int16_t>(0 /*inDesk*/);
+      }
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-270.html
     case Trap::GetWRefCon: {

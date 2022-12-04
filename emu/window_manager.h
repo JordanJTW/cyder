@@ -28,18 +28,27 @@ class WindowManager : public MouseListener {
 
   void NativeDragWindow(Ptr window_ptr, int x, int y);
 
-  bool CheckIsWindowDrag(Ptr window_ptr, int x, int y) const;
+  bool CheckIsWindowDrag(const WindowRecord& window, int x, int y) const;
+
+  enum class RegionType {
+    None,
+    Drag,
+  };
+  RegionType GetWindowAt(const Point& mouse, Ptr& target_window) const;
 
   // MouseListener implementation:
   void OnMouseMove(int x, int y);
   void OnMouseUp(int x, int y);
 
  private:
+  void AddWindowToFront(Ptr window_ptr);
+
   NativeBridge& native_bridge_;
   EventManager& event_manager_;
   graphics::BitmapImage& screen_;
   memory::MemoryManager& memory_;
 
+  Ptr front_window_{0};
   Ptr target_window_ptr_{0};
   WindowRecord target_window_;
   Point target_offset_;
