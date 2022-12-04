@@ -42,6 +42,11 @@ class WindowManager : public MouseListener {
 
  private:
   void AddWindowToFront(Ptr window_ptr);
+  // Reorders the window linked list so that |window_pt| comes first 
+  void MoveToFront(Ptr window_ptr);
+  // Invalidate windows back to front using the painter's algorithm
+  void InvalidateWindows() const;
+  void InvalidateWindowsImpl(Ptr window_ptr) const;
 
   NativeBridge& native_bridge_;
   EventManager& event_manager_;

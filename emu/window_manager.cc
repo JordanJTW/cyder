@@ -226,7 +226,8 @@ void WindowManager::OnMouseUp(int x, int y) {
                                 target_window_ptr_)
             .ok());
 
-  event_manager_.QueueWindowUpdate(target_window_ptr_);
+  MoveToFront(target_window_ptr_);
+  InvalidateWindows();
   target_window_ptr_ = 0;
   saved_bitmap_.reset();
 }
@@ -243,6 +244,57 @@ void WindowManager::AddWindowToFront(Ptr window_ptr) {
     CHECK(status.ok()) << "WithType<WindowRecord>: "
                        << std::move(status).message();
   }
+}
+
+void WindowManager::MoveToFront(Ptr window_ptr) {
+  if (window_ptr == front_window_) {
+    return;
+  }
+
+  auto target_window =
+      MUST(ReadType<WindowRecord>(memory::kSystemMemory, window_ptr));
+
+  Ptr current_ptr = front_window_;
+  while (current_ptr != 0) {
+    auto status =
+        WithType<WindowRecord>(current_ptr, [&](WindowRecord& record) {
+          if (record.next_window == window_ptr) {
+            record.next_window = target_window.next_window;
+            current_ptr = 0;
+          } else {
+            current_ptr = record.next_window;
+          }
+          return absl::OkStatus();
+        });
+    CHECK(status.ok()) << "WithType<WindowRecord>: "
+                       << std::move(status).message();
+  }
+  target_window.next_window = front_window_;
+  CHECK(
+      WriteType<WindowRecord>(target_window, memory::kSystemMemory, window_ptr)
+          .ok());
+  front_window_ = window_ptr;
+}
+
+void WindowManager::InvalidateWindows() const {
+  InvalidateWindowsImpl(front_window_);
+}
+
+void WindowManager::InvalidateWindowsImpl(Ptr current_window) const {
+  if (current_window == 0) {
+    return;
+  }
+
+  // Recurse window linked list in reverse order (per painter's algo):
+  auto status =
+      WithType<WindowRecord>(current_window, [&](WindowRecord& record) {
+        InvalidateWindowsImpl(record.next_window);
+        return absl::OkStatus();
+      });
+  CHECK(status.ok()) << "WithType<WindowRecord>: "
+                     << std::move(status).message();
+
+  event_manager_.QueueWindowUpdate(current_window);
 }
 
 void SetStructRegionAndDrawFrame(BitmapImage& screen,

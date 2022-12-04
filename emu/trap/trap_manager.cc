@@ -471,6 +471,15 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       // FIXME: Monitor the field accesses with RESTRICT_FIELD_ACCESS.
       RETURN_IF_ERROR(WriteType<EventRecord>(
           std::move(event), memory::kSystemMemory, the_event_var));
+
+      if (event.what == 6 /*updateEvt*/) {
+        RETURN_IF_ERROR(
+            WithType<WindowRecord>(event.message, [&](WindowRecord& window) {
+              SetStructRegionAndDrawFrame(screen_, window, memory_manager_);
+              return absl::OkStatus();
+            }));
+      }
+
       return TrapReturn<uint16_t>(event.what != 0 /*nullEvent*/ ? 0xFFFF
                                                                 : 0x0000);
     }
