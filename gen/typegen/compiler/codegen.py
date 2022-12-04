@@ -352,6 +352,8 @@ class CodeGenerator:
       # Without this any u8 set to 0 ends up being interpreted as an \0 for a string.
       elif member.type.id == 'u8':
         stream_value = f'int({stream_value})'
+      elif member.type.id == 'Boolean':
+        stream_value = f'({stream_value} ? "True" : "False")'
       elif member.type.id == 'str':
         stream_value = f'\"\\"\" << {stream_value} << \"\\"\"'
 
