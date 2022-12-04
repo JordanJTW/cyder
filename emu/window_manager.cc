@@ -110,7 +110,9 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
       WindowRecordFields::port + GrafPortFields::port_rect,
       WindowRecordFields::port + GrafPortFields::port_rect + 2,
       WindowRecordFields::port + GrafPortFields::port_rect + 4,
-      WindowRecordFields::port + GrafPortFields::port_rect + 6);
+      WindowRecordFields::port + GrafPortFields::port_rect + 6,
+      // TODO: Why is the `picture_handle` being accessed by "Window" demo?
+      WindowRecordFields::picture_handle);
 
   RETURN_IF_ERROR(
       WriteType<WindowRecord>(record, memory::kSystemMemory, window_storage));
