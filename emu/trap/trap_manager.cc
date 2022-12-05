@@ -1076,10 +1076,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "NewWindow(wStorage: 0x" << std::hex << window_storage
                  << ", boundsRect: { " << std::dec << bounds_rect
                  << " }, title: '" << title
-                 << "', visible: " << (visible ? "TRUE" : "FALSE")
+                 << "', visible: " << (visible ? "True" : "False")
                  << ", theProc: 0x" << std::hex << window_definition_id
                  << ", behind: 0x" << behind_window
-                 << ", goAwayFlog: " << (go_away_flag ? "TRUE" : "FALSE")
+                 << ", goAwayFlog: " << (go_away_flag ? "True" : "False")
                  << ", refCon: 0x" << reference_constant << ")";
 
       window_storage = TRY(window_manager_.NewWindow(
