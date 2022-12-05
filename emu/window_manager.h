@@ -36,13 +36,15 @@ class WindowManager : public MouseListener {
   };
   RegionType GetWindowAt(const Point& mouse, Ptr& target_window) const;
 
+  Ptr front_window() const { return front_window_; }
+
   // MouseListener implementation:
   void OnMouseMove(int x, int y);
   void OnMouseUp(int x, int y);
 
  private:
   void AddWindowToFront(Ptr window_ptr);
-  // Reorders the window linked list so that |window_pt| comes first 
+  // Reorders the window linked list so that |window_pt| comes first
   void MoveToFront(Ptr window_ptr);
   // Invalidate windows back to front using the painter's algorithm
   void InvalidateWindows() const;

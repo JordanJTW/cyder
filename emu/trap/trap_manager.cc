@@ -1052,10 +1052,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
           resource.window_definition_id, behind_window,
           resource.reference_constant));
 
-      // FIXME: Properly maintain the full WindowList ordered by z-index
-      RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(GlobalVars::WindowList,
-                                                       window_storage));
-
       // Focus (activate) and update the most recently created window
       event_manager_.QueueWindowActivate(window_storage);
       event_manager_.QueueWindowUpdate(window_storage);
@@ -1086,10 +1082,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
           window_storage, bounds_rect, title, visible != 0, go_away_flag != 0,
           window_definition_id, behind_window, reference_constant));
 
-      // FIXME: Properly maintain the full WindowList ordered by z-index
-      RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(GlobalVars::WindowList,
-                                                       window_storage));
-
       // Focus (activate) and update the most recently created window
       event_manager_.QueueWindowActivate(window_storage);
       event_manager_.QueueWindowUpdate(window_storage);
@@ -1099,9 +1091,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-243.html
     case Trap::FrontWindow: {
       LOG_TRAP() << "FrontWindow()";
-      auto front_window =
-          TRY(memory::kSystemMemory.Read<Ptr>(GlobalVars::WindowList));
-      return TrapReturn<Ptr>(front_window);
+      return TrapReturn<Ptr>(window_manager_.front_window());
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-242.html
     case Trap::FindWindow: {
