@@ -1,5 +1,7 @@
 #pragma once
 
+#include <list>
+
 #include "emu/event_manager.h"
 #include "emu/graphics/bitmap_image.h"
 #include "emu/graphics/grafport_types.tdef.h"
@@ -36,29 +38,28 @@ class WindowManager : public MouseListener {
   };
   RegionType GetWindowAt(const Point& mouse, Ptr& target_window) const;
 
-  Ptr front_window() const { return front_window_; }
+  Ptr GetFrontWindow() const;
 
   // MouseListener implementation:
   void OnMouseMove(int x, int y);
   void OnMouseUp(int x, int y);
 
  private:
-  void AddWindowToFront(Ptr window_ptr);
   // Reorders the window linked list so that |window_pt| comes first
   void MoveToFront(Ptr window_ptr);
   // Invalidate windows back to front using the painter's algorithm
   void InvalidateWindows() const;
-  void InvalidateWindowsImpl(Ptr window_ptr) const;
 
   NativeBridge& native_bridge_;
   EventManager& event_manager_;
   graphics::BitmapImage& screen_;
   memory::MemoryManager& memory_;
 
-  Ptr front_window_{0};
   Ptr target_window_ptr_{0};
   WindowRecord target_window_;
   Point target_offset_;
+
+  std::list<Ptr> window_list_;
 
   Rect outline_rect_;
   std::unique_ptr<graphics::BitmapImage> saved_bitmap_;

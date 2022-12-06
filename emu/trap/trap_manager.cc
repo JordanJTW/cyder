@@ -1091,7 +1091,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-243.html
     case Trap::FrontWindow: {
       LOG_TRAP() << "FrontWindow()";
-      return TrapReturn<Ptr>(window_manager_.front_window());
+      return TrapReturn<Ptr>(window_manager_.GetFrontWindow());
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-242.html
     case Trap::FindWindow: {

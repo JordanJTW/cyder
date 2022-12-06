@@ -118,7 +118,7 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
   RETURN_IF_ERROR(
       WriteType<WindowRecord>(record, memory::kSystemMemory, window_storage));
 
-  AddWindowToFront(window_storage);
+  window_list_.push_front(window_storage);
   return window_storage;
 }
 
@@ -139,8 +139,7 @@ void WindowManager::NativeDragWindow(Ptr window_ptr, int x, int y) {
 
 WindowManager::RegionType WindowManager::GetWindowAt(const Point& mouse,
                                                      Ptr& target_window) const {
-  Ptr current_window = front_window_;
-  while (current_window != 0) {
+  for (auto current_window : window_list_) {
     auto window_record =
         MUST(ReadType<WindowRecord>(memory::kSystemMemory, current_window));
 
@@ -148,7 +147,6 @@ WindowManager::RegionType WindowManager::GetWindowAt(const Point& mouse,
       target_window = current_window;
       return RegionType::Drag;
     }
-    current_window = window_record.next_window;
   }
   return RegionType::None;
 }
@@ -232,69 +230,33 @@ void WindowManager::OnMouseUp(int x, int y) {
   saved_bitmap_.reset();
 }
 
-void WindowManager::AddWindowToFront(Ptr window_ptr) {
-  auto previous_front = front_window_;
-  front_window_ = window_ptr;
-
-  if (previous_front != 0) {
-    auto status = WithType<WindowRecord>(window_ptr, [&](WindowRecord& record) {
-      record.next_window = previous_front;
-      return absl::OkStatus();
-    });
-    CHECK(status.ok()) << "WithType<WindowRecord>: "
-                       << std::move(status).message();
-  }
-}
-
 void WindowManager::MoveToFront(Ptr window_ptr) {
-  if (window_ptr == front_window_) {
+  CHECK(!window_list_.empty()) << "Window to move should be in list...";
+  if (window_ptr == window_list_.front()) {
     return;
   }
 
-  auto target_window =
-      MUST(ReadType<WindowRecord>(memory::kSystemMemory, window_ptr));
+  auto current_iter =
+      std::find(window_list_.begin(), window_list_.end(), window_ptr);
+  CHECK(current_iter != window_list_.cend())
+      << "Window to move should be in list...";
 
-  Ptr current_ptr = front_window_;
-  while (current_ptr != 0) {
-    auto status =
-        WithType<WindowRecord>(current_ptr, [&](WindowRecord& record) {
-          if (record.next_window == window_ptr) {
-            record.next_window = target_window.next_window;
-            current_ptr = 0;
-          } else {
-            current_ptr = record.next_window;
-          }
-          return absl::OkStatus();
-        });
-    CHECK(status.ok()) << "WithType<WindowRecord>: "
-                       << std::move(status).message();
-  }
-  target_window.next_window = front_window_;
-  CHECK(
-      WriteType<WindowRecord>(target_window, memory::kSystemMemory, window_ptr)
-          .ok());
-  front_window_ = window_ptr;
+  window_list_.splice(window_list_.begin(), window_list_, current_iter,
+                      std::next(current_iter));
+}
+
+Ptr WindowManager::GetFrontWindow() const {
+  if (window_list_.empty())
+    return 0;
+
+  return window_list_.front();
 }
 
 void WindowManager::InvalidateWindows() const {
-  InvalidateWindowsImpl(front_window_);
-}
-
-void WindowManager::InvalidateWindowsImpl(Ptr current_window) const {
-  if (current_window == 0) {
-    return;
+  // Invalidate windows in reverse order per the painter's algorithm
+  for (auto it = window_list_.rbegin(); it != window_list_.rend(); ++it) {
+    event_manager_.QueueWindowUpdate(*it);
   }
-
-  // Recurse window linked list in reverse order (per painter's algo):
-  auto status =
-      WithType<WindowRecord>(current_window, [&](WindowRecord& record) {
-        InvalidateWindowsImpl(record.next_window);
-        return absl::OkStatus();
-      });
-  CHECK(status.ok()) << "WithType<WindowRecord>: "
-                     << std::move(status).message();
-
-  event_manager_.QueueWindowUpdate(current_window);
 }
 
 void SetStructRegionAndDrawFrame(BitmapImage& screen,
