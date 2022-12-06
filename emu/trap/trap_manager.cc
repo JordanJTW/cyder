@@ -1088,6 +1088,14 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       return TrapReturn<Ptr>(window_storage);
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-258.html
+    case Trap::DisposeWindow: {
+      auto the_window = TRY(Pop<Ptr>());
+      LOG_TRAP() << "DisposeWindow(theWindow: 0x" << std::hex << the_window
+                 << ")";
+      window_manager_.DisposeWindow(the_window);
+      return absl::OkStatus();
+    }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-243.html
     case Trap::FrontWindow: {
       LOG_TRAP() << "FrontWindow()";

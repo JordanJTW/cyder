@@ -122,6 +122,15 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
   return window_storage;
 }
 
+void WindowManager::DisposeWindow(Ptr window_ptr) {
+  auto window_record =
+      MUST(ReadType<WindowRecord>(memory::kSystemMemory, window_ptr));
+
+  RepaintDesktopOverWindow(window_record);
+  window_list_.remove(window_ptr);
+  InvalidateWindows();
+}
+
 void WindowManager::NativeDragWindow(Ptr window_ptr, int x, int y) {
   native_bridge_.StartNativeMouseControl(this);
   target_window_ptr_ = window_ptr;
@@ -191,8 +200,7 @@ void WindowManager::OnMouseUp(int x, int y) {
   if (!target_window_ptr_)
     return;
 
-  auto desktop_rect = CalculateDesktopRegion(screen_);
-  TempClipRect _(screen_, desktop_rect);
+  TempClipRect _(screen_, CalculateDesktopRegion(screen_));
 
   // If window drag outline was drawn, restore the bitmap before anything else
   if (saved_bitmap_) {
@@ -200,18 +208,7 @@ void WindowManager::OnMouseUp(int x, int y) {
                        outline_rect_);
   }
 
-  auto struct_region =
-      MUST(memory_.ReadTypeFromHandle<Region>(target_window_.structure_region));
-  {
-    // Clip to the part of the |struct_region| _within_ the desktop rect
-    auto clip_rect = IntersectRect(desktop_rect, struct_region.bounding_box);
-    // Filling the full screen and clipping to the region ensures that the
-    // pattern aligns with its surroundings (relative to the top-left corner
-    // of the screen as opposed to |struct_region|).
-    TempClipRect _(screen_, clip_rect);
-    screen_.FillRect(NewRect(0, 0, screen_.width(), screen_.height()),
-                     kGreyPattern);
-  }
+  RepaintDesktopOverWindow(target_window_);
 
   // TODO: What causes the +1 to be needed? (Double-clicking the title bar
   //       shifts the window up and to the left otherwise...)
@@ -256,6 +253,22 @@ void WindowManager::InvalidateWindows() const {
   // Invalidate windows in reverse order per the painter's algorithm
   for (auto it = window_list_.rbegin(); it != window_list_.rend(); ++it) {
     event_manager_.QueueWindowUpdate(*it);
+  }
+}
+
+void WindowManager::RepaintDesktopOverWindow(const WindowRecord& window) {
+  auto struct_region =
+      MUST(memory_.ReadTypeFromHandle<Region>(window.structure_region));
+  {
+    // Clip to the part of the |struct_region| _within_ the desktop rect
+    auto clip_rect = IntersectRect(CalculateDesktopRegion(screen_),
+                                   struct_region.bounding_box);
+    // Filling the full screen and clipping to the region ensures that the
+    // pattern aligns with its surroundings (relative to the top-left corner
+    // of the screen as opposed to |struct_region|).
+    TempClipRect _(screen_, clip_rect);
+    screen_.FillRect(NewRect(0, 0, screen_.width(), screen_.height()),
+                     kGreyPattern);
   }
 }
 

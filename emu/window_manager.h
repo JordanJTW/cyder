@@ -28,6 +28,8 @@ class WindowManager : public MouseListener {
                                 Ptr behind_window,
                                 uint32_t reference_constant);
 
+  void DisposeWindow(Ptr window_ptr);
+
   void NativeDragWindow(Ptr window_ptr, int x, int y);
 
   bool CheckIsWindowDrag(const WindowRecord& window, int x, int y) const;
@@ -49,6 +51,8 @@ class WindowManager : public MouseListener {
   void MoveToFront(Ptr window_ptr);
   // Invalidate windows back to front using the painter's algorithm
   void InvalidateWindows() const;
+  // Repaint the desktop pattern where the window (and its frame) are
+  void RepaintDesktopOverWindow(const WindowRecord& window);
 
   NativeBridge& native_bridge_;
   EventManager& event_manager_;
