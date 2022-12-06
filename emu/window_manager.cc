@@ -262,6 +262,8 @@ void WindowManager::InvalidateWindows() const {
 void SetStructRegionAndDrawFrame(BitmapImage& screen,
                                  WindowRecord& window,
                                  const MemoryManager& memory) {
+  TempClipRect _(screen, CalculateDesktopRegion(screen));
+
   constexpr uint16_t kFrameWidth = 1u;
 
   Rect global_port_rect =
