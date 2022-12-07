@@ -1,5 +1,6 @@
 #include "emu/menu_popup.h"
 
+#include "absl/strings/str_format.h"
 #include "emu/graphics/font/basic_font.h"
 #include "emu/graphics/graphics_helpers.h"
 
@@ -8,7 +9,7 @@ namespace {
 
 constexpr size_t kMenuItemHeight = 12u;
 constexpr size_t kMenuItemGlyphWidth = 8u;
-constexpr size_t kMenuItemPaddingWidth = 10u;
+constexpr size_t kMenuItemPaddingWidth = 6u;
 constexpr size_t kMenuItemPaddingHeight = 2u;
 
 constexpr uint8_t kMenuPopUpPattern[8] = {0x00, 0x00, 0x00, 0x00,
@@ -17,11 +18,21 @@ constexpr uint8_t kMenuPopUpPattern[8] = {0x00, 0x00, 0x00, 0x00,
 constexpr uint8_t kHighLightPattern[8] = {0xFF, 0xFF, 0xFF, 0xFF,
                                           0xFF, 0xFF, 0xFF, 0xFF};
 
+// Minimum allowed distance between a menu item title and its keyboard shortcut
+constexpr int kMinimumShortcutPadding = 12;
+
 Rect GetPopUpBounds(const MenuResource& menu, const Rect& anchor_rect) {
   int width = 0, height = 0;
   for (const auto& item : menu.items) {
     height += kMenuItemHeight;
-    width = std::max(width, int(item.title.size() * kMenuItemGlyphWidth));
+    int item_width = item.title.size() * kMenuItemGlyphWidth;
+    if (item.keyboard_shortcut != 0) {
+      // The keyboard shortcut needs to maintain a minimum distance from
+      // the longest item title and will always be displayed as two
+      // characters: "⌘{item.keyboard_shortcut}"
+      item_width += kMinimumShortcutPadding + (kMenuItemGlyphWidth * 2);
+    }
+    width = std::max(width, item_width);
   }
   return NewRect(anchor_rect.left, anchor_rect.bottom,
                  width + kMenuItemPaddingWidth * 2, height);
@@ -81,6 +92,14 @@ MenuPopUp::MenuPopUp(graphics::BitmapImage& screen,
     } else {
       DrawString(screen_, item.title, popup_rect_.left + kMenuItemPaddingWidth,
                  y_offset + kMenuItemPaddingHeight);
+      if (item.keyboard_shortcut != 0) {
+        // See GetPopUpBounds() above for an explanation of this math :P
+        DrawString(screen_,
+                   absl::StrFormat("&%c", (char)item.keyboard_shortcut),
+                   popup_rect_.right - kMenuItemPaddingWidth -
+                       (kMenuItemGlyphWidth * 2),
+                   y_offset + kMenuItemPaddingHeight);
+      }
     }
     y_offset += kMenuItemHeight;
   }
