@@ -165,6 +165,12 @@ void cpu_instr_callback(unsigned int pc) {
   }
   CHECK(m68k_get_reg(NULL, M68K_REG_ISP) <= cyder::memory::kStackStart);
 
+  auto instr = MUST(cyder::memory::kSystemMemory.Read<uint16_t>(pc));
+  if ((instr & 0xFFC0) == 0x4E80) {
+    // Is JSR instruction per: http://goldencrystal.free.fr/M68kOpcodes-v2.3.pdf
+    // TODO: Track subroutine calls/returns for debugging?
+  }
+
   single_step = breakpoint;
 
   if (single_step)
