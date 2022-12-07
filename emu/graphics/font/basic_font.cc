@@ -139,7 +139,7 @@ uint8_t basic_font[128][8] = {
 namespace cyder {
 
 int DrawString(graphics::BitmapImage& screen,
-               const std::string& string,
+               absl::string_view string,
                int x,
                int y) {
   int x_offset = 0;
