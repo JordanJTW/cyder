@@ -3,6 +3,7 @@
 #include "core/logging.h"
 #include "core/memory_region.h"
 #include "emu/memory/memory_map.h"
+#include "gen/global_names.h"
 #include "resource.h"
 
 namespace cyder {
@@ -33,6 +34,9 @@ absl::Status WriteAppParams(memory::MemoryManager& memory_manager,
   // Finder Information Handle
   RETURN_IF_ERROR(
       memory::kSystemMemory.Write<uint32_t>(a5_world_offset + 16, handle));
+  // This info should also be accessible through the AppParmHandle global
+  RETURN_IF_ERROR(
+      memory::kSystemMemory.Write<uint32_t>(GlobalVars::AppParmHandle, handle));
   return absl::OkStatus();
 }
 

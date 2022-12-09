@@ -34,6 +34,7 @@ std::vector<RegionEntry> log_write_regions;
 
 constexpr GlobalVars kWhitelistReadGlobalVars[] = {
     GlobalVars::CurrentA5, GlobalVars::CurApName, GlobalVars::CurStackBase,
+    GlobalVars::AppParmHandle,
     // Scratch space used by the S.A.N.E. PACK 4 (floating point ops)
     GlobalVars::FPState,
     // `TST.W HpChk` appears in a few programs and may be related to
