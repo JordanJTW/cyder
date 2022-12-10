@@ -1359,6 +1359,28 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       Handle handle = resource_manager_.GetResource('STR ', string_id);
       return TrapReturn<Handle>(handle);
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Text/Text-155.html
+    case Trap::GetFontInfo: {
+      auto info_var = TRY(Pop<Ptr>());
+      WithType<FontInfo>(info_var, [&](FontInfo& info) {
+        LOG_TRAP() << "GetFontInfo(VAR info: { " << info << " } @ 0x"
+                   << std::hex << info_var << ")";
+        // Only a fixed width 8x8 bitmap font is currently supported :P
+        info.ascent = 8;
+        info.descent = 0;
+        info.widMax = 8;
+        info.leading = 0;
+        return absl::OkStatus();
+      });
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Text/Text-163.html
+    case Trap::StringWidth: {
+      auto str = TRY(PopRef<absl::string_view>());
+      LOG_TRAP() << "StringWidth(s: '" << str << "')";
+      // Only a fixed width 8x8 bitmap font is currently supported :P
+      return TrapReturn<Integer>(str.size() * 8);
+    }
 
     default:
       return absl::UnimplementedError(absl::StrCat(
