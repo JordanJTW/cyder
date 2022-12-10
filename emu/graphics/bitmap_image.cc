@@ -1,6 +1,7 @@
 #include "emu/graphics/bitmap_image.h"
 
 #include <bitset>
+#include <fstream>
 
 #include "core/logging.h"
 #include "emu/graphics/copybits.h"
@@ -262,6 +263,34 @@ void BitmapImage::PrintBitmap() const {
     if ((i + 1) % PixelWidthToBytes(width_) == 0) {
       std::cout << std::endl;
     }
+  }
+}
+
+void BitmapImage::SaveBitmap(const std::string& path) const {
+  std::ofstream icon;
+  icon.open(path, std::ios::out);
+  auto write_byte = [&](uint8_t byte, int length) {
+    length = 7 - length;
+    for (int i = 7; i >= length; --i) {
+      icon << ((byte & (1 << i)) ? "1 " : "0 ");
+    }
+  };
+
+  icon << "P1 " << width_ << " " << height_ << "\n";
+
+  int byte_width = PixelWidthToBytes(width_);
+
+  for (int y = 0; y < height_; ++y) {
+    for (int x = 0; x < byte_width; ++x) {
+      int bit_length = width_ - 8 * x;
+      if (bit_length > 7) {
+        bit_length = 7;
+      } else {
+        bit_length -= 1;
+      }
+      write_byte(bitmap_[x + y * byte_width], bit_length);
+    }
+    icon << "\n";
   }
 }
 

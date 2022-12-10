@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 #include "emu/graphics/grafport_types.tdef.h"
 
@@ -52,6 +53,7 @@ class BitmapImage {
                   const Rect& dst_rect);
 
   void PrintBitmap() const;
+  void SaveBitmap(const std::string& path) const;
 
   int height() const { return height_; }
   int width() const { return width_; }
