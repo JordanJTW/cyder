@@ -1323,6 +1323,14 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return absl::OkStatus();
       });
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Text/Text-303.html
+    case Trap::GetString: {
+      auto string_id = TRY(Pop<Integer>());
+      LOG_TRAP() << "GetString(stringID: " << string_id << ")";
+
+      Handle handle = resource_manager_.GetResource('STR ', string_id);
+      return TrapReturn<Handle>(handle);
+    }
 
     default:
       return absl::UnimplementedError(absl::StrCat(
