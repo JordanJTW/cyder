@@ -301,7 +301,9 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-32.html
     case Trap::HUnlock:
     // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-33.html
-    case Trap::HPurge: {
+    case Trap::HPurge:
+    // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-34.html
+    case Trap::HNoPurge: {
       // MemoryManager currently does not move or purge blocks so assume success
       m68k_set_reg(M68K_REG_D0, /*noErr*/ 0);
       return absl::OkStatus();
