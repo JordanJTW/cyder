@@ -1331,6 +1331,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto str = TRY(PopRef<std::string>());
       LOG_TRAP() << "DrawString(str: " << str << ")";
       return WithPort([&](GrafPort& port) {
+        graphics::TempClipRect _(
+            screen_, OffsetRect(port.port_rect, -port.port_bits.bounds.left,
+                                -port.port_bits.bounds.top));
         int width = DrawString(
             screen_, str, port.pen_location.x - port.port_bits.bounds.left,
             port.pen_location.y - port.port_bits.bounds.top - 8);
