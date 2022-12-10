@@ -987,12 +987,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
           WriteType<QDGlobals>(qd_globals, memory::kSystemMemory, qd_ptr));
 
       RESTRICT_FIELD_ACCESS(
-          QDGlobals, qd_ptr,
+          QDGlobals, qd_ptr, QDGlobalsFields::random_seed,
           // TODO: Figure out a more elegant way to allow access to Rects
           QDGlobalsFields::screen_bits + BitMapFields::bounds,
           QDGlobalsFields::screen_bits + BitMapFields::bounds + 2,
           QDGlobalsFields::screen_bits + BitMapFields::bounds + 4,
-          QDGlobalsFields::screen_bits + BitMapFields::bounds + 6);
+          QDGlobalsFields::screen_bits + BitMapFields::bounds + 6,
+          QDGlobalsFields::the_port);
 
       return absl::OkStatus();
     }
