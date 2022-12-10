@@ -69,6 +69,11 @@ inline bool ContainsRect(const Rect& parent, const Rect& child) {
          parent.bottom >= child.bottom && parent.right >= child.right;
 }
 
+inline bool EqualRect(const Rect& r1, const Rect& r2) {
+  return r1.top == r2.top && r1.left == r2.left && r1.bottom == r2.bottom &&
+         r1.right == r2.right;
+}
+
 inline int16_t RectWidth(const Rect& rect) {
   return rect.right - rect.left;
 }

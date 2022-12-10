@@ -909,6 +909,14 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
           WriteType<Rect>(rect, memory::kSystemMemory, dst_rect_var));
       return TrapReturn<uint16_t>(IsZeroRect(rect) ? 0x0000 : 0xFFFF);
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-94.html
+    case Trap::EqualRect: {
+      auto rect2 = TRY(PopRef<Rect>());
+      auto rect1 = TRY(PopRef<Rect>());
+      LOG_TRAP() << "EqualRect(rect1: { " << rect1 << " }, rect2: { " << rect2
+                 << " })";
+      return TrapReturn<uint16_t>(EqualRect(rect1, rect2) ? 0xFFFF : 0x0000);
+    }
 
     // ================== Resource Manager ==================
 
