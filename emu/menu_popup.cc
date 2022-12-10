@@ -49,7 +49,7 @@ Rect GetMenuItemBounds(const Rect& popup_rect, int item_index) {
 
 bool IsMenuItemEnabled(const MenuResource& menu, int item_index) {
   // Contains if the `menu` itself is enabled then each of its items in order
-  return menu.state_bit_field & ((item_index + 1) << 1);
+  return menu.state_bit_field >> (item_index + 1) & 1;
 }
 
 bool IsMenuItemSeparator(const MenuItemResource& item) {
