@@ -767,9 +767,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto top = TRY(Pop<uint16_t>());
       auto left = TRY(Pop<uint16_t>());
       auto rect_ptr = TRY(Pop<Ptr>());
-      LOG_TRAP() << "SetRect(r: 0x" << std::hex << rect_ptr
-                 << ", left: " << std::dec << left << ", top: " << top
-                 << ", right: " << right << ", bottom: " << bottom << ")";
+      LOG_TRAP() << "SetRect(r: 0x" << std::hex << rect_ptr << std::dec
+                 << "top: " << top << ", left: " << left
+                 << ", bottom: " << bottom << ", right: " << right << ")";
       struct Rect rect;
       rect.left = left;
       rect.top = top;
