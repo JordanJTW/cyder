@@ -348,6 +348,8 @@ class CodeGenerator:
       stream_value = f'obj.{member.id}'
       if isinstance(member.type, CheckedArrayTypeExpression):
         stream_value = f'"[{member.type.inner_type};" << obj.{member.id}.size() << "]"'
+      elif member.type.is_struct:
+        stream_value = f'"{{ " << {stream_value} << " }}"'
       # Cast value to an int to work around printing u8 and having them appear as char...
       # Without this any u8 set to 0 ends up being interpreted as an \0 for a string.
       elif member.type.id == 'u8':
