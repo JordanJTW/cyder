@@ -1382,6 +1382,46 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       return TrapReturn<Integer>(str.size() * 8);
     }
 
+    // =========================  TextEdit  ==========================
+
+    // Link: http://0.0.0.0:8000/docs/mac/Text/Text-89.html
+    case Trap::TETextBox: {
+      auto align = TRY(Pop<int16_t>());
+      auto box = TRY(PopRef<Rect>());
+      auto length = TRY(Pop<uint32_t>());
+      auto text_ptr = TRY(Pop<Ptr>());
+      LOG_TRAP() << "TETextBox(text: 0x" << std::hex << text_ptr
+                 << ", length: " << std::dec << length << ", box: { " << box
+                 << " }, align: " << align << ")";
+
+      box = TRY(port::ConvertLocalToGlobal(box));
+
+      auto text = absl::string_view(
+          reinterpret_cast<const char*>(memory::kSystemMemory.raw_ptr()) +
+              text_ptr,
+          length);
+
+      // Only a 8x8 bitmap font is currently supported so assume 8px wide chars
+      auto length_px = text.size() * 8;
+      // Alignment Constants Link:
+      //   http://0.0.0.0:8000/docs/mac/Text/Text-125.html#MARKER-9-577
+      switch (align) {
+        case 1: {  // teCenter
+          int offset_x = (RectWidth(box) - length_px) / 2;
+          int offset_y = (RectHeight(box) - 8) / 2;
+          DrawString(screen_, text, box.left + offset_x, box.top + offset_y);
+          break;
+        }
+        case -1:  // teFlushRight
+          DrawString(screen_, text, box.right - length_px, box.top);
+          break;
+        case 0:   // teFlushDefault (assume Left-to-Right script)
+        case -2:  // teFlushLeft
+          DrawString(screen_, text, box.left, box.top);
+          break;
+      }
+      return absl::OkStatus();
+    }
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unimplemented Toolbox trap: '", GetTrapName(trap), "'"));
