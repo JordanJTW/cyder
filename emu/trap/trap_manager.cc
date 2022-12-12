@@ -1423,7 +1423,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         item_list.SkipNext(4);  // reserved
         LOG(INFO) << "Item #" << (i + 1);
         LOG(INFO) << "Rect: { " << TRY(item_list.NextType<Rect>()) << " }";
-        LOG(INFO) << "Item Type: " << TRY(item_list.Next<uint8_t>());
+        LOG(INFO) << "Item Type: " << (int)TRY(item_list.Next<uint8_t>());
         // Requires escaping due to carriage return ('\r') escape codes
         LOG(INFO) << "Text: "
                   << absl::CEscape(
