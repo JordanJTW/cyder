@@ -984,6 +984,19 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "ClipRect(r: { " << r << " })";
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-132.html
+    case Trap::NewRgn: {
+      LOG_TRAP() << "NewRgn()";
+      return TrapReturn<Handle>(
+          TRY(memory_manager_.NewHandleFor<Region>({}, "NewRgn")));
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-135.html
+    case Trap::DisposeRgn: {
+      auto rgn = TRY(Pop<Handle>());
+      LOG_TRAP() << "DisposeRgn(rgn: 0x" << std::hex << rgn << ")";
+      // TODO: Implement this once Memory Manager supports freeing memory
+      return absl::OkStatus();
+    }
 
     // ================== Resource Manager ==================
 
