@@ -74,6 +74,11 @@ inline bool EqualRect(const Rect& r1, const Rect& r2) {
          r1.right == r2.right;
 }
 
+inline bool PointInRect(const Point& pt, const Rect& rect) {
+  return pt.x >= rect.left && pt.x < rect.right && pt.y >= rect.top &&
+         pt.y < rect.bottom;
+}
+
 inline int16_t RectWidth(const Rect& rect) {
   return rect.right - rect.left;
 }

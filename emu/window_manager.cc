@@ -154,27 +154,21 @@ WindowManager::RegionType WindowManager::GetWindowAt(const Point& mouse,
     auto window_record =
         MUST(ReadType<WindowRecord>(memory::kSystemMemory, current_window));
 
-    if (CheckIsWindowDrag(window_record, mouse.x, mouse.y)) {
+    auto title_rect = GetRegionRect(window_record.structure_region);
+    title_rect.bottom = title_rect.top + kFrameTitleHeight;
+
+    if (PointInRect(mouse, title_rect)) {
       target_window = current_window;
       return RegionType::Drag;
     }
+
+    auto content_rect = GetRegionRect(window_record.content_region);
+    if (PointInRect(mouse, content_rect)) {
+      target_window = current_window;
+      return RegionType::Content;
+    }
   }
   return RegionType::None;
-}
-
-bool WindowManager::CheckIsWindowDrag(const WindowRecord& window,
-                                      int x,
-                                      int y) const {
-  auto struct_region =
-      MUST(memory_.ReadTypeFromHandle<Region>(window.structure_region));
-
-  if (x < struct_region.bounding_box.left ||
-      x > struct_region.bounding_box.right ||
-      y < struct_region.bounding_box.top ||
-      y > struct_region.bounding_box.top + kFrameTitleHeight) {
-    return false;
-  }
-  return true;
 }
 
 void WindowManager::OnMouseMove(int x, int y) {
@@ -272,6 +266,12 @@ void WindowManager::RepaintDesktopOverWindow(const WindowRecord& window) {
     screen_.FillRect(NewRect(0, 0, screen_.width(), screen_.height()),
                      kGreyPattern);
   }
+}
+
+Rect WindowManager::GetRegionRect(Handle handle) const {
+  auto region = MUST(memory_.ReadTypeFromHandle<Region>(handle));
+  CHECK_EQ(region.size(), 10u) << "Requires rectangular Region";
+  return region.bounding_box;
 }
 
 void SetStructRegionAndDrawFrame(BitmapImage& screen,

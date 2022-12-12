@@ -32,11 +32,10 @@ class WindowManager : public MouseListener {
 
   void NativeDragWindow(Ptr window_ptr, int x, int y);
 
-  bool CheckIsWindowDrag(const WindowRecord& window, int x, int y) const;
-
   enum class RegionType {
     None,
     Drag,
+    Content,
   };
   RegionType GetWindowAt(const Point& mouse, Ptr& target_window) const;
 
@@ -53,6 +52,8 @@ class WindowManager : public MouseListener {
   void InvalidateWindows() const;
   // Repaint the desktop pattern where the window (and its frame) are
   void RepaintDesktopOverWindow(const WindowRecord& window);
+
+  Rect GetRegionRect(Handle handle) const;
 
   NativeBridge& native_bridge_;
   EventManager& event_manager_;

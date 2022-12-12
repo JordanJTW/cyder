@@ -1289,6 +1289,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
           RETURN_IF_ERROR(
               memory::kSystemMemory.Write<Ptr>(the_window_var, target_window));
           return TrapReturn<int16_t>(4 /*inDrag*/);
+        case WindowManager::RegionType::Content:
+          RETURN_IF_ERROR(
+              memory::kSystemMemory.Write<Ptr>(the_window_var, target_window));
+          return TrapReturn<int16_t>(3 /*inContent*/);
         case WindowManager::RegionType::None:
           return TrapReturn<int16_t>(0 /*inDesk*/);
       }
