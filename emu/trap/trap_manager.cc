@@ -1075,6 +1075,12 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return absl::OkStatus();
       });
     }
+    // http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-91.html
+    case Trap::PtInRect: {
+      auto r = TRY(PopRef<Rect>());
+      auto pt = TRY(PopType<Point>());
+      return TrapReturn<uint16_t>(PointInRect(pt, r) ? 0xFFFF : 0x0000);
+    }
 
     // ================== Resource Manager ==================
 
