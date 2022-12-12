@@ -59,12 +59,12 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
 
   auto port_frame = NormalizeRect(bounds_rect);
 
-  // Returns handle to a new Region which represents the local dimensions:
-  auto create_port_region =
-      [&](const std::string& name) -> absl::StatusOr<Handle> {
+  // Returns a handle to a newly created Region defined by `rect`:
+  auto create_rect_region =
+      [&](Rect rect, const std::string& name) -> absl::StatusOr<Handle> {
     Region region;
     region.region_size = Rect::fixed_size;
-    region.bounding_box = port_frame;
+    region.bounding_box = rect;
 
     return TRY(memory_.NewHandleFor<Region>(region, name));
   };
@@ -91,7 +91,7 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
                                      -bounds_rect.left, -bounds_rect.top);
   port.port_rect = port_frame;
   // FIXME: This assumes the entire window is visible at creation
-  port.visible_region = TRY(create_port_region("VisibleRegion"));
+  port.visible_region = TRY(create_rect_region(port_frame, "VisibleRegion"));
 
   WindowRecord record;
   record.port = std::move(port);
@@ -99,9 +99,11 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
   record.is_visible = is_visible;
   record.has_close = has_close;
   record.reference_constant = reference_constant;
-  record.content_region = TRY(create_port_region("ContentRegion"));
+  record.content_region = TRY(create_rect_region(bounds_rect, "ContentRegion"));
+  record.update_region = TRY(create_rect_region(bounds_rect, "UpdateRegion"));
   record.title_handle = TRY(create_title_handle());
-  record.structure_region = TRY(create_port_region("StructRegion"));
+  record.structure_region =
+      TRY(create_rect_region(bounds_rect, "StructRegion"));
   SetStructRegionAndDrawFrame(screen_, record, memory_);
 
   RESTRICT_FIELD_ACCESS(
