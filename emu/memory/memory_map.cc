@@ -51,7 +51,9 @@ constexpr GlobalVars kWhitelistWriteGlobalVars[] = {
     GlobalVars::FPState,
     // Currently we _always_ load resources regardless of this flag which
     // should be fine (but does possibly cause us to run out of memory :P)
-    GlobalVars::ResLoad};
+    GlobalVars::ResLoad,
+    // TODO: Why would you want to write to the MemoryManager error code?
+    GlobalVars::MemErr};
 
 #define RETURN_IF_WHITELISTED(address, whitelist)                \
   if (std::find(std::begin(whitelist), std::end(whitelist),      \
