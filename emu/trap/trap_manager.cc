@@ -672,6 +672,15 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                  << ", item: " << std::dec << item << ")";
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-141.html
+    case Trap::GetMenuHandle: {
+      auto menu_id = TRY(Pop<uint16_t>());
+      LOG_TRAP() << "GetMenuHandle(menuID: " << menu_id << ")";
+      // FIXME: This should return the application's menu and not the resource
+      Handle handle = resource_manager_.GetResource('MENU', menu_id);
+      auto menu = TRY(memory_manager_.ReadTypeFromHandle<MenuResource>(handle));
+      return TrapReturn<Handle>(handle);
+    }
 
     // =================  Process Manager  ====================
 
