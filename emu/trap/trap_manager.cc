@@ -997,6 +997,22 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       // TODO: Implement this once Memory Manager supports freeing memory
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-71.html
+    case Trap::GetPen: {
+      auto pt_var = TRY(Pop<Ptr>());
+
+      return WithPort([&](GrafPort& port) {
+        return WithType<Point>(pt_var, [&](Point& pt) {
+          LOG_TRAP() << "GetPen(VAR pt: { " << pt << " } @ 0x" << std::hex
+                     << pt_var << ")";
+          // When testing in "1000 Miles" the pen {x, y} need to be swapped
+          // TODO: Are the coordinates supposed to be swapped?
+          pt.x = port.pen_location.y;
+          pt.y = port.pen_location.x;
+          return absl::OkStatus();
+        });
+      });
+    }
 
     // ================== Resource Manager ==================
 
