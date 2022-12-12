@@ -1013,6 +1013,38 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         });
       });
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-75.html
+    case Trap::PenMode: {
+      auto mode = TRY(Pop<Integer>());
+      LOG_TRAP() << "PenMode(mode: { " << mode << " })";
+      return WithPort([&](GrafPort& port) {
+        port.pattern_mode = mode;
+        return absl::OkStatus();
+      });
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-76.html
+    case Trap::PenPat: {
+      auto pat = TRY(PopRef<Pattern>());
+      LOG_TRAP() << "PenPat(pat: { " << pat << " })";
+      return WithPort([&](GrafPort& port) {
+        port.pen_pattern = pat;
+        return absl::OkStatus();
+      });
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-77.html
+    case Trap::PenNormal: {
+      LOG_TRAP() << "PenNormal()";
+      return WithPort([&](GrafPort& port) {
+        static Point kDefaultSize = {.x = 1, .y = 1};
+        port.pen_size = kDefaultSize;
+        static Pattern kDefaultPattern = {0xFFFFFFFF, 0xFFFFFFFF};
+        port.pen_pattern = kDefaultPattern;
+        // PenMode constants are documented here:
+        // http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-75.html#HEADING75-0
+        port.pattern_mode = 8 /*patCopy*/;
+        return absl::OkStatus();
+      });
+    }
 
     // ================== Resource Manager ==================
 
