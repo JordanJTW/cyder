@@ -1511,6 +1511,25 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       // FIXME: Return True if in a Dialog once they are implemented
       return TrapReturn(0x0000);
     }
+
+    // ======================  Icon Utilities  =======================
+
+    // Link: http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-282.html
+    case Trap::PlotIcon: {
+      auto the_handle = TRY(Pop<Handle>());
+      auto the_rect = TRY(PopRef<Rect>());
+
+      auto icon_ptr = TRY(memory::kSystemMemory.Read<Handle>(the_handle));
+
+      LOG_TRAP() << "PlotIcon(theRect: { " << the_rect << " }, theHandle: 0x"
+                 << std::hex << the_handle << ")";
+
+      the_rect = TRY(port::ConvertLocalToGlobal(the_rect));
+
+      screen_.CopyBits(memory::kSystemMemory.raw_ptr() + icon_ptr,
+                       NewRect(0, 0, 32, 32), NewRect(0, 0, 32, 32), the_rect);
+      return absl::OkStatus();
+    }
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unimplemented Toolbox trap: '", GetTrapName(trap), "'"));
