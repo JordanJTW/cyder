@@ -1045,6 +1045,21 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return absl::OkStatus();
       });
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-84.html
+    case Trap::Line: {
+      auto dv = TRY(Pop<int16_t>());
+      auto dh = TRY(Pop<int16_t>());
+      LOG_TRAP() << "Line(dh: " << dh << ", dv: " << dv << ")";
+      // TODO: Support drawing arbitrarily sloped lines...
+      CHECK(dv == 0) << "Only horizontal lines are supported currently";
+      return WithPort([&](GrafPort& port) {
+        screen_.FillRow(port.pen_location.y - port.port_bits.bounds.top,
+                        port.pen_location.x - port.port_bits.bounds.left,
+                        port.pen_location.x - port.port_bits.bounds.left + dh,
+                        port.pen_pattern.upper);
+        return absl::OkStatus();
+      });
+    }
 
     // ================== Resource Manager ==================
 
