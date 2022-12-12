@@ -1470,6 +1470,16 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       }
       return absl::OkStatus();
     }
+
+    // ======================  Dialog Manager  =======================
+
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-427.html
+    case Trap::IsDialogEvent: {
+      auto the_event = TRY(PopRef<EventRecord>());
+      LOG_TRAP() << "IsDialogEvent(theEvent: { " << the_event << " })";
+      // FIXME: Return True if in a Dialog once they are implemented
+      return TrapReturn(0x0000);
+    }
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unimplemented Toolbox trap: '", GetTrapName(trap), "'"));
