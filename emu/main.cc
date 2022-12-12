@@ -287,6 +287,14 @@ absl::Status Main(const core::Args& args) {
       size_t address = MUST(kSystemMemory.Read<uint32_t>(handle));
       trap_manager.SetTrapAddress(Trap::Pack4, address);
     }
+
+    if (auto* pack7 = system->FindByTypeAndId('PACK', 7)) {
+      LOG(INFO) << "Loading PACK7 into memory";
+      Handle handle =
+          memory_manager.AllocateHandleForRegion(pack7->GetData(), "PACK7");
+      size_t address = MUST(kSystemMemory.Read<uint32_t>(handle));
+      trap_manager.SetTrapAddress(Trap::Pack7, address);
+    }
   }
 
   m68k_init();
