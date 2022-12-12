@@ -891,6 +891,21 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       RETURN_IF_ERROR(memory::kSystemMemory.Write<Integer>(angle_var, angle));
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-49.html
+    case Trap::GlobalToLocal: {
+      auto pt_var = TRY(Pop<Ptr>());
+      auto pt = TRY(ReadType<Point>(memory::kSystemMemory, pt_var));
+
+      LOG_TRAP() << "GlobalToLocal(VAR pt: { " << pt << " } @ 0x" << std::hex
+                 << pt_var << ")";
+
+      auto offset = TRY(port::GetLocalToGlobalOffset());
+      pt.x -= offset.x;
+      pt.y -= offset.y;
+
+      RETURN_IF_ERROR(WriteType<Point>(pt, memory::kSystemMemory, pt_var));
+      return absl::OkStatus();
+    }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-50.html
     case Trap::LocalToGlobal: {
       auto pt_var = TRY(Pop<Ptr>());
