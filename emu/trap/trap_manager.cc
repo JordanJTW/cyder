@@ -966,6 +966,24 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       event_manager_.QueueWindowUpdate(TRY(port::GetThePort()));
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-43.html
+    case Trap::GetClip: {
+      auto rgn = TRY(Pop<Handle>());
+      LOG_TRAP() << "GetClip(rgn: 0x" << std::hex << rgn << ")";
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-44.html
+    case Trap::SetClip: {
+      auto rgn = TRY(Pop<Handle>());
+      LOG_TRAP() << "SetClip(rgn: 0x" << std::hex << rgn << ")";
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-45.html
+    case Trap::ClipRect: {
+      auto r = TRY(PopRef<Rect>());
+      LOG_TRAP() << "ClipRect(r: { " << r << " })";
+      return absl::OkStatus();
+    }
 
     // ================== Resource Manager ==================
 
