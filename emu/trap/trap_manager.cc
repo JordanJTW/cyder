@@ -485,6 +485,31 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       return TrapReturn<uint16_t>(event.what != 0 /*nullEvent*/ ? 0xFFFF
                                                                 : 0x0000);
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-53.html
+    case Trap::GetNextEvent: {
+      auto the_event_var = TRY(Pop<Ptr>());
+      auto event_mask = TRY(Pop<uint16_t>());
+
+      LOG_TRAP() << "GetNextEvent(eventMask: " << std::bitset<16>(event_mask)
+                 << ", VAR theEvent: 0x" << std::hex << the_event_var << ")";
+
+      auto event = event_manager_.GetNextEvent();
+
+      // FIXME: Monitor the field accesses with RESTRICT_FIELD_ACCESS.
+      RETURN_IF_ERROR(WriteType<EventRecord>(
+          std::move(event), memory::kSystemMemory, the_event_var));
+
+      if (event.what == 6 /*updateEvt*/) {
+        RETURN_IF_ERROR(
+            WithType<WindowRecord>(event.message, [&](WindowRecord& window) {
+              SetStructRegionAndDrawFrame(screen_, window, memory_manager_);
+              return absl::OkStatus();
+            }));
+      }
+
+      return TrapReturn<uint16_t>(event.what != 0 /*nullEvent*/ ? 0xFFFF
+                                                                : 0x0000);
+    }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-80.html
     case Trap::TickCount: {
       // FIXME: Read from GlobalVar::Ticks which should be set every 1/60th secs
