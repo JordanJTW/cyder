@@ -468,7 +468,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                  << ", sleep: " << std::dec << sleep << ", mouseRgn: 0x"
                  << std::hex << mouse_region << ")";
 
-      auto event = event_manager_.GetNextEvent();
+      auto event = event_manager_.GetNextEvent(event_mask);
 
       // FIXME: Monitor the field accesses with RESTRICT_FIELD_ACCESS.
       RETURN_IF_ERROR(WriteType<EventRecord>(
@@ -493,7 +493,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "GetNextEvent(eventMask: " << std::bitset<16>(event_mask)
                  << ", VAR theEvent: 0x" << std::hex << the_event_var << ")";
 
-      auto event = event_manager_.GetNextEvent();
+      auto event = event_manager_.GetNextEvent(event_mask);
 
       // FIXME: Monitor the field accesses with RESTRICT_FIELD_ACCESS.
       RETURN_IF_ERROR(WriteType<EventRecord>(

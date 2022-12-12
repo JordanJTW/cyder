@@ -15,16 +15,16 @@ EventManager::EventManager() = default;
 
 void EventManager::QueueWindowActivate(Ptr window) {
   EventRecord record;
-  record.what = 8 /*activateEvt*/;
+  record.what = kWindowActivate;
   record.message = window;
-  event_queue_.push(std::move(record));
+  activate_events_.push_back(std::move(record));
 }
 
 void EventManager::QueueWindowUpdate(Ptr window) {
   EventRecord record;
-  record.what = 6 /*updateEvt*/;
+  record.what = kWindowUpdate;
   record.message = window;
-  event_queue_.push(std::move(record));
+  update_events_.push_back(std::move(record));
 }
 
 void EventManager::QueueMouseDown(int x, int y) {
@@ -33,26 +33,67 @@ void EventManager::QueueMouseDown(int x, int y) {
   where.y = y;
 
   EventRecord record;
-  record.what = 1 /*mouseDown*/;
+  record.what = kMouseDown;
   record.where = std::move(where);
-  event_queue_.push(std::move(record));
+  input_events_.push_back(std::move(record));
 }
 
 void EventManager::QueueKeyDown() {
   EventRecord record;
-  record.what = 3 /*keyDown*/;
+  record.what = kKeyDown;
   // FIXME: Add keycode information in EventRecord::message
-  event_queue_.push(std::move(record));
+  input_events_.push_back(std::move(record));
 }
 
-EventRecord EventManager::GetNextEvent() {
-  if (event_queue_.empty()) {
-    return NullEvent();
+EventRecord EventManager::GetNextEvent(uint16_t event_mask) {
+  // From "Macintosh Toolbox Essentials (Event Manager 2-28)":
+  // Masking out specific types of events does not remove those events
+  // from the event stream. If a type of event is masked out, the Event
+  // Manager simply ignores it when reporting events from the event
+  // stream.
+
+  // From "Macintosh Toolbox Essentials (Event Manager 2-15)":
+  // Each type of event has a certain priority. The Event Manager returns events
+  // in this order of priority:
+  //   1. activate events
+  //   2. mouse-down, mouse-up, key-down, key-up, and disk-inserted (FIFO order)
+  //   3. auto-key events (TODO: What are auto-key events?)
+  //   4. update events(in front-to-back order of windows)
+  //   5. OS events(suspend, resume, mouse-moved)
+  //   6. high-level events (Application IPC)
+  //   7. null events
+
+  // Event masks can be calculated from the type and are documented here:
+  // http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-38.html#MARKER-9-112
+
+  if (!activate_events_.empty() && (event_mask & 256 /*activMask*/)) {
+    auto event = activate_events_.front();
+    activate_events_.pop_front();
+    return event;
   }
 
-  auto front = event_queue_.front();
-  event_queue_.pop();
-  return front;
+  // This works for all events except NULL(5), OS(6), and HIGH-LEVEL(7) type
+  auto is_event_enabled = [event_mask](const EventRecord& event) {
+    return event_mask & (1 << event.what);
+  };
+
+  if (!input_events_.empty() &&
+      (event_mask & (2 /*mDownMask*/ | 4 /*mUpMask*/ | 8 /*keyDownMask*/ |
+                     16 /*keyUpMask*/))) {
+    auto event_iter = std::find_if(input_events_.begin(), input_events_.end(),
+                                   is_event_enabled);
+    if (event_iter != input_events_.end()) {
+      input_events_.erase(event_iter);
+      return *event_iter;
+    }
+  }
+
+  if (!update_events_.empty() && (event_mask & 64 /*updateMask*/)) {
+    auto event = update_events_.front();
+    update_events_.pop_front();
+    return event;
+  }
+  return NullEvent();
 }
 
 }  // namespace cyder
