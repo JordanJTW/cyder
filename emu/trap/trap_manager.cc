@@ -958,6 +958,14 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       // TODO: Allow alternative cursors to be displayed with SDL2
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-262.html
+    case Trap::InvalRect: {
+      auto bad_rect = TRY(PopRef<Rect>());
+      LOG_TRAP() << "InvalRect(badRect: { " << bad_rect << " })";
+      // FIXME: Implement this once "update regions" are supported
+      event_manager_.QueueWindowUpdate(TRY(port::GetThePort()));
+      return absl::OkStatus();
+    }
 
     // ================== Resource Manager ==================
 
