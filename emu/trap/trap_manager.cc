@@ -942,6 +942,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                  << " })";
       return TrapReturn<uint16_t>(EqualRect(rect1, rect2) ? 0xFFFF : 0x0000);
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-385.html
+    case Trap::SetCursor: {
+      auto crsr = TRY(PopRef<Cursor>());
+      LOG_TRAP() << "SetCursor(crsr: { " << crsr << " })";
+      // TODO: Allow alternative cursors to be displayed with SDL2
+      return absl::OkStatus();
+    }
 
     // ================== Resource Manager ==================
 
