@@ -434,7 +434,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-73.html
     case Trap::Button: {
       LOG_TRAP() << "Button()";
-      RETURN_IF_ERROR(TrapReturn<uint16_t>(0x0000));
+      RETURN_IF_ERROR(TrapReturn<bool>(false));
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-72.html
@@ -482,8 +482,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
             }));
       }
 
-      return TrapReturn<uint16_t>(event.what != 0 /*nullEvent*/ ? 0xFFFF
-                                                                : 0x0000);
+      return TrapReturn<bool>(event.what != 0);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-53.html
     case Trap::GetNextEvent: {
@@ -507,8 +506,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
             }));
       }
 
-      return TrapReturn<uint16_t>(event.what != 0 /*nullEvent*/ ? 0xFFFF
-                                                                : 0x0000);
+      return TrapReturn<bool>(event.what != 0);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-80.html
     case Trap::TickCount: {
@@ -521,8 +519,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-74.html
     case Trap::StillDown: {
       LOG_TRAP() << "StillDown()";
-      return TrapReturn<uint16_t>(event_manager_.HasMouseUpEvent() ? 0x0000
-                                                                   : 0xFFFF);
+      return TrapReturn<bool>(!event_manager_.HasMouseUpEvent());
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-58.html
     case Trap::SystemTask: {
@@ -962,7 +959,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = IntersectRect(src1, src2);
       RETURN_IF_ERROR(
           WriteType<Rect>(rect, memory::kSystemMemory, dst_rect_var));
-      return TrapReturn<uint16_t>(IsZeroRect(rect) ? 0x0000 : 0xFFFF);
+      return TrapReturn<bool>(IsZeroRect(rect));
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-94.html
     case Trap::EqualRect: {
@@ -970,7 +967,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect1 = TRY(PopRef<Rect>());
       LOG_TRAP() << "EqualRect(rect1: { " << rect1 << " }, rect2: { " << rect2
                  << " })";
-      return TrapReturn<uint16_t>(EqualRect(rect1, rect2) ? 0xFFFF : 0x0000);
+      return TrapReturn<bool>(EqualRect(rect1, rect2));
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-385.html
     case Trap::SetCursor: {
@@ -1085,7 +1082,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::PtInRect: {
       auto r = TRY(PopRef<Rect>());
       auto pt = TRY(PopType<Point>());
-      return TrapReturn<uint16_t>(PointInRect(pt, r) ? 0xFFFF : 0x0000);
+      return TrapReturn<bool>(PointInRect(pt, r));
     }
 
     // ================== Resource Manager ==================
