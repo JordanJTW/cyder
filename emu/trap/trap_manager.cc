@@ -1195,6 +1195,22 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-223.html
     case Trap::InitWindows: {
       LOG_TRAP() << "InitWindows()";
+
+      GrafPort port;
+      // TODO: Verify that "whole screen" in the docs includes the menu bar?
+      port.port_bits.bounds = NewRect(0, 0, screen_.width(), screen_.height());
+
+      auto ptr = memory_manager_.Allocate(GrafPort::fixed_size);
+      RETURN_IF_ERROR(WriteType<GrafPort>(port, memory::kSystemMemory, ptr));
+
+      RESTRICT_FIELD_ACCESS(
+          GrafPort, ptr, GrafPortFields::port_bits + BitMapFields::bounds,
+          GrafPortFields::port_bits + BitMapFields::bounds + 2,
+          GrafPortFields::port_bits + BitMapFields::bounds + 4,
+          GrafPortFields::port_bits + BitMapFields::bounds + 6);
+
+      RETURN_IF_ERROR(
+          memory::kSystemMemory.Write<Ptr>(GlobalVars::WMgrPort, ptr));
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-114.html
@@ -1341,6 +1357,17 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       the_window.reference_constant = data;
       RETURN_IF_ERROR(WriteType<WindowRecord>(the_window, memory::kSystemMemory,
                                               the_window_ptr));
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-276.html
+    case Trap::GetWMgrPort: {
+      auto port_var = TRY(Pop<Ptr>());
+
+      LOG_TRAP() << "GetWMgrPort(VAR wPort: 0x" << std::hex << port_var << ")";
+
+      RETURN_IF_ERROR(memory::kSystemMemory.Write<Ptr>(
+          port_var,
+          TRY(memory::kSystemMemory.Read<Handle>(GlobalVars::WMgrPort))));
       return absl::OkStatus();
     }
 
