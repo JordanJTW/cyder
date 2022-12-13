@@ -107,10 +107,11 @@ EventRecord EventManager::GetNextEvent(uint16_t event_mask) {
   return NullEvent();
 }
 
-bool EventManager::HasMouseUpEvent() const {
+bool EventManager::HasMouseEvent(EventType type) const {
+  CHECK(type == kMouseDown || type == kMouseUp);
   return std::find_if(input_events_.begin(), input_events_.end(),
-                      [](const EventRecord& event) {
-                        return event.what == kMouseUp;
+                      [type](const EventRecord& event) {
+                        return event.what == type;
                       }) != input_events_.end();
 }
 

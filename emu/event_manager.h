@@ -32,7 +32,7 @@ class EventManager final {
 
   EventRecord GetNextEvent(uint16_t event_mask);
 
-  bool HasMouseUpEvent() const;
+  bool HasMouseEvent(EventType type) const;
 
  private:
   std::list<EventRecord> activate_events_;

@@ -66,15 +66,17 @@ TEST(EventManagerTests, MaskEvents) {
   EXPECT_EQ(event_manager.GetNextEvent(kEventEventMask).what, kNullEvent);
 }
 
-TEST(EventManagerTests, HasMouseUp) {
+TEST(EventManagerTests, HasMouseEvent) {
   EventManager event_manager;
 
   event_manager.QueueKeyDown();
   event_manager.QueueMouseDown(0, 0);
-  EXPECT_FALSE(event_manager.HasMouseUpEvent());
+
+  EXPECT_FALSE(event_manager.HasMouseEvent(kMouseUp));
+  EXPECT_TRUE(event_manager.HasMouseEvent(kMouseDown));
 
   event_manager.QueueMouseUp(0, 0);
-  EXPECT_TRUE(event_manager.HasMouseUpEvent());
+  EXPECT_TRUE(event_manager.HasMouseEvent(kMouseUp));
 }
 
 }  // namespace cyder

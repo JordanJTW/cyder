@@ -434,8 +434,12 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-73.html
     case Trap::Button: {
       LOG_TRAP() << "Button()";
-      RETURN_IF_ERROR(TrapReturn<bool>(false));
-      return absl::OkStatus();
+      return TrapReturn<bool>(event_manager_.HasMouseEvent(kMouseDown));
+    }
+      // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-74.html
+    case Trap::StillDown: {
+      LOG_TRAP() << "StillDown()";
+      return TrapReturn<bool>(!event_manager_.HasMouseEvent(kMouseUp));
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-72.html
     case Trap::GetMouse: {
@@ -515,11 +519,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto elapsed_time_ms = absl::ToInt64Milliseconds(absl::Now() - boot_time);
       uint32_t elapsed_ticks = elapsed_time_ms / 16;
       return TrapReturn<uint32_t>(elapsed_ticks);
-    }
-    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-74.html
-    case Trap::StillDown: {
-      LOG_TRAP() << "StillDown()";
-      return TrapReturn<bool>(!event_manager_.HasMouseUpEvent());
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-58.html
     case Trap::SystemTask: {
