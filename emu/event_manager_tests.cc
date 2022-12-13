@@ -13,20 +13,15 @@ constexpr Ptr kFakeWindowPtr = 0xDEADBEEF;
 
 }  // namespace
 
-class EventManagerTests : public ::testing::Test {
- protected:
-  EventManagerTests() {}
-
+TEST(EventManagerTests, NoEvents) {
   EventManager event_manager;
 
- private:
-};
-
-TEST_F(EventManagerTests, NoEvents) {
   EXPECT_EQ(event_manager.GetNextEvent(kEventEventMask).what, kNullEvent);
 }
 
-TEST_F(EventManagerTests, Priority) {
+TEST(EventManagerTests, Priority) {
+  EventManager event_manager;
+
   event_manager.QueueWindowUpdate(kFakeWindowPtr);
   event_manager.QueueMouseDown(0, 0);
   event_manager.QueueWindowActivate(kFakeWindowPtr);
@@ -40,7 +35,9 @@ TEST_F(EventManagerTests, Priority) {
   EXPECT_EQ(event_manager.GetNextEvent(kEventEventMask).what, kNullEvent);
 }
 
-TEST_F(EventManagerTests, InputIsFifo) {
+TEST(EventManagerTests, InputIsFifo) {
+  EventManager event_manager;
+
   event_manager.QueueMouseDown(0, 0);
   event_manager.QueueMouseDown(2, 0);
   event_manager.QueueMouseDown(4, 0);
@@ -55,7 +52,9 @@ TEST_F(EventManagerTests, InputIsFifo) {
   EXPECT_EQ(event_manager.GetNextEvent(kEventEventMask).what, kNullEvent);
 }
 
-TEST_F(EventManagerTests, MaskEvents) {
+TEST(EventManagerTests, MaskEvents) {
+  EventManager event_manager;
+
   event_manager.QueueKeyDown();
   event_manager.QueueMouseDown(0, 0);
   event_manager.QueueKeyDown();
@@ -65,6 +64,17 @@ TEST_F(EventManagerTests, MaskEvents) {
   EXPECT_EQ(event_manager.GetNextEvent(kEventEventMask).what, kKeyDown);
   EXPECT_EQ(event_manager.GetNextEvent(kEventEventMask).what, kKeyDown);
   EXPECT_EQ(event_manager.GetNextEvent(kEventEventMask).what, kNullEvent);
+}
+
+TEST(EventManagerTests, HasMouseUp) {
+  EventManager event_manager;
+
+  event_manager.QueueKeyDown();
+  event_manager.QueueMouseDown(0, 0);
+  EXPECT_FALSE(event_manager.HasMouseUpEvent());
+
+  event_manager.QueueMouseUp(0, 0);
+  EXPECT_TRUE(event_manager.HasMouseUpEvent());
 }
 
 }  // namespace cyder

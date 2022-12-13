@@ -10,7 +10,7 @@ namespace cyder {
 enum EventType {
   kNullEvent = 0,       // no other pending events
   kMouseDown = 1,       // mouse button pressed
-  kMouseUp = 2,         // mouse button released}
+  kMouseUp = 2,         // mouse button released
   kKeyDown = 3,         // key pressed
   kKeyUp = 4,           // key released
   kAutoKey = 5,         // key repeatedly held down
@@ -27,9 +27,12 @@ class EventManager final {
   void QueueWindowActivate(Ptr window);
   void QueueWindowUpdate(Ptr window);
   void QueueMouseDown(int x, int y);
+  void QueueMouseUp(int x, int y);
   void QueueKeyDown();
 
   EventRecord GetNextEvent(uint16_t event_mask);
+
+  bool HasMouseUpEvent() const;
 
  private:
   std::list<EventRecord> activate_events_;

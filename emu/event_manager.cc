@@ -34,7 +34,18 @@ void EventManager::QueueMouseDown(int x, int y) {
 
   EventRecord record;
   record.what = kMouseDown;
-  record.where = std::move(where);
+  record.where = where;
+  input_events_.push_back(std::move(record));
+}
+
+void EventManager::QueueMouseUp(int x, int y) {
+  Point where;
+  where.x = x;
+  where.y = y;
+
+  EventRecord record;
+  record.what = kMouseUp;
+  record.where = where;
   input_events_.push_back(std::move(record));
 }
 
@@ -94,6 +105,13 @@ EventRecord EventManager::GetNextEvent(uint16_t event_mask) {
     return event;
   }
   return NullEvent();
+}
+
+bool EventManager::HasMouseUpEvent() const {
+  return std::find_if(input_events_.begin(), input_events_.end(),
+                      [](const EventRecord& event) {
+                        return event.what == kMouseUp;
+                      }) != input_events_.end();
 }
 
 }  // namespace cyder

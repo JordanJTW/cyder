@@ -518,6 +518,12 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       uint32_t elapsed_ticks = elapsed_time_ms / 16;
       return TrapReturn<uint32_t>(elapsed_ticks);
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-74.html
+    case Trap::StillDown: {
+      LOG_TRAP() << "StillDown()";
+      return TrapReturn<uint16_t>(event_manager_.HasMouseUpEvent() ? 0x0000
+                                                                   : 0xFFFF);
+    }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-58.html
     case Trap::SystemTask: {
       return absl::OkStatus();

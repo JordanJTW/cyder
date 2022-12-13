@@ -13,18 +13,21 @@ void NativeBridge::StartNativeMouseControl(MouseListener* listener) {
   current_listener_ = listener;
 }
 
-void NativeBridge::OnMouseMove(int x, int y) {
+void NativeBridge::OnMouseMove(int x, int y) const {
   if (current_listener_) {
     current_listener_->OnMouseMove(x, y);
   }
 }
 
-void NativeBridge::OnMouseUp(int x, int y) {
-  if (current_listener_) {
-    current_listener_->OnMouseUp(x, y);
-    current_listener_ = nullptr;
-    single_step = false;
+bool NativeBridge::OnMouseUp(int x, int y) {
+  if (!current_listener_) {
+    return false;
   }
+
+  current_listener_->OnMouseUp(x, y);
+  current_listener_ = nullptr;
+  single_step = false;
+  return true;
 }
 
 }  // namespace cyder
