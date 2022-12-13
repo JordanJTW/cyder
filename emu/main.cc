@@ -66,8 +66,8 @@ absl::Status HandleException(unsigned int address) {
     case 0x28:
       return absl::OkStatus();
     default:
-      return absl::UnimplementedError(
-          absl::StrCat("Exception occured with no handler: ", address));
+      return absl::UnimplementedError(absl::StrCat(
+          "Exception occured with no handler: 0x", absl::Hex(address)));
   }
 }
 
