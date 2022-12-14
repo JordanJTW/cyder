@@ -92,6 +92,7 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
   port.port_rect = port_frame;
   // FIXME: This assumes the entire window is visible at creation
   port.visible_region = TRY(create_rect_region(port_frame, "VisibleRegion"));
+  InitGrafPort(port);
 
   WindowRecord record;
   record.port = std::move(port);

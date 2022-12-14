@@ -87,6 +87,13 @@ inline int16_t RectHeight(const Rect& rect) {
   return rect.bottom - rect.top;
 }
 
+inline void InitGrafPort(GrafPort& port) {
+  port.fill_pattern = {.upper = 0xFFFFFFFF, .lower = 0xFFFFFFFF};
+  port.back_pattern = {.upper = 0x00000000, .lower = 0x00000000};
+  port.pen_pattern = port.fill_pattern;
+  port.pattern_mode = 8 /*patCopy*/;
+}
+
 inline Rect NewRect(int16_t x, int16_t y, int16_t width, int16_t height) {
   Rect rect;
   rect.top = y;

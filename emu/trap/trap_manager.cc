@@ -1219,6 +1219,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       GrafPort port;
       // TODO: Verify that "whole screen" in the docs includes the menu bar?
       port.port_bits.bounds = NewRect(0, 0, screen_.width(), screen_.height());
+      InitGrafPort(port);
 
       auto ptr = memory_manager_.Allocate(GrafPort::fixed_size);
       RETURN_IF_ERROR(WriteType<GrafPort>(port, memory::kSystemMemory, ptr));
