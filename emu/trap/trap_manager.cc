@@ -980,6 +980,14 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                  << " })";
       return TrapReturn<bool>(EqualRect(rect1, rect2));
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-384.html
+    case Trap::GetCursor: {
+      auto cursor_id = TRY(Pop<uint16_t>());
+      LOG_TRAP() << "GetCursor(cursorID: " << cursor_id << ")";
+      static auto kEmptyCursorHandle =
+          TRY(memory_manager_.NewHandleFor<Cursor>({}, "EmptyCursor"));
+      return TrapReturn<Handle>(kEmptyCursorHandle);
+    }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-385.html
     case Trap::SetCursor: {
       auto crsr = TRY(PopRef<Cursor>());
