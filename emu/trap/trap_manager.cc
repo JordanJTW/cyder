@@ -1470,43 +1470,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       return absl::OkStatus();
     }
 
-    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-402.html
-    case Trap::GetNewDialog: {
-      auto behind_window = TRY(Pop<Ptr>());
-      auto dialog_storage = TRY(Pop<Ptr>());
-      auto dialog_id = TRY(Pop<Integer>());
-
-      LOG_TRAP() << "GetNewDialog(dialogId: " << dialog_id << ", dStorage: 0x"
-                 << std::hex << dialog_storage << ", behind: 0x"
-                 << behind_window << ")";
-
-      auto dialog_handle = resource_manager_.GetResource('DLOG', dialog_id);
-      auto dialog_resource =
-          TRY(memory_manager_.ReadTypeFromHandle<DLOG>(dialog_handle));
-      LOG(INFO) << "DLOG: { " << dialog_resource << " }";
-
-      auto item_list_handle =
-          resource_manager_.GetResource('DITL', dialog_resource.item_list_id);
-
-      core::MemoryReader item_list(
-          memory_manager_.GetRegionForHandle(item_list_handle));
-
-      // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-438.html
-      uint16_t item_count = TRY(item_list.Next<uint16_t>());
-      for (uint16_t i = 0; i <= item_count; ++i) {
-        item_list.SkipNext(4);  // reserved
-        LOG(INFO) << "Item #" << (i + 1);
-        LOG(INFO) << "Rect: { " << TRY(item_list.NextType<Rect>()) << " }";
-        LOG(INFO) << "Item Type: " << (int)TRY(item_list.Next<uint8_t>());
-        // Requires escaping due to carriage return ('\r') escape codes
-        LOG(INFO) << "Text: "
-                  << absl::CEscape(
-                         TRY(item_list.NextType<absl::string_view>()));
-        item_list.AlignTo(2);
-      }
-
-      return absl::UnimplementedError("WIP: partial implementation");
-    }
 
     // ======================  Text Manager  =======================
 
@@ -1647,6 +1610,54 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "IsDialogEvent(theEvent: { " << the_event << " })";
       // FIXME: Return True if in a Dialog once they are implemented
       return TrapReturn(0x0000);
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-417.html
+    case Trap::ParamText: {
+      auto param0 = TRY(PopRef<absl::string_view>());
+      auto param1 = TRY(PopRef<absl::string_view>());
+      auto param2 = TRY(PopRef<absl::string_view>());
+      auto param3 = TRY(PopRef<absl::string_view>());
+      LOG_TRAP() << "ParamText(param0: '" << param0 << "', param1: '" << param1
+                 << "', param2: '" << param2 << "', param3: '" << param3
+                 << "')";
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-402.html
+    case Trap::GetNewDialog: {
+      auto behind_window = TRY(Pop<Ptr>());
+      auto dialog_storage = TRY(Pop<Ptr>());
+      auto dialog_id = TRY(Pop<Integer>());
+
+      LOG_TRAP() << "GetNewDialog(dialogId: " << dialog_id << ", dStorage: 0x"
+                 << std::hex << dialog_storage << ", behind: 0x"
+                 << behind_window << ")";
+
+      auto dialog_handle = resource_manager_.GetResource('DLOG', dialog_id);
+      auto dialog_resource =
+          TRY(memory_manager_.ReadTypeFromHandle<DLOG>(dialog_handle));
+      LOG(INFO) << "DLOG: { " << dialog_resource << " }";
+
+      auto item_list_handle =
+          resource_manager_.GetResource('DITL', dialog_resource.item_list_id);
+
+      core::MemoryReader item_list(
+          memory_manager_.GetRegionForHandle(item_list_handle));
+
+      // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-438.html
+      uint16_t item_count = TRY(item_list.Next<uint16_t>());
+      for (uint16_t i = 0; i <= item_count; ++i) {
+        item_list.SkipNext(4);  // reserved
+        LOG(INFO) << "Item #" << (i + 1);
+        LOG(INFO) << "Rect: { " << TRY(item_list.NextType<Rect>()) << " }";
+        LOG(INFO) << "Item Type: " << (int)TRY(item_list.Next<uint8_t>());
+        // Requires escaping due to carriage return ('\r') escape codes
+        LOG(INFO) << "Text: "
+                  << absl::CEscape(
+                         TRY(item_list.NextType<absl::string_view>()));
+        item_list.AlignTo(2);
+      }
+
+      return absl::UnimplementedError("WIP: partial implementation");
     }
 
     // ======================  Icon Utilities  =======================
