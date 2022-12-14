@@ -234,19 +234,21 @@ void BitmapImage::CopyBits(const uint8_t* src,
   }
 }
 
-void BitmapImage::FrameRect(const Rect& rect, const uint8_t pattern[8]) {
+void BitmapImage::FrameRect(const Rect& rect,
+                            const uint8_t pattern[8],
+                            FillMode mode) {
   constexpr uint16_t kWidth = 1u;
   // FIXME: Account for clipping, invalid |rect|s, and proper |pattern| support
   for (int row = rect.top; row < rect.top + kWidth; ++row) {
-    FillRow(row, rect.left, rect.right, pattern[0], FillMode::Copy);
+    FillRow(row, rect.left, rect.right, pattern[0], mode);
   }
   for (int row = rect.bottom - kWidth; row < rect.bottom; ++row) {
-    FillRow(row, rect.left, rect.right, pattern[0], FillMode::Copy);
+    FillRow(row, rect.left, rect.right, pattern[0], mode);
   }
 
   for (int row = rect.top + kWidth; row < rect.bottom - kWidth; ++row) {
-    FillRow(row, rect.left, rect.left + kWidth, pattern[0], FillMode::Copy);
-    FillRow(row, rect.right - kWidth, rect.right, pattern[0], FillMode::Copy);
+    FillRow(row, rect.left, rect.left + kWidth, pattern[0], mode);
+    FillRow(row, rect.right - kWidth, rect.right, pattern[0], mode);
   }
 }
 

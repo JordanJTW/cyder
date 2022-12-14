@@ -39,7 +39,7 @@ class BitmapImage {
 
   // Draw a 1-pixel border of |pattern[0]| within |rect|
   // FIXME: Support various "pen" widths and account for clipping
-  void FrameRect(const Rect& rect, const uint8_t pattern[8]);
+  void FrameRect(const Rect& rect, const uint8_t pattern[8], FillMode mode = FillMode::Copy);
 
   // Given a |src| bitmap image with dimensions |src_dims|, copy the area
   // |src_rect| to |dst_rect| with-in the current bitmap
