@@ -30,6 +30,8 @@ class EventManager final {
   void QueueMouseUp(int x, int y);
   void QueueKeyDown();
 
+  void QueueRawEvent(uint16_t raw_event_type, uint32_t message);
+
   EventRecord GetNextEvent(uint16_t event_mask);
 
   bool HasMouseEvent(EventType type) const;

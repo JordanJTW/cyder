@@ -408,6 +408,18 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
                  << std::setfill('0') << std::setw(4) << stopMask << ")";
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-67.html
+    case Trap::PostEvent: {
+      uint16_t event_number = m68k_get_reg(NULL, M68K_REG_A0) & 0xFFFF;
+      uint32_t event_message = m68k_get_reg(NULL, M68K_REG_D0);
+      LOG_TRAP() << "PostEvent(eventNum: " << event_number
+                 << ", eventMsg: " << event_message << ")";
+
+      event_manager_.QueueRawEvent(event_number, event_message);
+
+      m68k_set_reg(M68K_REG_D0, 0 /*noErr*/);
+      return absl::OkStatus();
+    }
 
     // =====================  File Manager  ========================
 

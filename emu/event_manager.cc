@@ -56,6 +56,22 @@ void EventManager::QueueKeyDown() {
   input_events_.push_back(std::move(record));
 }
 
+void EventManager::QueueRawEvent(uint16_t raw_event_type, uint32_t message) {
+  // This exists to implement PostEvent() which allows the emulated application
+  // to inject events into the queue... This seems to be fairly unusual and
+  // even more unusual is that "1000 Miles" uses PostEvent() to publish a
+  // custom undocumented event to trigger the AI player to take its turn.
+  // This sort of use is _heavily_ discouraged in the documentation.
+
+  EventRecord record;
+  record.what = raw_event_type;
+  record.message = message;
+  // Even stanger is that this should go into the "Low-Level OS Event Queue"
+  // i.e. `input_events_` however it _only_ works in "1000 Miles" if it is in
+  // _this_ queue... This requires some more investigation but works for now.
+  activate_events_.push_back(std::move(record));
+}
+
 EventRecord EventManager::GetNextEvent(uint16_t event_mask) {
   // From "Macintosh Toolbox Essentials (Event Manager 2-28)":
   // Masking out specific types of events does not remove those events
