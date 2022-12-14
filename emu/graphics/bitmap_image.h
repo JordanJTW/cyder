@@ -20,7 +20,7 @@ class BitmapImage {
   const Rect& GetClipRect() const { return clip_rect_; }
   void SetClipRect(const Rect& rect) { clip_rect_ = rect; }
 
-  enum class FillMode { Copy, XOr };
+  enum class FillMode { Copy, XOr, NotXOr };
 
   // Fill |rect| with the given bit |pattern|
   void FillRect(const Rect& rect,

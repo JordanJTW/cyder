@@ -133,6 +133,9 @@ void BitmapImage::FillRow(int row,
       case FillMode::XOr:
         bitmap_[index] ^= (mask & pattern);
         break;
+      case FillMode::NotXOr:
+        bitmap_[index] ^= (mask & ~pattern);
+        break;
     }
   };
 
@@ -175,6 +178,11 @@ void BitmapImage::FillRow(int row,
       case FillMode::XOr:
         for (int i = 0; i < full_bytes; ++i) {
           bitmap_[start_byte + i] ^= pattern;
+        }
+        break;
+      case FillMode::NotXOr:
+        for (int i = 0; i < full_bytes; ++i) {
+          bitmap_[start_byte + i] ^= ~pattern;
         }
         break;
     }
