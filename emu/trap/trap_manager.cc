@@ -755,12 +755,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
 
-      // TODO: The way Pattern is defined in typegen is ugly...
-      uint8_t pattern[8];
-      std::memcpy(pattern, &pat.lower, 4);
-      std::memcpy(pattern + 4, &pat.upper, 4);
-
-      screen_.FillRect(rect, pattern);
+      uint8_t bytes[8];
+      ConvertPattern(pat, bytes);
+      screen_.FillRect(rect, bytes);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-97.html
@@ -770,9 +767,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
 
-      // FIXME: Paint with the color set for QuickDraw (A5 World?)
-      screen_.FrameRect(rect, kForegroundPattern);
-      return absl::OkStatus();
+      return WithPort([&](GrafPort& port) {
+        uint8_t bytes[8];
+        ConvertPattern(port.pen_pattern, bytes);
+        // TODO: Respect the pen size when framing rects
+        screen_.FrameRect(rect, bytes, ConvertMode(port.pattern_mode));
+        return absl::OkStatus();
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-100.html
     case Trap::EraseRect: {

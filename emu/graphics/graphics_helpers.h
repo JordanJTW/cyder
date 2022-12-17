@@ -2,6 +2,9 @@
 
 #include <climits>
 
+#include "emu/graphics/bitmap_image.h"
+#include "emu/graphics/grafport_types.tdef.h"
+
 namespace cyder {
 
 // Get the number of bytes needed to represent |width_px| at 1 bit-per-pixel
@@ -87,11 +90,31 @@ inline int16_t RectHeight(const Rect& rect) {
   return rect.bottom - rect.top;
 }
 
+inline void ConvertPattern(const Pattern& pattern, uint8_t* bytes) {
+  std::memcpy(bytes, &pattern.upper, 4);
+  std::memcpy(bytes + 4, &pattern.lower, 4);
+}
+
 inline void InitGrafPort(GrafPort& port) {
   port.fill_pattern = {.upper = 0xFFFFFFFF, .lower = 0xFFFFFFFF};
   port.back_pattern = {.upper = 0x00000000, .lower = 0x00000000};
   port.pen_pattern = port.fill_pattern;
   port.pattern_mode = 8 /*patCopy*/;
+}
+
+inline graphics::BitmapImage::FillMode ConvertMode(int16_t mode) {
+  using Mode = graphics::BitmapImage::FillMode;
+  // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-59.html#MARKER-9-7
+  switch (mode) {
+    case 8 /*patCopy*/:
+      return Mode::Copy;
+    case 10 /*patXOr*/:
+      return Mode::XOr;
+    case 14 /*notPatXOr*/:
+      return Mode::NotXOr;
+    default:
+      NOTREACHED() << "Unsupport mode: " << mode;
+  }
 }
 
 inline Rect NewRect(int16_t x, int16_t y, int16_t width, int16_t height) {
