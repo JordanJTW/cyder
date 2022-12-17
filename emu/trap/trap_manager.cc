@@ -947,6 +947,18 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return absl::OkStatus();
       });
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-82.html
+    case Trap::Move: {
+      auto dv = TRY(Pop<Integer>());
+      auto dh = TRY(Pop<Integer>());
+      LOG_TRAP() << "Move(dh: " << dh << ", dv: " << dv << ")";
+
+      return WithPort([dh, dv](GrafPort& port) {
+        port.pen_location.x += dh;
+        port.pen_location.y += dv;
+        return absl::OkStatus();
+      });
+    }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-101.html
     case Trap::InverRect: {
       auto rect = TRY(PopRef<Rect>());
