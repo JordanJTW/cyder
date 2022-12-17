@@ -763,9 +763,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       screen_.FillRect(rect, pattern);
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-97.html
     case Trap::FrameRect: {
       auto rect = TRY(PopRef<Rect>());
-      LOG_TRAP() << "FrameRect(rect: " << rect << ")";
+      LOG_TRAP() << "FrameRect(rect: { " << rect << " })";
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
 
@@ -818,7 +819,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto left = TRY(Pop<uint16_t>());
       auto rect_ptr = TRY(Pop<Ptr>());
       LOG_TRAP() << "SetRect(r: 0x" << std::hex << rect_ptr << std::dec
-                 << "top: " << top << ", left: " << left
+                 << ", top: " << top << ", left: " << left
                  << ", bottom: " << bottom << ", right: " << right << ")";
       struct Rect rect;
       rect.left = left;
@@ -1482,7 +1483,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       window_manager_.NativeDragWindow(the_window, start_pt.x, start_pt.y);
       return absl::OkStatus();
     }
-
 
     // ======================  Text Manager  =======================
 
