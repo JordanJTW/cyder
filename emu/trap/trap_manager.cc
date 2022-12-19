@@ -1623,7 +1623,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto the_event = TRY(PopRef<EventRecord>());
       LOG_TRAP() << "IsDialogEvent(theEvent: { " << the_event << " })";
       // FIXME: Return True if in a Dialog once they are implemented
-      return TrapReturn(0x0000);
+      return TrapReturn<bool>(false);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-417.html
     case Trap::ParamText: {
