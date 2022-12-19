@@ -13,7 +13,7 @@ namespace memory {
 
 class MemoryManager {
  public:
-  static constexpr size_t kHeapHandleOffset{512};
+  static constexpr size_t kHeapHandleOffset{4096};
 
   Ptr Allocate(uint32_t size);
   Handle AllocateHandle(uint32_t size, std::string tag);
