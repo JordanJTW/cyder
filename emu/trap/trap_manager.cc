@@ -839,8 +839,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         LOG_TRAP() << "SetPt(VAR pt: { " << pt << " } @ 0x" << std::hex
                    << pt_var << ", h: " << std::dec << h << ",v: " << v << ")";
 
-        pt.x = h;
-        pt.y = v;
+        // TODO: Why do coordinates need to swapped here and in GetPen()?
+        // Swapping the (x,y) is the only way to make "1000 Miles" look right
+        pt.x = v;
+        pt.y = h;
         return absl::OkStatus();
       });
     }
