@@ -164,6 +164,7 @@ void cpu_instr_callback(unsigned int pc) {
     LOG(INFO) << std::hex << pc << " (" << tag << "): " << buffer;
   }
   CHECK(m68k_get_reg(NULL, M68K_REG_ISP) <= cyder::memory::kStackStart);
+  CHECK(m68k_get_reg(NULL, M68K_REG_ISP) > cyder::memory::kStackEnd);
 
   auto instr = MUST(cyder::memory::kSystemMemory.Read<uint16_t>(pc));
   if ((instr & 0xFFC0) == 0x4E80) {

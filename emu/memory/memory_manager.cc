@@ -18,6 +18,7 @@ Ptr MemoryManager::Allocate(uint32_t size) {
   heap_offset_ += size;
   LOG(INFO) << "Memory used: " << heap_offset_ << " / "
             << (kHeapEnd - kHeapStart);
+  CHECK_LT(heap_offset_, kHeapEnd);
   return ptr;
 }
 
@@ -27,6 +28,8 @@ Handle MemoryManager::AllocateHandle(uint32_t size, std::string tag) {
 
   LOG(INFO) << "Handle " << (handle_offset_ / sizeof(Handle)) << " ["
             << std::hex << handle << "] for '" << tag << "'";
+
+  CHECK_LT(handle_offset_, kHeapHandleOffset);
 
   handle_offset_ += sizeof(Handle);
   LOG(INFO) << "Handles used: " << handle_offset_ / sizeof(Handle);
