@@ -16,6 +16,7 @@ EventManager::EventManager() = default;
 void EventManager::QueueWindowActivate(Ptr window) {
   EventRecord record;
   record.what = kWindowActivate;
+  record.when = NowTicks();
   record.message = window;
   activate_events_.push_back(std::move(record));
 }
@@ -23,6 +24,7 @@ void EventManager::QueueWindowActivate(Ptr window) {
 void EventManager::QueueWindowUpdate(Ptr window) {
   EventRecord record;
   record.what = kWindowUpdate;
+  record.when = NowTicks();
   record.message = window;
   update_events_.push_back(std::move(record));
 }
@@ -35,6 +37,7 @@ void EventManager::QueueMouseDown(int x, int y) {
   EventRecord record;
   record.what = kMouseDown;
   record.where = where;
+  record.when = NowTicks();
   input_events_.push_back(std::move(record));
 }
 
@@ -46,12 +49,14 @@ void EventManager::QueueMouseUp(int x, int y) {
   EventRecord record;
   record.what = kMouseUp;
   record.where = where;
+  record.when = NowTicks();
   input_events_.push_back(std::move(record));
 }
 
 void EventManager::QueueKeyDown() {
   EventRecord record;
   record.what = kKeyDown;
+  record.when = NowTicks();
   // FIXME: Add keycode information in EventRecord::message
   input_events_.push_back(std::move(record));
 }
@@ -65,6 +70,7 @@ void EventManager::QueueRawEvent(uint16_t raw_event_type, uint32_t message) {
 
   EventRecord record;
   record.what = raw_event_type;
+  record.when = NowTicks();
   record.message = message;
   // Even stanger is that this should go into the "Low-Level OS Event Queue"
   // i.e. `input_events_` however it _only_ works in "1000 Miles" if it is in
@@ -121,6 +127,13 @@ EventRecord EventManager::GetNextEvent(uint16_t event_mask) {
     return event;
   }
   return NullEvent();
+}
+
+uint32_t EventManager::NowTicks() const {
+  // TODO: Read from GlobalVar::Ticks which should be set every 1/60th secs
+  static absl::Time boot_time = absl::Now();
+  auto elapsed_time_ms = absl::ToInt64Milliseconds(absl::Now() - boot_time);
+  return elapsed_time_ms / 16;
 }
 
 bool EventManager::HasMouseEvent(EventType type) const {

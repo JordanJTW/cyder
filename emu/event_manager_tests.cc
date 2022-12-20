@@ -79,4 +79,17 @@ TEST(EventManagerTests, HasMouseEvent) {
   EXPECT_TRUE(event_manager.HasMouseEvent(kMouseUp));
 }
 
+TEST(EventManagerTests, EventTicks) {
+  EventManager event_manager;
+
+  event_manager.QueueMouseDown(369, 109);
+  // FIXME: Allow mocking the Tick time source so this hack is not necessary
+  usleep(33 * 1000);
+  event_manager.QueueMouseDown(3087, 320);
+
+  auto first = event_manager.GetNextEvent(kEventEventMask);
+  auto second = event_manager.GetNextEvent(kEventEventMask);
+  EXPECT_LT(first.when, second.when);
+}
+
 }  // namespace cyder
