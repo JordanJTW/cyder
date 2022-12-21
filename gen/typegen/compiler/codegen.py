@@ -1,7 +1,7 @@
 import functools
 import textwrap
 
-from compiler.type_checker import CheckedTypeExpression, CheckedArrayTypeExpression, CheckedStructExpression, CheckedAssignExpression
+from compiler.type_checker import CheckedTypeExpression, CheckedStructExpression, CheckedAssignExpression
 from pathlib import Path
 from typing import List, Tuple, Union
 
@@ -60,10 +60,6 @@ class CodeGenerator:
       return size
 
     for expr in reversed(self._type_expressions):
-      # FIXME: Figure out how to handle this case?
-      if isinstance(expr.type, CheckedArrayTypeExpression):
-        continue
-
       if expr.id == type_id:
         return self._get_type_size(expr.type.id)
 
@@ -71,7 +67,7 @@ class CodeGenerator:
     self._errors.append(f'No size found for type: {type_id}')
     return 0
 
-  def _get_c_type(self, type: Union[CheckedArrayTypeExpression, CheckedTypeExpression]) -> Tuple[str, bool]:
+  def _get_c_type(self, type: CheckedTypeExpression) -> Tuple[str, bool]:
     builtin_types = {
       'u8': 'uint8_t',
       'u16': 'uint16_t',
@@ -80,12 +76,6 @@ class CodeGenerator:
       'i16': 'int16_t',
       'i32': 'int32_t',
     }
-
-    if isinstance(type, CheckedArrayTypeExpression):
-      (c_type, _) = self._get_c_type(type.inner_type)
-      return (f'std::vector<{c_type}>', True)
-
-    assert isinstance(type, CheckedTypeExpression)
 
     for struct in self._struct_expressions:
       if struct.id == type.id:
@@ -234,63 +224,11 @@ class CodeGenerator:
                 f'  obj.{member.id} = TRY(region.Read<{c_type}>({offset_str}));\n')
             offset = offset + self._get_type_size(member.type.id)
 
-      elif isinstance(member.type, CheckedArrayTypeExpression):
-        assert isinstance(member.type.inner_type, CheckedTypeExpression)
-        inner_type_expr: CheckedTypeExpression = member.type.inner_type
-
-        (c_type, is_struct) = self._get_c_type(inner_type_expr)
-
-        if member.type.length_label == 'null':
-          condition_type = self._get_first_field_type(inner_type_expr)
-          write(file, f"""
-            size_t {member.id}_offset = 0;
-            while (TRY(region.Read<{condition_type}>({offset_str} + {member.id}_offset)) != 0) {{
-          """, indent=2)
-        else:
-          write(file, f"""
-            size_t {member.id}_offset = 0;
-            for (size_t i = 0; i {'<=' if member.type.include_length else '<'} obj.{member.type.length_label}; ++i) {{
-          """, indent=2)
-
-        if is_struct:
-          write(file, f"""
-            auto inner_obj = TRY(ReadType<{c_type}>(region, {offset_str} + {member.id}_offset));
-            obj.{member.id}.push_back(inner_obj);
-            {member.id}_offset += inner_obj.size();
-          }}
-        """, indent=2)
-        else:
-          write(file, f"""
-            obj.{member.id}.push_back(TRY(region.Read<{c_type}>({offset_str} + {member.id}_offset)));
-            {member.id}_offset += sizeof({c_type});
-          }}
-        """, indent=2)
-        local_variables.append(f'{member.id}_offset')
-
     file.write('  return obj;\n')
     file.write('}\n\n')
 
     file.write(f'size_t {label}::size() const {{\n')
-    size_variables = []
-    for member in members:
-      if isinstance(member.type, CheckedArrayTypeExpression):
-        (c_type, is_struct) = self._get_c_type(member.type.inner_type)
-
-        if is_struct:
-          write(file, f"""
-            size_t {member.id}_offset = 0;
-            for (size_t i = 0; i < {member.id}.size(); ++i) {{
-              {member.id}_offset += {member.id}[i].size();
-            }}
-          """, indent=2)
-          size_variables.append(f'{member.id}_offset')
-        else:
-          size_variables.append(
-            f'({member.id}.size() * {self._get_type_size(member.type.inner_type.id)})')
-
     offset_str = generate_offset_str()
-    if size_variables:
-      offset_str = offset_str + ' + ' + ' + '.join(size_variables)
     file.write(f'  return {offset_str};\n')
     file.write('}\n\n')
 
@@ -322,14 +260,8 @@ class CodeGenerator:
     """)
 
     for member in members:
-      if isinstance(member.type, CheckedTypeExpression):
-        self._write_write_type_value(
-          file, member.type, f'obj.{member.id}', indent=2)
-      elif isinstance(member.type, CheckedArrayTypeExpression):
-        write(file, f'for (const auto& item : obj.{member.id}) {{\n', indent=2)
-        self._write_write_type_value(
-          file, member.type.inner_type, 'item', indent=4)
-        write(file, '}\n', indent=2)
+      self._write_write_type_value(
+        file, member.type, f'obj.{member.id}', indent=2)
     write(file, """
         return absl::OkStatus();
       }\n
@@ -346,11 +278,10 @@ class CodeGenerator:
     for index, member in enumerate(members):
       line_end = ' << ", "' if index + 1 != len(members) else ''
       stream_value = f'obj.{member.id}'
-      if isinstance(member.type, CheckedArrayTypeExpression):
-        stream_value = f'"[{member.type.inner_type};" << obj.{member.id}.size() << "]"'
+
       # Cast value to an int to work around printing u8 and having them appear as char...
       # Without this any u8 set to 0 ends up being interpreted as an \0 for a string.
-      elif member.type.id == 'u8':
+      if member.type.id == 'u8':
         stream_value = f'int({stream_value})'
       elif member.type.id == 'Boolean':
         stream_value = f'({stream_value} ? "True" : "False")'

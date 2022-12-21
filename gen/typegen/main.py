@@ -5,9 +5,9 @@ import sys
 
 from compiler.codegen import CodeGenerator
 from compiler.error_message import print_errors
-from compiler.parser import Parser
 from compiler.tokenizer import Tokenizer
 from compiler.type_checker import TypeChecker
+from compiler.type_parser import Parser
 
 
 def compile(filename, output_path):

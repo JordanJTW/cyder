@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include "emu/graphics/bitmap_image.h"
 #include "gen/typegen/generated_types.tdef.h"
@@ -25,6 +26,7 @@ class MenuPopUp {
  public:
   MenuPopUp(graphics::BitmapImage& screen,
             MenuResource menu,
+            std::vector<MenuItemResource> items,
             Rect anchor_rect);
   ~MenuPopUp();
 
@@ -38,6 +40,7 @@ class MenuPopUp {
  private:
   graphics::BitmapImage& screen_;
   MenuResource menu_;
+  std::vector<MenuItemResource> menu_items_;
   const Rect anchor_rect_;
   AutoHiliteRect anchor_hilite_;
   const Rect popup_rect_;

@@ -36,6 +36,14 @@ class MemoryReader final {
     return std::move(value);
   }
 
+  // Peek (do not increase offset) the next integer from the MemoryRegion.
+  template <typename IntegerType,
+            typename std::enable_if<std::is_integral<IntegerType>::value,
+                                    bool>::type = true>
+  absl::StatusOr<IntegerType> Peek() {
+    return region_.Read<IntegerType>(offset_);
+  }
+
   // Read the next ReadType<> `Type` from the MemoryRegion.
   // FIXME: Ensure the templated `Type` has a size() method and is not a string
   template <typename Type>

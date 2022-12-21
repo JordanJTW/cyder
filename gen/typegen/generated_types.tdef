@@ -6,6 +6,7 @@ type GrafPtr: Ptr;
 type Integer: u16;
 type ResourceId: Integer;
 
+// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-183.html
 struct MenuItemResource {
   title: str;
   icon: u8;
@@ -14,6 +15,7 @@ struct MenuItemResource {
   style: u8;
 }
 
+// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-183.html
 struct MenuResource {
   id: Integer;
   width: Integer;
@@ -22,12 +24,6 @@ struct MenuResource {
   placeholder: Integer;
   state_bit_field: u32;
   title: str;
-  items: [MenuItemResource;null];
-}
-
-struct MenuBarResource {
-  count: Integer;
-  menus: [ResourceId;count];
 }
 
 // Link:

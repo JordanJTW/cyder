@@ -21,9 +21,10 @@ constexpr uint8_t kHighLightPattern[8] = {0xFF, 0xFF, 0xFF, 0xFF,
 // Minimum allowed distance between a menu item title and its keyboard shortcut
 constexpr int kMinimumShortcutPadding = 12;
 
-Rect GetPopUpBounds(const MenuResource& menu, const Rect& anchor_rect) {
+Rect GetPopUpBounds(const std::vector<MenuItemResource>& menu_items,
+                    const Rect& anchor_rect) {
   int width = 0, height = 0;
-  for (const auto& item : menu.items) {
+  for (const auto& item : menu_items) {
     height += kMenuItemHeight;
     int item_width = item.title.size() * kMenuItemGlyphWidth;
     if (item.keyboard_shortcut != 0) {
@@ -71,12 +72,14 @@ AutoHiliteRect::~AutoHiliteRect() {
 
 MenuPopUp::MenuPopUp(graphics::BitmapImage& screen,
                      MenuResource menu,
+                     std::vector<MenuItemResource> menu_items,
                      Rect anchor_rect)
     : screen_(screen),
       menu_(std::move(menu)),
+      menu_items_(std::move(menu_items)),
       anchor_rect_(std::move(anchor_rect)),
       anchor_hilite_(anchor_rect_, screen_),
-      popup_rect_(GetPopUpBounds(menu_, anchor_rect_)),
+      popup_rect_(GetPopUpBounds(menu_items_, anchor_rect_)),
       saved_bitmap_(RectWidth(popup_rect_), RectHeight(popup_rect_)) {
   saved_bitmap_.CopyBitmap(screen_, popup_rect_, NormalizeRect(popup_rect_));
 
@@ -84,7 +87,7 @@ MenuPopUp::MenuPopUp(graphics::BitmapImage& screen,
   screen_.FrameRect(popup_rect_, kHighLightPattern);
 
   int y_offset = popup_rect_.top;
-  for (const auto& item : menu_.items) {
+  for (const auto& item : menu_items_) {
     if (IsMenuItemSeparator(item)) {
       // Draw a grey line _without_ overwritting the frame around the menu
       screen_.FillRow(y_offset + (kMenuItemHeight / 2), popup_rect_.left + 1,

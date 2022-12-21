@@ -10,15 +10,9 @@ class Token:
     NUMBER = auto()
     COLON = auto()
     SEMICOLON = auto()
-    AT_SIGN = auto()
-    LESS_THAN = auto()
-    EQUAL_TO = auto()
     START_CURLY_BRACKET = auto()
     END_CURLY_BRACKET = auto()
-    START_SQUARE_BRACKET = auto()
-    END_SQUARE_BRACKET = auto()
     END_OF_FILE = auto()
-    NULL = auto()
     GARBAGE = auto()
 
   @property
@@ -81,9 +75,6 @@ class Tokenizer:
 
     if name == 'struct':
       return Token(Token.Type.STRUCT, span)
-
-    if name == 'null':
-      return Token(Token.Type.NULL, span)
 
     return Token(Token.Type.IDENTIFIER, span, label=name)
 
@@ -162,26 +153,6 @@ class Tokenizer:
 
       if self._current == '}':
         tokens.append(Token(Token.Type.END_CURLY_BRACKET, char_span))
-        self._advance()
-        continue
-
-      if self._current == '[':
-        tokens.append(Token(Token.Type.START_SQUARE_BRACKET, char_span))
-        self._advance()
-        continue
-
-      if self._current == ']':
-        tokens.append(Token(Token.Type.END_SQUARE_BRACKET, char_span))
-        self._advance()
-        continue
-
-      if self._current == '<':
-        tokens.append(Token(Token.Type.LESS_THAN, char_span))
-        self._advance()
-        continue
-
-      if self._current == '=':
-        tokens.append(Token(Token.Type.EQUAL_TO, char_span))
         self._advance()
         continue
 

@@ -18,17 +18,9 @@ class LabelExpression:
 
 
 @dataclass
-class ArrayTypeExpression:
-  inner_type: LabelExpression
-  length_label: str
-  include_length: bool
-  span: Tuple[int, int]
-
-
-@dataclass
 class AssignExpression:
   id: LabelExpression
-  type: Union[LabelExpression, ArrayTypeExpression]
+  type: LabelExpression
   span: Tuple[int, int]
 
 
@@ -44,7 +36,9 @@ class ParserException(Exception):
   message: str
   span: Tuple[int, int]
 
+
 ParsedExpression = Union[StructExpression, AssignExpression]
+
 
 class Parser:
   def __init__(self, tokens):
@@ -62,9 +56,6 @@ class Parser:
     return self._tokens[self._index]
 
   def _parse_type_expression(self):
-    if self._current.type == Token.Type.START_SQUARE_BRACKET:
-      return self._parse_array_type_expression()
-
     start_span = self._current.span
     if self._current.type != Token.Type.IDENTIFIER:
       raise ParserException('missing type', self._current.span)
@@ -78,54 +69,6 @@ class Parser:
     expr_span = merge_span(start_span, self._current.span)
     self._advance()
     return LabelExpression(label_expr.label, expr_span)
-
-  def _parse_array_type_expression(self) -> ArrayTypeExpression:
-    assert self._current.type == Token.Type.START_SQUARE_BRACKET
-    start_span = self._current.span
-    self._advance()
-
-    inner_type = self._parse_type_expression()
-
-    if not isinstance(inner_type, LabelExpression):
-      raise ParserException(
-        'loop type must be a struct or primitive', self._current.span)
-
-    include_length = False
-    condition_span = None
-    if self._current.type == Token.Type.LESS_THAN:
-      condition_span = self._current.span
-      self._advance()
-
-      if self._current.type == Token.Type.EQUAL_TO:
-        condition_span = merge_span(condition_span, self._current.span)
-        include_length = True
-        self._advance()
-
-    length_label = None
-    if self._current.type == Token.Type.IDENTIFIER:
-      length_label = self._current.label
-      self._advance()
-    elif self._current.type == Token.Type.NULL:
-      if condition_span != None:
-        raise ParserException(
-          'loop conditions not allowed with "null"', condition_span)
-
-      length_label = 'null'
-      self._advance()
-    else:
-      raise ParserException('expected length of array', self._current.span)
-
-    if self._current.type != Token.Type.END_SQUARE_BRACKET:
-      raise ParserException('missing "]"', self._current.span)
-    self._advance()
-
-    if self._current.type != Token.Type.SEMICOLON:
-      raise ParserException('missing ";"', self._current.span)
-
-    expr_span = merge_span(start_span, self._current.span)
-    self._advance()
-
-    return ArrayTypeExpression(inner_type, length_label, include_length, expr_span)
 
   def _parse_assignement(self):
     start_span = self._current.span

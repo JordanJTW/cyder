@@ -43,13 +43,6 @@ struct ResourceTypeItem {
   offset: u16;
 }
 
-// Layout at `type_list_offset`
-//    2 bytes: Number of types in the map minus 1
-struct ResourceTypeList {
-  count: u16;
-  items: [ResourceTypeItem; <=count];
-}
-
 // Entry in the reference list for a resource type
 //    2 bytes: Resource ID
 //    2 bytes: Offset from beginning of `name_list_offset` to resource name

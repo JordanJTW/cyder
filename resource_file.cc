@@ -64,12 +64,14 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
   core::MemoryRegion name_list_region =
       TRY(map_region.Create("NameList", map_header.name_list_offset));
 
-  auto type_list =
-      TRY(ReadType<ResourceTypeList>(type_list_region, /*offset=*/0));
+  core::MemoryReader type_list_reader(type_list_region);
+  auto type_list_count = TRY(type_list_reader.Next<uint16_t>());
+
   std::vector<ResourceGroup> resource_groups;
-  for (const auto& type_item : type_list.items) {
+  for (int i = 0; i <= type_list_count; ++i) {
+    auto type_item = TRY(type_list_reader.NextType<ResourceTypeItem>());
     const ResourceGroup group = TRY(ResourceGroup::Load(
-        type_list_region, name_list_region, data_region, type_item));
+        type_list_region, name_list_region, data_region, std::move(type_item)));
     resource_groups.push_back(std::move(group));
   }
 
@@ -78,9 +80,6 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
 }
 
 absl::Status ResourceFile::Save(const std::string& path) {
-  ResourceTypeList type_list;
-  type_list.count = resource_groups_.size() - 1;
-
   std::vector<ResourceEntry> resource_entries;
   std::vector<core::MemoryRegion> resource_data;
   std::vector<std::string> resource_names;
@@ -92,12 +91,9 @@ absl::Status ResourceFile::Save(const std::string& path) {
   uint32_t data_offset = 0;
   uint16_t name_offset = 0;
 
+  std::vector<ResourceTypeItem> type_items;
   for (const auto& group : resource_groups_) {
-    ResourceTypeItem resource_type_item;
-    resource_type_item.type_id = group.GetType();
-    resource_type_item.count = group.GetCount();
-    resource_type_item.offset = entry_offset;
-    type_list.items.push_back(resource_type_item);
+    type_items.push_back({group.GetType(), group.GetCount(), entry_offset});
 
     for (const auto& resource : group.GetResources()) {
       ResourceEntry resource_entry;
@@ -154,8 +150,13 @@ absl::Status ResourceFile::Save(const std::string& path) {
   RETURN_IF_ERROR(WriteType<ResourceMapHeader>(map_header, data, offset));
   offset += map_header.size();
 
-  RETURN_IF_ERROR(WriteType<ResourceTypeList>(type_list, data, offset));
-  offset += type_list.size();
+
+  RETURN_IF_ERROR(data.Write<uint16_t>(offset, type_items.size() - 1));
+  offset += sizeof(uint16_t);
+  for (const auto& item : type_items) {
+    RETURN_IF_ERROR(WriteType<ResourceTypeItem>(item, data, offset));
+    offset += ResourceTypeItem::fixed_size;
+  }
 
   for (const auto& entry : resource_entries) {
     RETURN_IF_ERROR(WriteType<ResourceEntry>(entry, data, offset));

@@ -540,23 +540,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto menu_bar_id = TRY(Pop<Integer>());
       LOG_TRAP() << "GetNewMBar(menuBarID: " << menu_bar_id << ")";
       Handle handle = resource_manager_.GetResource('MBAR', menu_bar_id);
-
-      auto menu_bar = TRY(ReadType<MenuBarResource>(
-          memory_manager_.GetRegionForHandle(handle), 0));
-
-      // FIXME: Should return a MenuList with MENU Handles saved
-      for (ResourceId id : menu_bar.menus) {
-        LOG(INFO) << "Menu Resource ID: " << id;
-        Handle menu_handle = resource_manager_.GetResource('MENU', id);
-
-        auto menu = TRY(ReadType<MenuResource>(
-            memory_manager_.GetRegionForHandle(menu_handle), 0));
-
-        LOG(INFO) << "Menu " << menu;
-        for (const auto& item : menu.items) {
-          LOG(INFO) << "MenuItem " << item;
-        }
-      }
+      // TODO: This should return a handle to a MenuList not the resource.
       return TrapReturn<Handle>(handle);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-118.html
@@ -566,50 +550,58 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "GetRMenu(menuID: " << menu_id << ")";
 
       Handle handle = resource_manager_.GetResource('MENU', menu_id);
-
-      auto menu = TRY(ReadType<MenuResource>(
-          memory_manager_.GetRegionForHandle(handle), 0));
-
-      LOG(INFO) << "Menu " << menu;
-      for (const auto& item : menu.items) {
-        LOG(INFO) << "MenuItem " << item;
-      }
+      // TODO: This should return a handle to a MenuRecord not the resource.
       return TrapReturn<Handle>(handle);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-120.html
     case Trap::InsertMenu: {
       auto before_id = TRY(Pop<uint16_t>());
       auto the_menu = TRY(Pop<Handle>());
-      LOG_TRAP() << "InsertMenu(beforeId: " << before_id << ", theMenu: 0x"
-                 << std::hex << the_menu << ")";
+      LOG(INFO) << "InsertMenu(beforeId: " << before_id << ", theMenu: 0x"
+                << std::hex << the_menu << ")";
 
-      auto menu = TRY(ReadType<MenuResource>(
-          memory_manager_.GetRegionForHandle(the_menu), 0));
-      menu_manager_.InsertMenu(menu);
+      core::MemoryReader reader(memory_manager_.GetRegionForHandle(the_menu));
+
+      auto menu = TRY(reader.NextType<MenuResource>());
+      // The MenuResource ends with a null-terminated list of MenuItems
+      // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-183.html
+      std::vector<MenuItemResource> menu_items;
+      while (reader.HasNext() && TRY(reader.Peek<uint8_t>()) != 0) {
+        LOG(INFO) << "InsertMenu: " << TRY(reader.NextType<MenuItemResource>());
+      }
+
+      menu_manager_.InsertMenu(std::move(menu), std::move(menu_items));
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-127.html
     case Trap::SetMenuBar: {
       auto menu_list_handle = TRY(Pop<Handle>());
-      LOG_TRAP() << "SetMenuBar(menuList: 0x" << menu_list_handle << ")";
+      LOG(INFO) << "SetMenuBar(menuList: 0x" << menu_list_handle << ")";
 
-      auto menu_list = TRY(memory_manager_.ReadTypeFromHandle<MenuBarResource>(
-          menu_list_handle));
+      core::MemoryReader menu_bar_reader(
+          memory_manager_.GetRegionForHandle(menu_list_handle));
 
+      // MenuBarResource: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-184.html
+      auto menu_count = TRY(menu_bar_reader.Next<uint16_t>());
       // FIXME: The MENUs should not need to be loaded _again_ (see GetNewMBar)
-      for (ResourceId id : menu_list.menus) {
+      for (int i = 0; i < menu_count; ++i) {
+        auto id = TRY(menu_bar_reader.Next<uint16_t>());
         LOG(INFO) << "Menu Resource ID: " << id;
+
         Handle menu_handle = resource_manager_.GetResource('MENU', id);
 
-        auto menu = TRY(ReadType<MenuResource>(
-            memory_manager_.GetRegionForHandle(menu_handle), 0));
+        core::MemoryReader reader(
+            memory_manager_.GetRegionForHandle(menu_handle));
 
-        menu_manager_.InsertMenu(menu);
-
-        LOG(INFO) << "Menu " << menu;
-        for (const auto& item : menu.items) {
-          LOG(INFO) << "MenuItem " << item;
+        auto menu = TRY(reader.NextType<MenuResource>());
+        // The MenuResource ends with a null-terminated list of MenuItems
+        // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-183.html
+        std::vector<MenuItemResource> menu_items;
+        while (reader.HasNext() && TRY(reader.Peek<uint8_t>()) != 0) {
+          menu_items.push_back(TRY(reader.NextType<MenuItemResource>()));
         }
+
+        menu_manager_.InsertMenu(std::move(menu), std::move(menu_items));
       }
       return absl::OkStatus();
     }
@@ -639,12 +631,24 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                  << ", item: " << std::dec << item << ", VAR itemString: 0x"
                  << std::hex << item_string_var << ")";
 
-      auto menu = TRY(ReadType<MenuResource>(
-          memory_manager_.GetRegionForHandle(the_menu), 0));
+      core::MemoryReader reader(memory_manager_.GetRegionForHandle(the_menu));
 
-      RETURN_IF_ERROR(WriteType<absl::string_view>(
-          menu.items[item - 1].title, memory::kSystemMemory, item_string_var));
+      auto menu = TRY(reader.NextType<MenuResource>());
+      // The MenuResource ends with a null-terminated list of MenuItems
+      // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-183.html
+      uint16_t item_index = 0;
+      while (reader.HasNext() && TRY(reader.Peek<uint8_t>()) != 0) {
+        auto menu_item = TRY(reader.NextType<MenuItemResource>());
 
+        if (++item_index == item) {
+          RETURN_IF_ERROR(WriteType<absl::string_view>(
+              menu_item.title, memory::kSystemMemory, item_string_var));
+          return absl::OkStatus();
+        }
+      }
+
+      // The documentation does not describe what should happen
+      NOTREACHED() << "GetMenuItemText received an invalid index!";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-133.html

@@ -22,7 +22,9 @@ MenuManager::MenuManager(graphics::BitmapImage& screen,
                          NativeBridge& native_bridge)
     : screen_(screen), native_bridge_(native_bridge) {}
 
-void MenuManager::InsertMenu(MenuResource menu) {
+void MenuManager::InsertMenu(MenuResource menu,
+                             std::vector<MenuItemResource> menu_items) {
+  menu_items_[menu.id] = std::move(menu_items);
   menus_.push_back(std::move(menu));
 }
 
@@ -71,7 +73,7 @@ void MenuManager::OnMouseMove(int x, int y) {
       popup_menu_.reset();
 
       popup_menu_ = absl::make_unique<MenuPopUp>(
-          screen_, menu,
+          screen_, menu, menu_items_[menu.id],
           NewRect(x_offset, 0, menu_bar_item_width, kMenuBarHeight));
       break;
     }

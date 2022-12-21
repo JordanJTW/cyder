@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from typing import List, Mapping, Tuple, Union
 
-from compiler.parser import AssignExpression, StructExpression, LabelExpression, ArrayTypeExpression, ParsedExpression, ParserException
+from compiler.type_parser import AssignExpression, StructExpression, LabelExpression, ParsedExpression, ParserException
 
 
 @dataclass
@@ -10,20 +10,12 @@ class CheckedTypeExpression:
   id: str
   size: int
   is_dynamic: bool
-  is_struct: bool
-
-
-@dataclass
-class CheckedArrayTypeExpression:
-  inner_type: CheckedTypeExpression
-  length_label: str
-  include_length: bool
 
 
 @dataclass
 class CheckedAssignExpression:
   id: str
-  type: Union[CheckedTypeExpression, CheckedArrayTypeExpression]
+  type: CheckedTypeExpression
 
 
 @dataclass
@@ -50,46 +42,30 @@ class TypeChecker:
     def check_type_exists(expr: LabelExpression):
       if size := _INTEGER_SIZES.get(expr.label, None):
         return CheckedTypeExpression(
-            expr.label, size, is_dynamic=False, is_struct=False)
+            expr.label, size, is_dynamic=False)
 
       if expr.label == 'str':
         return CheckedTypeExpression(
-            expr.label, size=1, is_dynamic=True, is_struct=False)
+            expr.label, size=1, is_dynamic=True)
 
       if ref := global_types.get(expr.label, None):
         if isinstance(ref, CheckedAssignExpression):
-          if isinstance(ref.type, CheckedTypeExpression):
-            return CheckedTypeExpression(
-                expr.label, ref.type.size, ref.type.is_dynamic, ref.type.is_struct)
-          else:
-            raise ParserException(
-                f'arrays can not be global', global_id_spans[expr.label])
+          return CheckedTypeExpression(
+              expr.label, ref.type.size, ref.type.is_dynamic)
         elif isinstance(ref, CheckedStructExpression):
           return CheckedTypeExpression(
-              expr.label, ref.size, ref.is_dynamic, True)
+              expr.label, ref.size, ref.is_dynamic)
 
       raise ParserException(f'unknown type "{expr.label}"', expr.span)
 
     def check_assign_valid(expr: AssignExpression):
-      if isinstance(expr.type, LabelExpression):
-        # FIXME: With-in structs a member might have the same name as a
-        #        global type id which will cause a false trigger here:
-        if expr.id.label == expr.type.label:
-          raise ParserException(
-            'type expressions can not reference themselves', expr.type.span)
+      # FIXME: With-in structs a member might have the same name as a
+      #        global type id which will cause a false trigger here:
+      if expr.id.label == expr.type.label:
+        raise ParserException(
+          'type expressions can not reference themselves', expr.type.span)
 
-        return check_type_exists(expr.type)
-
-      elif isinstance(expr.type, ArrayTypeExpression):
-        if expr.id.label == expr.type.inner_type.label:
-          raise ParserException(
-            'type expressions can not reference themselves', expr.type.span)
-
-        checked_type = check_type_exists(expr.type.inner_type)
-        return CheckedArrayTypeExpression(
-            checked_type, expr.type.length_label, expr.type.include_length)
-
-      assert False, f'Recieved unknown type: "{type(expr.type).__name__}"'
+      return check_type_exists(expr.type)
 
     def check_assign_expr(expr: AssignExpression):
       try:
@@ -138,9 +114,6 @@ class TypeChecker:
               if checked_assign.type.id == 'str':
                 is_dynamic = True
               fixed_size += checked_assign.type.size
-            
-            if isinstance(checked_assign.type, CheckedArrayTypeExpression):
-              is_dynamic = True
 
         if is_unique:
           global_id_spans[expr.id.label] = expr.id.span

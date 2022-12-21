@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -16,7 +17,7 @@ class MenuManager : public MouseListener {
  public:
   MenuManager(graphics::BitmapImage& screen, NativeBridge& native_bridge);
 
-  void InsertMenu(MenuResource menu);
+  void InsertMenu(MenuResource menu, std::vector<MenuItemResource> items);
   void DrawMenuBar() const;
 
   bool IsInMenuBar(Point point) const;
@@ -33,6 +34,7 @@ class MenuManager : public MouseListener {
   graphics::BitmapImage& screen_;
   NativeBridge& native_bridge_;
   std::vector<MenuResource> menus_;
+  std::map<uint16_t, std::vector<MenuItemResource>> menu_items_;
 
   std::function<void(uint32_t)> on_selected_;
   std::unique_ptr<MenuPopUp> popup_menu_;

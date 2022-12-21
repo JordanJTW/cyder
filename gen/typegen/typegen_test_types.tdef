@@ -10,34 +10,6 @@ struct String {
   string: str;
 }
 
-struct ArrayIntegers {
-  count: u8;
-  values: [u16;count];
-}
-
-struct ArrayStructs {
-  count: u16;
-  values: [ArrayIntegers;count];
-}
-
-struct ArrayIntegersNullTerminated {
-  values: [u16;null];
-}
-
-struct SimpleStruct {
-  first: u16;
-  last: u32;
-}
-
-struct ArrayStructsNullTerminated {
-  values: [SimpleStruct;null];
-}
-
-struct LessThanOrEqual {
-  count: u16;
-  values: [u16;<=count];
-}
-
 struct ByteWidth {
   first: u24;
   byte_one: u8;
