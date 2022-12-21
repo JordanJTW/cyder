@@ -342,25 +342,25 @@ class CodeGenerator:
 
   def _write_struct_stream(self, file, label, members):
     file.write(
-      f'std::ostream& operator<<(std::ostream& os, const {label}& obj) {{ return os')
+      f'std::ostream& operator<<(std::ostream& os, const {label}& obj) {{ return os << "{{ "')
     for index, member in enumerate(members):
       line_end = ' << ", "' if index + 1 != len(members) else ''
       stream_value = f'obj.{member.id}'
       if isinstance(member.type, CheckedArrayTypeExpression):
         stream_value = f'"[{member.type.inner_type};" << obj.{member.id}.size() << "]"'
-      elif member.type.is_struct:
-        stream_value = f'"{{ " << {stream_value} << " }}"'
       # Cast value to an int to work around printing u8 and having them appear as char...
       # Without this any u8 set to 0 ends up being interpreted as an \0 for a string.
       elif member.type.id == 'u8':
         stream_value = f'int({stream_value})'
       elif member.type.id == 'Boolean':
         stream_value = f'({stream_value} ? "True" : "False")'
+      elif 'Handle' in member.type.id or member.type.id == 'Ptr':
+        stream_value = f'std::hex << "0x" << {stream_value} << std::dec'
       elif member.type.id == 'str':
         stream_value = f'\"\\"\" << {stream_value} << \"\\"\"'
 
       file.write(f' << "{member.id}: " << {stream_value}{line_end}')
-    file.write('; }\n')
+    file.write('<< " }"; }\n')
 
   def _generate_struct_stream(self, file):
     for expr in self._struct_expressions:

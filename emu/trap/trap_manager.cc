@@ -552,9 +552,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         auto menu = TRY(ReadType<MenuResource>(
             memory_manager_.GetRegionForHandle(menu_handle), 0));
 
-        LOG(INFO) << "Menu {" << menu << "}";
+        LOG(INFO) << "Menu " << menu;
         for (const auto& item : menu.items) {
-          LOG(INFO) << "MenuItem {" << item << "}";
+          LOG(INFO) << "MenuItem " << item;
         }
       }
       return TrapReturn<Handle>(handle);
@@ -570,9 +570,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto menu = TRY(ReadType<MenuResource>(
           memory_manager_.GetRegionForHandle(handle), 0));
 
-      LOG(INFO) << "Menu {" << menu << "}";
+      LOG(INFO) << "Menu " << menu;
       for (const auto& item : menu.items) {
-        LOG(INFO) << "MenuItem {" << item << "}";
+        LOG(INFO) << "MenuItem " << item;
       }
       return TrapReturn<Handle>(handle);
     }
@@ -606,9 +606,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
         menu_manager_.InsertMenu(menu);
 
-        LOG(INFO) << "Menu {" << menu << "}";
+        LOG(INFO) << "Menu " << menu;
         for (const auto& item : menu.items) {
-          LOG(INFO) << "MenuItem {" << item << "}";
+          LOG(INFO) << "MenuItem " << item;
         }
       }
       return absl::OkStatus();
@@ -651,7 +651,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::MenuSelect: {
       auto start_pt = TRY(PopType<Point>());
 
-      LOG_TRAP() << "MenuSelect(startPt: { " << start_pt << " })";
+      LOG_TRAP() << "MenuSelect(startPt: " << start_pt << ")";
 
       menu_manager_.NativeMenuSelect(
           start_pt.x, start_pt.y, [](uint32_t selected) {
@@ -747,7 +747,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::FillRect: {
       auto pat = TRY(PopRef<Pattern>());
       auto rect = TRY(PopRef<Rect>());
-      LOG_TRAP() << "FillRect(rect: " << rect << ", pat: { " << pat << " })";
+      LOG_TRAP() << "FillRect(rect: " << rect << ", pat: " << pat << ")";
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
 
@@ -759,7 +759,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-97.html
     case Trap::FrameRect: {
       auto rect = TRY(PopRef<Rect>());
-      LOG_TRAP() << "FrameRect(rect: { " << rect << " })";
+      LOG_TRAP() << "FrameRect(rect: " << rect << ")";
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
 
@@ -831,10 +831,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto v = TRY(Pop<uint16_t>());
       auto h = TRY(Pop<uint16_t>());
       auto pt_var = TRY(Pop<Ptr>());
-      return WithType<Point>(pt_var, [&](Point& pt) {
-        LOG_TRAP() << "SetPt(VAR pt: { " << pt << " } @ 0x" << std::hex
-                   << pt_var << ", h: " << std::dec << h << ",v: " << v << ")";
+      LOG_TRAP() << "SetPt(VAR pt: 0x" << std::hex << pt_var
+                 << ", h: " << std::dec << h << ", v: " << v << ")";
 
+      return WithType<Point>(pt_var, [&](Point& pt) {
         pt.x = h;
         pt.y = v;
         return absl::OkStatus();
@@ -844,10 +844,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::InsetRect: {
       auto dv = TRY(Pop<int16_t>());
       auto dh = TRY(Pop<int16_t>());
-      auto rect_ptr = TRY(Pop<Ptr>());
-      auto rect = TRY(ReadType<Rect>(memory::kSystemMemory, rect_ptr));
-      LOG_TRAP() << "InsetRect(r: { " << rect << " } @ 0x" << std::hex
-                 << rect_ptr << std::dec << ", dh: " << dh << ", dv: " << dv
+      auto rect_var = TRY(Pop<Ptr>());
+      auto rect = TRY(ReadType<Rect>(memory::kSystemMemory, rect_var));
+      LOG_TRAP() << "InsetRect(VAR r: " << rect << " @ 0x" << std::hex
+                 << rect_var << std::dec << ", dh: " << dh << ", dv: " << dv
                  << ")";
       rect.left += dh;
       rect.right -= dh;
@@ -861,21 +861,20 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         rect.bottom = 0;
       }
 
-      RETURN_IF_ERROR(WriteType<Rect>(rect, memory::kSystemMemory, rect_ptr));
+      RETURN_IF_ERROR(WriteType<Rect>(rect, memory::kSystemMemory, rect_var));
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-87.html
     case Trap::OffsetRect: {
       auto dv = TRY(Pop<int16_t>());
       auto dh = TRY(Pop<int16_t>());
-      auto rect_ptr = TRY(Pop<Ptr>());
-      auto rect = TRY(ReadType<Rect>(memory::kSystemMemory, rect_ptr));
-      LOG_TRAP() << "OffsetRect(r: { " << rect << " } @ 0x" << std::hex
-                 << rect_ptr << std::dec << ", dh: " << dh << ", dv: " << dv
-                 << ")";
+      auto rect_var = TRY(Pop<Ptr>());
+      auto rect = TRY(ReadType<Rect>(memory::kSystemMemory, rect_var));
+      LOG_TRAP() << "OffsetRect(r: " << rect << " @ 0x" << std::hex << rect_var
+                 << std::dec << ", dh: " << dh << ", dv: " << dv << ")";
 
       rect = OffsetRect(rect, dh, dv);
-      RETURN_IF_ERROR(WriteType<Rect>(rect, memory::kSystemMemory, rect_ptr));
+      RETURN_IF_ERROR(WriteType<Rect>(rect, memory::kSystemMemory, rect_var));
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-93.html
@@ -884,8 +883,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto pt = TRY(PopType<Point>());
       auto rect = TRY(PopRef<Rect>());
 
-      LOG_TRAP() << "PtToAngle(rect: { " << rect << " }, pt: { " << pt
-                 << " }, VAR angle: 0x" << std::hex << angle_var << ")";
+      LOG_TRAP() << "PtToAngle(rect: " << rect << ", pt: " << pt
+                 << ", VAR angle: 0x" << std::hex << angle_var << ")";
 
       auto offset = TRY(port::GetLocalToGlobalOffset());
 
@@ -908,7 +907,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto pt_var = TRY(Pop<Ptr>());
       auto pt = TRY(ReadType<Point>(memory::kSystemMemory, pt_var));
 
-      LOG_TRAP() << "GlobalToLocal(VAR pt: { " << pt << " } @ 0x" << std::hex
+      LOG_TRAP() << "GlobalToLocal(VAR pt: " << pt << " @ 0x" << std::hex
                  << pt_var << ")";
 
       auto offset = TRY(port::GetLocalToGlobalOffset());
@@ -923,7 +922,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto pt_var = TRY(Pop<Ptr>());
       auto pt = TRY(ReadType<Point>(memory::kSystemMemory, pt_var));
 
-      LOG_TRAP() << "LocalToGlobal(VAR pt: { " << pt << " } @ 0x" << std::hex
+      LOG_TRAP() << "LocalToGlobal(VAR pt: " << pt << " @ 0x" << std::hex
                  << pt_var << ")";
 
       auto offset = TRY(port::GetLocalToGlobalOffset());
@@ -960,7 +959,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-101.html
     case Trap::InverRect: {
       auto rect = TRY(PopRef<Rect>());
-      LOG_TRAP() << "InvertRect(r: { " << rect << " })";
+      LOG_TRAP() << "InvertRect(r: " << rect << ")";
 
       screen_.FillRect(TRY(port::ConvertLocalToGlobal(rect)),
                        kForegroundPattern,
@@ -974,8 +973,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto src2 = TRY(PopRef<Rect>());
       auto src1 = TRY(PopRef<Rect>());
 
-      LOG_TRAP() << "SectRect(src1: { " << src1 << " }, src2: { " << src2
-                 << " }, VAR dstRect: 0x" << dst_rect_var << ")";
+      LOG_TRAP() << "SectRect(src1: " << src1 << ", src2: " << src2
+                 << ", VAR dstRect: 0x" << dst_rect_var << ")";
 
       auto rect = IntersectRect(src1, src2);
       RETURN_IF_ERROR(
@@ -986,8 +985,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::EqualRect: {
       auto rect2 = TRY(PopRef<Rect>());
       auto rect1 = TRY(PopRef<Rect>());
-      LOG_TRAP() << "EqualRect(rect1: { " << rect1 << " }, rect2: { " << rect2
-                 << " })";
+      LOG_TRAP() << "EqualRect(rect1: " << rect1 << ", rect2: " << rect2 << ")";
       return TrapReturn<bool>(EqualRect(rect1, rect2));
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-384.html
@@ -1001,14 +999,14 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-385.html
     case Trap::SetCursor: {
       auto crsr = TRY(PopRef<Cursor>());
-      LOG_TRAP() << "SetCursor(crsr: { " << crsr << " })";
+      LOG_TRAP() << "SetCursor(crsr: " << crsr << ")";
       // TODO: Allow alternative cursors to be displayed with SDL2
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-262.html
     case Trap::InvalRect: {
       auto bad_rect = TRY(PopRef<Rect>());
-      LOG_TRAP() << "InvalRect(badRect: { " << bad_rect << " })";
+      LOG_TRAP() << "InvalRect(badRect: " << bad_rect << ")";
       // FIXME: Implement this once "update regions" are supported
       event_manager_.QueueWindowUpdate(TRY(port::GetThePort()));
       return absl::OkStatus();
@@ -1028,7 +1026,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-45.html
     case Trap::ClipRect: {
       auto r = TRY(PopRef<Rect>());
-      LOG_TRAP() << "ClipRect(r: { " << r << " })";
+      LOG_TRAP() << "ClipRect(r: " << r << ")";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-132.html
@@ -1060,7 +1058,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-75.html
     case Trap::PenMode: {
       auto mode = TRY(Pop<Integer>());
-      LOG_TRAP() << "PenMode(mode: { " << mode << " })";
+      LOG_TRAP() << "PenMode(mode: " << mode << ")";
       return WithPort([&](GrafPort& port) {
         port.pattern_mode = mode;
         return absl::OkStatus();
@@ -1069,7 +1067,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-76.html
     case Trap::PenPat: {
       auto pat = TRY(PopRef<Pattern>());
-      LOG_TRAP() << "PenPat(pat: { " << pat << " })";
+      LOG_TRAP() << "PenPat(pat: " << pat << ")";
       return WithPort([&](GrafPort& port) {
         port.pen_pattern = pat;
         return absl::OkStatus();
@@ -1095,7 +1093,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto dh = TRY(Pop<int16_t>());
       LOG_TRAP() << "Line(dh: " << dh << ", dv: " << dv << ")";
       // TODO: Support drawing arbitrarily sloped lines...
-      CHECK(dv == 0) << "Only horizontal lines are supported currently";
+      // CHECK(dv == 0) << "Only horizontal lines are supported currently";
       return WithPort([&](GrafPort& port) {
         screen_.FillRow(port.pen_location.y - port.port_bits.bounds.top,
                         port.pen_location.x - port.port_bits.bounds.left,
@@ -1108,6 +1106,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::PtInRect: {
       auto r = TRY(PopRef<Rect>());
       auto pt = TRY(PopType<Point>());
+      LOG_TRAP() << "PtInRect(pt: " << pt << ", r: " << r << ")";
       return TrapReturn<bool>(PointInRect(pt, r));
     }
 
@@ -1180,12 +1179,12 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-30.html
     case Trap::InitGraf: {
-      auto globalPtr = TRY(Pop<Ptr>());
-      LOG_TRAP() << "InitGraf(globalPtr: 0x" << std::hex << globalPtr << ")";
+      auto global_ptr = TRY(Pop<Ptr>());
+      LOG_TRAP() << "InitGraf(globalPtr: 0x" << std::hex << global_ptr << ")";
 
       uint32_t a5_world = m68k_get_reg(/*context=*/NULL, M68K_REG_A5);
       RETURN_IF_ERROR(
-          memory::kSystemMemory.Write<uint32_t>(a5_world, globalPtr));
+          memory::kSystemMemory.Write<uint32_t>(a5_world, global_ptr));
 
       Rect screen_bounds;
       screen_bounds.top = 0;
@@ -1199,7 +1198,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       qd_globals.grey.lower = 0xAA55AA55;
 
       // `globalPtr` accounts for the size of `thePort` so must be added here
-      size_t qd_ptr = globalPtr - QDGlobals::fixed_size + sizeof(Ptr);
+      size_t qd_ptr = global_ptr - QDGlobals::fixed_size + sizeof(Ptr);
       RETURN_IF_ERROR(
           WriteType<QDGlobals>(qd_globals, memory::kSystemMemory, qd_ptr));
 
@@ -1279,7 +1278,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto resource_region =
           memory_manager_.GetRegionForHandle(resource_handle);
       auto resource = TRY(ReadType<WIND>(resource_region, /*offset=*/0));
-      LOG(INFO) << "WIND: { " << resource << " }";
+      LOG(INFO) << "WIND: " << resource;
 
       window_storage = TRY(window_manager_.NewWindow(
           window_storage, resource.initial_rect, resource.title,
@@ -1305,9 +1304,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto window_storage = TRY(Pop<Ptr>());
 
       LOG_TRAP() << "NewWindow(wStorage: 0x" << std::hex << window_storage
-                 << ", boundsRect: { " << std::dec << bounds_rect
-                 << " }, title: '" << title
-                 << "', visible: " << (visible ? "True" : "False")
+                 << ", boundsRect: " << std::dec << bounds_rect << ", title: '"
+                 << title << "', visible: " << (visible ? "True" : "False")
                  << ", theProc: 0x" << std::hex << window_definition_id
                  << ", behind: 0x" << behind_window
                  << ", goAwayFlog: " << (go_away_flag ? "True" : "False")
@@ -1341,9 +1339,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto the_window_var = TRY(Pop<Ptr>());
       auto the_point = TRY(PopType<Point>());
 
-      LOG_TRAP() << "FindWindow(thePoint: { " << the_point
-                 << " }, VAR theWindow: 0x" << std::hex << the_window_var
-                 << ")";
+      LOG_TRAP() << "FindWindow(thePoint: " << the_point
+                 << ", VAR theWindow: 0x" << std::hex << the_window_var << ")";
 
       if (menu_manager_.IsInMenuBar(the_point)) {
         return TrapReturn<int16_t>(1 /*inMenuBar*/);
@@ -1367,25 +1364,21 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-270.html
     case Trap::GetWRefCon: {
       auto the_window = TRY(PopRef<WindowRecord>());
-      LOG_TRAP() << "GetWRefCon(theWindow: { " << std::hex << the_window
-                 << " })";
+      LOG_TRAP() << "GetWRefCon(theWindow: " << the_window << ")";
       return TrapReturn<uint32_t>(the_window.reference_constant);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-269.html
     case Trap::SetWRefCon: {
       auto data = TRY(Pop<uint32_t>());
-      auto the_window_ptr = TRY(Pop<Ptr>());
-      auto the_window =
-          TRY(ReadType<WindowRecord>(memory::kSystemMemory, the_window_ptr));
+      auto window_ptr = TRY(Pop<Ptr>());
 
-      LOG_TRAP() << "SetWRefCon(theWindow: { " << the_window << " } @ 0x"
-                 << std::hex << the_window_ptr << ", data: " << std::dec << data
-                 << ")";
+      LOG_TRAP() << "SetWRefCon(theWindow: 0x" << std::hex << window_ptr
+                 << ", data: " << std::dec << data << ")";
 
-      the_window.reference_constant = data;
-      RETURN_IF_ERROR(WriteType<WindowRecord>(the_window, memory::kSystemMemory,
-                                              the_window_ptr));
-      return absl::OkStatus();
+      return WithType<WindowRecord>(window_ptr, [&](WindowRecord& window) {
+        window.reference_constant = data;
+        return absl::OkStatus();
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-276.html
     case Trap::GetWMgrPort: {
@@ -1415,8 +1408,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto region_ptr = memory_manager_.GetPtrForHandle(region_handle);
       auto region = TRY(ReadType<Region>(memory::kSystemMemory, region_ptr));
 
-      LOG_TRAP() << "FillRgn(region: { " << region << " } @ 0x" << std::hex
-                 << region_handle << ", pattern: { " << pattern << " })";
+      LOG_TRAP() << "FillRgn(region: " << region << " @ 0x" << std::hex
+                 << region_handle << ", pattern: " << pattern << ")";
 
       auto region_frame = TRY(port::ConvertLocalToGlobal(region.bounding_box));
       screen_.FillRect(region_frame, kBackgroundPattern);
@@ -1429,7 +1422,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto my_picture = TRY(Pop<Handle>());
 
       LOG_TRAP() << "DrawPicture(myPicture: 0x" << std::hex << my_picture
-                 << ", dstRect: { " << std::dec << dst_rect << " })";
+                 << ", dstRect: " << std::dec << dst_rect << ")";
 
       auto pict_data = memory_manager_.GetRegionForHandle(my_picture);
 
@@ -1471,8 +1464,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto the_window = TRY(Pop<Ptr>());
 
       LOG_TRAP() << "DragWindow(theWindow: 0x" << std::hex << the_window
-                 << ", startPt: { " << std::dec << start_pt
-                 << " }, boundsRect: { " << bounds_rect << " })";
+                 << ", startPt: " << std::dec << start_pt
+                 << ", boundsRect: " << bounds_rect << ")";
 
       window_manager_.NativeDragWindow(the_window, start_pt.x, start_pt.y);
       return absl::OkStatus();
@@ -1549,9 +1542,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Text/Text-155.html
     case Trap::GetFontInfo: {
       auto info_var = TRY(Pop<Ptr>());
+      LOG_TRAP() << "GetFontInfo(VAR info: 0x" << std::hex << info_var << ")";
+
       return WithType<FontInfo>(info_var, [&](FontInfo& info) {
-        LOG_TRAP() << "GetFontInfo(VAR info: { " << info << " } @ 0x"
-                   << std::hex << info_var << ")";
         // Only a fixed width 8x8 bitmap font is currently supported :P
         info.ascent = 8;
         info.descent = 0;
@@ -1577,8 +1570,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto length = TRY(Pop<uint32_t>());
       auto text_ptr = TRY(Pop<Ptr>());
       LOG_TRAP() << "TETextBox(text: 0x" << std::hex << text_ptr
-                 << ", length: " << std::dec << length << ", box: { " << box
-                 << " }, align: " << align << ")";
+                 << ", length: " << std::dec << length << ", box: " << box
+                 << ", align: " << align << ")";
 
       box = TRY(port::ConvertLocalToGlobal(box));
 
@@ -1614,7 +1607,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-427.html
     case Trap::IsDialogEvent: {
       auto the_event = TRY(PopRef<EventRecord>());
-      LOG_TRAP() << "IsDialogEvent(theEvent: { " << the_event << " })";
+      LOG_TRAP() << "IsDialogEvent(theEvent: " << the_event << ")";
       // FIXME: Return True if in a Dialog once they are implemented
       return TrapReturn<bool>(false);
     }
@@ -1676,7 +1669,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       auto icon_ptr = TRY(memory::kSystemMemory.Read<Handle>(the_handle));
 
-      LOG_TRAP() << "PlotIcon(theRect: { " << the_rect << " }, theHandle: 0x"
+      LOG_TRAP() << "PlotIcon(theRect: " << the_rect << ", theHandle: 0x"
                  << std::hex << the_handle << ")";
 
       the_rect = TRY(port::ConvertLocalToGlobal(the_rect));
