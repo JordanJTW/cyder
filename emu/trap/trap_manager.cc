@@ -826,6 +826,19 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       RETURN_IF_ERROR(WriteType<Rect>(rect, memory::kSystemMemory, rect_ptr));
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-51.html
+    case Trap::AddPt: {
+      auto dst_pt_var = TRY(Pop<Ptr>());
+      auto src_pt = TRY(PopType<Point>());
+
+      return WithType<Point>(dst_pt_var, [&](Point& dst_pt) {
+        LOG_TRAP() << "AddPt(srcPt: " << src_pt << ", VAR dstPt: " << dst_pt
+                   << " @ 0x" << std::hex << dst_pt_var << ")";
+        dst_pt.x += src_pt.x;
+        dst_pt.y += src_pt.y;
+        return absl::OkStatus();
+      });
+    }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-54.html
     case Trap::SetPt: {
       auto v = TRY(Pop<uint16_t>());
