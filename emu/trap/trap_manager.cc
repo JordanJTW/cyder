@@ -1404,6 +1404,41 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
           TRY(memory::kSystemMemory.Read<Handle>(GlobalVars::WMgrPort))));
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-245.html
+    case Trap::DragWindow: {
+      auto bounds_rect = TRY(PopRef<Rect>());
+      auto start_pt = TRY(PopType<Point>());
+      auto the_window = TRY(Pop<Ptr>());
+
+      LOG_TRAP() << "DragWindow(theWindow: 0x" << std::hex << the_window
+                 << ", startPt: " << std::dec << start_pt
+                 << ", boundsRect: " << bounds_rect << ")";
+
+      window_manager_.NativeDragWindow(the_window, start_pt.x, start_pt.y);
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-247.html
+    case Trap::DragGrayRgn: {
+      auto action_proc = TRY(Pop<Ptr>());
+      auto axis = TRY(Pop<uint16_t>());
+      auto slop_rect = TRY(PopRef<Rect>());
+      auto limit_rect = TRY(PopRef<Rect>());
+      auto start_pt = TRY(PopType<Point>());
+      auto the_rgn = TRY(Pop<Handle>());
+      LOG_TRAP() << "DragGrayRgn(theRgn: 0x" << std::hex << the_rgn
+                 << ", startPt: " << std::dec << start_pt
+                 << ", limitRect: " << limit_rect << ", slopRect: " << slop_rect
+                 << ", axis: " << axis << ", actionProc: 0x" << std::hex
+                 << action_proc << ")";
+
+      auto region = TRY(memory_manager_.ReadTypeFromHandle<Region>(the_rgn));
+
+      window_manager_.DragGrayRegion(region, start_pt, [](const Point& pt) {
+        // Reverse the high/low words to account for endian-ness differences
+        return TrapReturn<uint32_t>(pt.x << 16 | pt.y);
+      });
+      return absl::OkStatus();
+    }
 
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
     case Trap::BeginUpDate: {
@@ -1467,20 +1502,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::EndUpDate: {
       auto the_window = TRY(Pop<Ptr>());
       LOG_TRAP() << "EndUpdate(theWindow: 0x" << std::hex << the_window << ")";
-      return absl::OkStatus();
-    }
-
-    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-245.html
-    case Trap::DragWindow: {
-      auto bounds_rect = TRY(PopRef<Rect>());
-      auto start_pt = TRY(PopType<Point>());
-      auto the_window = TRY(Pop<Ptr>());
-
-      LOG_TRAP() << "DragWindow(theWindow: 0x" << std::hex << the_window
-                 << ", startPt: " << std::dec << start_pt
-                 << ", boundsRect: " << bounds_rect << ")";
-
-      window_manager_.NativeDragWindow(the_window, start_pt.x, start_pt.y);
       return absl::OkStatus();
     }
 

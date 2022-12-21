@@ -135,18 +135,38 @@ void WindowManager::DisposeWindow(Ptr window_ptr) {
 }
 
 void WindowManager::NativeDragWindow(Ptr window_ptr, int x, int y) {
-  native_bridge_.StartNativeMouseControl(this);
-  target_window_ptr_ = window_ptr;
-
-  target_window_ =
-      MUST(ReadType<WindowRecord>(memory::kSystemMemory, target_window_ptr_));
-
+  auto window = MUST(ReadType<WindowRecord>(memory::kSystemMemory, window_ptr));
   auto struct_region =
-      MUST(memory_.ReadTypeFromHandle<Region>(target_window_.structure_region));
-  target_offset_.x = struct_region.bounding_box.left - x;
-  target_offset_.y = struct_region.bounding_box.top - y;
+      MUST(memory_.ReadTypeFromHandle<Region>(window.structure_region));
 
-  outline_rect_ = struct_region.bounding_box;
+  // Be careful with lambda captures as it will be called outside function scope
+  DragGrayRegion(struct_region, {x, y}, [this, window_ptr](const Point& end) {
+    auto status =
+        WithType<WindowRecord>(window_ptr, [&](WindowRecord& window_record) {
+          RepaintDesktopOverWindow(window_record);
+
+          window_record.port.port_bits.bounds.left -= end.x;
+          window_record.port.port_bits.bounds.top -= end.y;
+          SetStructRegionAndDrawFrame(screen_, window_record, memory_);
+          MoveToFront(window_ptr);
+          InvalidateWindows();
+          return absl::OkStatus();
+        });
+    CHECK(status.ok()) << "Failed WithType<WindowRecord>: "
+                       << std::move(status).message();
+  });
+}
+
+void WindowManager::DragGrayRegion(
+    const Region& region,
+    const Point& start,
+    std::function<void(const Point&)> on_drag_end) {
+  outline_rect_ = region.bounding_box;
+  target_offset_ = {outline_rect_.left - start.x, outline_rect_.top - start.y};
+  start_pt_ = start;
+
+  on_drag_end_ = std::move(on_drag_end);
+  native_bridge_.StartNativeMouseControl(this);
 }
 
 WindowManager::RegionType WindowManager::GetWindowAt(const Point& mouse,
@@ -193,10 +213,8 @@ void WindowManager::OnMouseMove(int x, int y) {
                             NormalizeRect(outline_rect_));
   screen_.FrameRect(outline_rect_, kBlackPattern);
 }
-void WindowManager::OnMouseUp(int x, int y) {
-  if (!target_window_ptr_)
-    return;
 
+void WindowManager::OnMouseUp(int x, int y) {
   TempClipRect _(screen_, CalculateDesktopRegion(screen_));
 
   // If window drag outline was drawn, restore the bitmap before anything else
@@ -204,24 +222,11 @@ void WindowManager::OnMouseUp(int x, int y) {
     screen_.CopyBitmap(*saved_bitmap_, NormalizeRect(outline_rect_),
                        outline_rect_);
   }
-
-  RepaintDesktopOverWindow(target_window_);
-
-  // TODO: What causes the +1 to be needed? (Double-clicking the title bar
-  //       shifts the window up and to the left otherwise...)
-  target_window_.port.port_bits.bounds.left = -(x + target_offset_.x + 1);
-  target_window_.port.port_bits.bounds.top =
-      -(y + target_offset_.y + kFrameTitleHeight + 1);
-  SetStructRegionAndDrawFrame(screen_, target_window_, memory_);
-
-  CHECK(WriteType<WindowRecord>(target_window_, memory::kSystemMemory,
-                                target_window_ptr_)
-            .ok());
-
-  MoveToFront(target_window_ptr_);
-  InvalidateWindows();
-  target_window_ptr_ = 0;
   saved_bitmap_.reset();
+
+  if (on_drag_end_) {
+    std::move(on_drag_end_)({x - start_pt_.x, y - start_pt_.y});
+  }
 }
 
 void WindowManager::MoveToFront(Ptr window_ptr) {

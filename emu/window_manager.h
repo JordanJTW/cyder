@@ -32,6 +32,10 @@ class WindowManager : public MouseListener {
 
   void NativeDragWindow(Ptr window_ptr, int x, int y);
 
+  void DragGrayRegion(const Region& region,
+                      const Point& start,
+                      std::function<void(const Point&)> on_drag_end);
+
   enum class RegionType {
     None,
     Drag,
@@ -60,14 +64,14 @@ class WindowManager : public MouseListener {
   graphics::BitmapImage& screen_;
   memory::MemoryManager& memory_;
 
-  Ptr target_window_ptr_{0};
-  WindowRecord target_window_;
   Point target_offset_;
 
   std::list<Ptr> window_list_;
 
   Rect outline_rect_;
+  Point start_pt_;
   std::unique_ptr<graphics::BitmapImage> saved_bitmap_;
+  std::function<void(const Point&)> on_drag_end_;
 };
 
 void SetStructRegionAndDrawFrame(graphics::BitmapImage& screen,
