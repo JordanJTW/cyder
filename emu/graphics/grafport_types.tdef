@@ -56,6 +56,19 @@ struct GrafPort {
   pen_pattern: Pattern;
   pen_visiblity: Integer;
   text_font: Integer;
+  text_face: Integer;
+  text_mode: Integer;
+  text_size: Integer;
+  extra_space: Integer;
+  foreground_color: u32;
+  background_color: u32;
+  color_bit: Integer;
+  // Everything below used internally:
+  pattern_stretch: Integer;  
+  pict_save: Handle;
+  region_save: Handle;
+  polygon_save: Handle;
+  graf_procs: Ptr;
 }
 
 // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-405.html#HEADING405-37
