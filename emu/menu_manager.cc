@@ -40,19 +40,17 @@ void MenuManager::DrawMenuBar() const {
   }
 }
 
-bool MenuManager::IsInMenuBar(Point point) const {
+bool MenuManager::IsInMenuBar(const Point& point) const {
   return point.y < kMenuBarHeight;
 }
 
-void MenuManager::NativeMenuSelect(int x,
-                                   int y,
-                                   std::function<void(uint32_t)> on_selected) {
+void MenuManager::MenuSelect(const Point& start, OnSelectedFunc on_selected) {
   on_selected_ = std::move(on_selected);
   native_bridge_.StartNativeMouseControl(this);
-  OnMouseMove(x, y);
+  OnMouseMove(start);
 }
 
-void MenuManager::OnMouseMove(int x, int y) {
+void MenuManager::OnMouseMove(const Point& mouse) {
   if (!on_selected_) {
     return;
   }
@@ -63,7 +61,8 @@ void MenuManager::OnMouseMove(int x, int y) {
         (menu.title.size() * 8) + (kMenuBarItemWidthPadding * 2);
 
     int next_x_offset = x_offset + menu_bar_item_width;
-    if (x > x_offset && x < next_x_offset && y < kMenuBarHeight) {
+    if (mouse.x > x_offset && mouse.x < next_x_offset &&
+        mouse.y < kMenuBarHeight) {
       if (popup_menu_ && popup_menu_->id() == menu.id) {
         return;
       }
@@ -80,10 +79,10 @@ void MenuManager::OnMouseMove(int x, int y) {
     x_offset = next_x_offset;
   }
   if (popup_menu_)
-    popup_menu_->GetHoveredMenuItem(x, y);
+    popup_menu_->GetHoveredMenuItem(mouse.x, mouse.y);
 }
 
-void MenuManager::OnMouseUp(int x, int y) {
+void MenuManager::OnMouseUp(const Point& mouse) {
   if (!on_selected_) {
     return;
   }
@@ -100,7 +99,7 @@ void MenuManager::OnMouseUp(int x, int y) {
     return on_selected(0);
   }
 
-  uint16_t item_index = popup_menu->GetHoveredMenuItem(x, y);
+  uint16_t item_index = popup_menu->GetHoveredMenuItem(mouse.x, mouse.y);
   if (item_index == MenuPopUp::kNoMenuItem) {
     return on_selected(0);
   }

@@ -20,15 +20,14 @@ class MenuManager : public MouseListener {
   void InsertMenu(MenuResource menu, std::vector<MenuItemResource> items);
   void DrawMenuBar() const;
 
-  bool IsInMenuBar(Point point) const;
+  bool IsInMenuBar(const Point& point) const;
 
-  void NativeMenuSelect(int x,
-                        int y,
-                        std::function<void(uint32_t)> on_selected);
+  using OnSelectedFunc = std::function<void(uint32_t)>;
+  void MenuSelect(const Point& start, OnSelectedFunc on_selected);
 
   // MouseListener implementation:
-  void OnMouseMove(int x, int y);
-  void OnMouseUp(int x, int y);
+  void OnMouseMove(const Point&);
+  void OnMouseUp(const Point&);
 
  private:
   graphics::BitmapImage& screen_;
@@ -36,7 +35,7 @@ class MenuManager : public MouseListener {
   std::vector<MenuResource> menus_;
   std::map<uint16_t, std::vector<MenuItemResource>> menu_items_;
 
-  std::function<void(uint32_t)> on_selected_;
+  OnSelectedFunc on_selected_;
   std::unique_ptr<MenuPopUp> popup_menu_;
 };
 

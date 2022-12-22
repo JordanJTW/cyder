@@ -655,11 +655,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       LOG_TRAP() << "MenuSelect(startPt: " << start_pt << ")";
 
-      menu_manager_.NativeMenuSelect(
-          start_pt.x, start_pt.y, [](uint32_t selected) {
-            CHECK(TrapReturn<uint32_t>(selected).ok());
-          });
-
+      menu_manager_.MenuSelect(start_pt, [](uint32_t selected) {
+        CHECK(TrapReturn<uint32_t>(selected).ok());
+      });
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-136.html
@@ -1409,7 +1407,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                  << ", startPt: " << std::dec << start_pt
                  << ", boundsRect: " << bounds_rect << ")";
 
-      window_manager_.NativeDragWindow(the_window, start_pt.x, start_pt.y);
+      window_manager_.DragWindow(the_window, start_pt);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-247.html

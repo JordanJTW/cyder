@@ -128,13 +128,13 @@ void WindowManager::DisposeWindow(Ptr window_ptr) {
   InvalidateWindows();
 }
 
-void WindowManager::NativeDragWindow(Ptr window_ptr, int x, int y) {
+void WindowManager::DragWindow(Ptr window_ptr, const Point& start) {
   auto window = MUST(ReadType<WindowRecord>(memory::kSystemMemory, window_ptr));
   auto struct_region =
       MUST(memory_.ReadTypeFromHandle<Region>(window.structure_region));
 
   // Be careful with lambda captures as it will be called outside function scope
-  DragGrayRegion(struct_region, {x, y}, [this, window_ptr](const Point& end) {
+  DragGrayRegion(struct_region, start, [this, window_ptr](const Point& end) {
     auto status =
         WithType<WindowRecord>(window_ptr, [&](WindowRecord& window_record) {
           RepaintDesktopOverWindow(window_record);
@@ -156,7 +156,8 @@ void WindowManager::DragGrayRegion(
     const Point& start,
     std::function<void(const Point&)> on_drag_end) {
   outline_rect_ = region.bounding_box;
-  target_offset_ = {outline_rect_.left - start.x, outline_rect_.top - start.y};
+  target_offset_.x = outline_rect_.left - start.x;
+  target_offset_.y = outline_rect_.top - start.y;
   start_pt_ = start;
 
   on_drag_end_ = std::move(on_drag_end);
@@ -186,7 +187,7 @@ WindowManager::RegionType WindowManager::GetWindowAt(const Point& mouse,
   return RegionType::None;
 }
 
-void WindowManager::OnMouseMove(int x, int y) {
+void WindowManager::OnMouseMove(const Point& mouse) {
   TempClipRect _(screen_, CalculateDesktopRegion(screen_));
 
   int16_t outline_rect_width = RectWidth(outline_rect_);
@@ -200,15 +201,16 @@ void WindowManager::OnMouseMove(int x, int y) {
                        outline_rect_);
   }
 
-  outline_rect_ = NewRect(x + target_offset_.x, y + target_offset_.y,
-                          outline_rect_width, outline_rect_height);
+  outline_rect_ =
+      NewRect(mouse.x + target_offset_.x, mouse.y + target_offset_.y,
+              outline_rect_width, outline_rect_height);
 
   saved_bitmap_->CopyBitmap(screen_, outline_rect_,
                             NormalizeRect(outline_rect_));
   screen_.FrameRect(outline_rect_, kBlackPattern);
 }
 
-void WindowManager::OnMouseUp(int x, int y) {
+void WindowManager::OnMouseUp(const Point& mouse) {
   TempClipRect _(screen_, CalculateDesktopRegion(screen_));
 
   // If window drag outline was drawn, restore the bitmap before anything else
@@ -219,7 +221,10 @@ void WindowManager::OnMouseUp(int x, int y) {
   saved_bitmap_.reset();
 
   if (on_drag_end_) {
-    std::move(on_drag_end_)({x - start_pt_.x, y - start_pt_.y});
+    Point delta;
+    delta.x = mouse.x - start_pt_.x;
+    delta.y = mouse.y - start_pt_.y;
+    std::move(on_drag_end_)(delta);
   }
 }
 

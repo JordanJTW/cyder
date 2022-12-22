@@ -15,7 +15,9 @@ void NativeBridge::StartNativeMouseControl(MouseListener* listener) {
 
 void NativeBridge::OnMouseMove(int x, int y) const {
   if (current_listener_) {
-    current_listener_->OnMouseMove(x, y);
+    // TODO: Ensure safe narrowing conversions?
+    current_listener_->OnMouseMove(
+        {.y = static_cast<int16_t>(y), .x = static_cast<int16_t>(x)});
   }
 }
 
@@ -24,7 +26,9 @@ bool NativeBridge::OnMouseUp(int x, int y) {
     return false;
   }
 
-  current_listener_->OnMouseUp(x, y);
+  // TODO: Ensure safe narrowing conversions?
+  current_listener_->OnMouseUp(
+      {.y = static_cast<int16_t>(y), .x = static_cast<int16_t>(x)});
   current_listener_ = nullptr;
   single_step = false;
   return true;

@@ -30,7 +30,7 @@ class WindowManager : public MouseListener {
 
   void DisposeWindow(Ptr window_ptr);
 
-  void NativeDragWindow(Ptr window_ptr, int x, int y);
+  void DragWindow(Ptr window_ptr, const Point& start);
 
   void DragGrayRegion(const Region& region,
                       const Point& start,
@@ -46,8 +46,8 @@ class WindowManager : public MouseListener {
   Ptr GetFrontWindow() const;
 
   // MouseListener implementation:
-  void OnMouseMove(int x, int y);
-  void OnMouseUp(int x, int y);
+  void OnMouseMove(const Point&);
+  void OnMouseUp(const Point&);
 
  private:
   // Reorders the window linked list so that |window_pt| comes first

@@ -1,13 +1,15 @@
 #pragma once
 
+#include "emu/graphics/grafport_types.tdef.h"
+
 namespace cyder {
 
 class MouseListener {
  public:
   virtual ~MouseListener() = default;
 
-  virtual void OnMouseMove(int x, int y) = 0;
-  virtual void OnMouseUp(int x, int y) = 0;
+  virtual void OnMouseMove(const Point&) = 0;
+  virtual void OnMouseUp(const Point&) = 0;
 };
 
 }  // namespace cyder

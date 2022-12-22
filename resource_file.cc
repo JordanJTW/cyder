@@ -93,7 +93,12 @@ absl::Status ResourceFile::Save(const std::string& path) {
 
   std::vector<ResourceTypeItem> type_items;
   for (const auto& group : resource_groups_) {
-    type_items.push_back({group.GetType(), group.GetCount(), entry_offset});
+    CHECK_LT(group.GetCount(), 0xFFFF)
+        << "more than maximum allowed number of resources per group";
+    type_items.push_back(
+        {.type_id = group.GetType(),
+         .count = static_cast<uint16_t>(group.GetCount() & 0xFFFF),
+         .offset = entry_offset});
 
     for (const auto& resource : group.GetResources()) {
       ResourceEntry resource_entry;
@@ -149,7 +154,6 @@ absl::Status ResourceFile::Save(const std::string& path) {
 
   RETURN_IF_ERROR(WriteType<ResourceMapHeader>(map_header, data, offset));
   offset += map_header.size();
-
 
   RETURN_IF_ERROR(data.Write<uint16_t>(offset, type_items.size() - 1));
   offset += sizeof(uint16_t);
