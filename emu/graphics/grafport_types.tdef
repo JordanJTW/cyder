@@ -71,23 +71,8 @@ struct GrafPort {
 
 // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-405.html#HEADING405-37
 struct Cursor {
-  // FIXME: typegen should support constant sized arrays i.e. data: [u8;32]
-  data_1: u32;
-  data_2: u32;
-  data_3: u32;
-  data_4: u32;
-  data_5: u32;
-  data_6: u32;
-  data_7: u32;
-  data_8: u32;
-  mask_1: u32;
-  mask_2: u32;
-  mask_3: u32;
-  mask_4: u32;
-  mask_5: u32;
-  mask_6: u32;
-  mask_7: u32;
-  mask_8: u32;
+  data: u8[32];
+  mask: u8[32];
   hotspot: u32;
 }
 
