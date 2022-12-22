@@ -114,6 +114,7 @@ inline graphics::BitmapImage::FillMode ConvertMode(int16_t mode) {
       return Mode::NotXOr;
     default:
       NOTREACHED() << "Unsupport mode: " << mode;
+      return Mode::Copy;
   }
 }
 
