@@ -37,10 +37,10 @@ namespace {
 
 using rsrcloader::GetTypeName;
 
-constexpr uint8_t kBackgroundPattern[8] = {0x00, 0x00, 0x00, 0x00,
-                                           0x00, 0x00, 0x00, 0x00};
-constexpr uint8_t kForegroundPattern[8] = {0xFF, 0xFF, 0xFF, 0xFF,
-                                           0xFF, 0xFF, 0xFF, 0xFF};
+constexpr Pattern kBackgroundPattern = {
+    .bytes = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
+constexpr Pattern kForegroundPattern = {
+    .bytes = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
 
 absl::Status HandleLoadSegmentTrap(SegmentLoader& segment_loader,
                                    Ptr& return_address) {
@@ -740,20 +740,18 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       rect = TRY(port::ConvertLocalToGlobal(rect));
 
       // FIXME: Paint with the color set for QuickDraw (A5 World?)
-      screen_.FillRect(rect, kForegroundPattern);
+      screen_.FillRect(rect, kForegroundPattern.bytes);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-99.html
     case Trap::FillRect: {
-      auto pat = TRY(PopRef<Pattern>());
+      auto pattern = TRY(PopRef<Pattern>());
       auto rect = TRY(PopRef<Rect>());
-      LOG_TRAP() << "FillRect(rect: " << rect << ", pat: " << pat << ")";
+      LOG_TRAP() << "FillRect(rect: " << rect << ", pat: " << pattern << ")";
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
 
-      uint8_t bytes[8];
-      ConvertPattern(pat, bytes);
-      screen_.FillRect(rect, bytes);
+      screen_.FillRect(rect, pattern.bytes);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-97.html
@@ -764,10 +762,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       rect = TRY(port::ConvertLocalToGlobal(rect));
 
       return WithPort([&](GrafPort& port) {
-        uint8_t bytes[8];
-        ConvertPattern(port.pen_pattern, bytes);
         // TODO: Respect the pen size when framing rects
-        screen_.FrameRect(rect, bytes, ConvertMode(port.pattern_mode));
+        screen_.FrameRect(rect, port.pen_pattern.bytes,
+                          ConvertMode(port.pattern_mode));
         return absl::OkStatus();
       });
     }
@@ -778,7 +775,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
       // FIXME: Clear with the color set for QuickDraw (A5 World?)
-      screen_.FillRect(rect, kBackgroundPattern);
+      screen_.FillRect(rect, kBackgroundPattern.bytes);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-63.html
@@ -795,7 +792,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
       // FIXME: Paint with the color set for QuickDraw (A5 World?)
-      screen_.FillEllipse(rect, kForegroundPattern);
+      screen_.FillEllipse(rect, kForegroundPattern.bytes);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-112.html
@@ -805,7 +802,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
       // FIXME: Clear with the color set for QuickDraw (A5 World?)
-      screen_.FillEllipse(rect, kBackgroundPattern);
+      screen_.FillEllipse(rect, kBackgroundPattern.bytes);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-86.html
@@ -975,7 +972,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "InvertRect(r: " << rect << ")";
 
       screen_.FillRect(TRY(port::ConvertLocalToGlobal(rect)),
-                       kForegroundPattern,
+                       kForegroundPattern.bytes,
                        graphics::BitmapImage::FillMode::XOr);
 
       return absl::OkStatus();
@@ -1092,7 +1089,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       return WithPort([&](GrafPort& port) {
         static Point kDefaultSize = {.y = 1, .x = 1};
         port.pen_size = kDefaultSize;
-        static Pattern kDefaultPattern = {0xFFFFFFFF, 0xFFFFFFFF};
+        static Pattern kDefaultPattern = kForegroundPattern;
         port.pen_pattern = kDefaultPattern;
         // PenMode constants are documented here:
         // http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-75.html#HEADING75-0
@@ -1111,7 +1108,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         screen_.FillRow(port.pen_location.y - port.port_bits.bounds.top,
                         port.pen_location.x - port.port_bits.bounds.left,
                         port.pen_location.x - port.port_bits.bounds.left + dh,
-                        port.pen_pattern.upper);
+                        port.pen_pattern.bytes[0]);
         return absl::OkStatus();
       });
     }
@@ -1207,18 +1204,17 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       QDGlobals qd_globals;
       qd_globals.screen_bits.bounds = screen_bounds;
-      qd_globals.grey.upper = 0xAA55AA55;
-      qd_globals.grey.lower = 0xAA55AA55;
+      qd_globals.grey = {
+          .bytes = {0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55}};
 
       // `globalPtr` accounts for the size of `thePort` so must be added here
       size_t qd_ptr = global_ptr - QDGlobals::fixed_size + sizeof(Ptr);
       RETURN_IF_ERROR(
           WriteType<QDGlobals>(qd_globals, memory::kSystemMemory, qd_ptr));
 
-      RESTRICT_FIELD_ACCESS(
-          QDGlobals, qd_ptr, QDGlobalsFields::random_seed,
-          QDGlobalsFields::screen_bits + BitMapFields::bounds,
-          QDGlobalsFields::the_port);
+      RESTRICT_FIELD_ACCESS(QDGlobals, qd_ptr, QDGlobalsFields::random_seed,
+                            QDGlobalsFields::screen_bits + BitMapFields::bounds,
+                            QDGlobalsFields::the_port);
 
       return absl::OkStatus();
     }
@@ -1453,7 +1449,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                  << region_handle << ", pattern: " << pattern << ")";
 
       auto region_frame = TRY(port::ConvertLocalToGlobal(region.bounding_box));
-      screen_.FillRect(region_frame, kBackgroundPattern);
+      screen_.FillRect(region_frame, pattern.bytes);
       return absl::OkStatus();
     }
 

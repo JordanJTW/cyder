@@ -36,9 +36,7 @@ struct Region {
 
 // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-196.html#HEADING196-146
 struct Pattern {
-  // FIXME: typegen should support constant sized arrays i.e. data: [u8;8]
-  upper: u32;
-  lower: u32;
+  bytes: u8[8];
 }
 
 // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-57.html#HEADING57-39

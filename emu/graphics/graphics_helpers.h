@@ -90,14 +90,11 @@ inline int16_t RectHeight(const Rect& rect) {
   return rect.bottom - rect.top;
 }
 
-inline void ConvertPattern(const Pattern& pattern, uint8_t* bytes) {
-  std::memcpy(bytes, &pattern.upper, 4);
-  std::memcpy(bytes + 4, &pattern.lower, 4);
-}
-
 inline void InitGrafPort(GrafPort& port) {
-  port.fill_pattern = {.upper = 0xFFFFFFFF, .lower = 0xFFFFFFFF};
-  port.back_pattern = {.upper = 0x00000000, .lower = 0x00000000};
+  port.fill_pattern = {
+      .bytes = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
+  port.back_pattern = {
+      .bytes = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
   port.pen_pattern = port.fill_pattern;
   port.pattern_mode = 8 /*patCopy*/;
 }
