@@ -16,3 +16,7 @@ struct ByteWidth {
   byte_two: u8;
   last: u24;
 }
+
+struct RawBytes {
+  bytes: u8[20];
+}

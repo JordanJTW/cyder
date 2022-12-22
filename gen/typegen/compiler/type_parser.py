@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from compiler.tokenizer import Token
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Optional
 
 
 def merge_span(start_span: Tuple[int, int], end_span: Tuple[int, int]):
@@ -15,6 +15,7 @@ def merge_span(start_span: Tuple[int, int], end_span: Tuple[int, int]):
 class LabelExpression:
   label: str
   span: Tuple[int, int]
+  size: Optional[int] = None
 
 
 @dataclass
@@ -39,6 +40,8 @@ class ParserException(Exception):
 
 ParsedExpression = Union[StructExpression, AssignExpression]
 
+_ALLOW_SIZE_POSTFIX = ['u8']
+
 
 class Parser:
   def __init__(self, tokens):
@@ -55,6 +58,7 @@ class Parser:
   def _current(self) -> Token:
     return self._tokens[self._index]
 
+  # Parses: <identifier>(<[> <digits> <]>);
   def _parse_type_expression(self):
     start_span = self._current.span
     if self._current.type != Token.Type.IDENTIFIER:
@@ -63,12 +67,29 @@ class Parser:
     label_expr = self._current
     self._advance()
 
+    maybe_size = None
+    if self._current.type == Token.Type.START_SQUARE_BRACKET:
+      if label_expr.label not in _ALLOW_SIZE_POSTFIX:
+        raise ParserException('[<size>] only allowed for types: [ ' +
+                              ', '.join(_ALLOW_SIZE_POSTFIX) + ' ]', self._current.span)
+      self._advance()
+
+      if self._current.type != Token.Type.NUMBER:
+        raise ParserException('missing size', self._current.span)
+
+      maybe_size = self._current.number
+      self._advance()
+
+      if self._current.type != Token.Type.END_SQUARE_BRACKET:
+        raise ParserException('missing "]"', self._current.span)
+      self._advance()
+
     if self._current.type != Token.Type.SEMICOLON:
       raise ParserException('missing ";"', self._current.span)
 
     expr_span = merge_span(start_span, self._current.span)
     self._advance()
-    return LabelExpression(label_expr.label, expr_span)
+    return LabelExpression(label_expr.label, expr_span, maybe_size)
 
   def _parse_assignement(self):
     start_span = self._current.span

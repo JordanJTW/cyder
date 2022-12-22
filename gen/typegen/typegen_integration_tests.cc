@@ -92,6 +92,20 @@ TEST_F(TypegenIntegrationTests, ByteWidth) {
   CheckWriteType<ByteWidth>(obj);
 }
 
+TEST_F(TypegenIntegrationTests, RawBytes) {
+  for (uint8_t i=0; i<20; ++i) {
+    WriteToRegion<uint8_t>(i);
+  }
+
+  auto obj = ReadFromRegion<RawBytes>();
+
+  for (uint8_t i=0; i<20; ++i) {
+    EXPECT_EQ(obj.bytes[i], i);
+  }
+
+  CheckWriteType<RawBytes>(obj);
+}
+
 TEST(TypegenReflection, FieldAddition) {
   auto field1 = Field {.offset = 369, .size = 109};
   auto field2 = Field {.offset = 1, .size = 3087};

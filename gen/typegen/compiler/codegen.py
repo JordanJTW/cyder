@@ -77,7 +77,14 @@ class CodeGenerator:
     file.write(f'struct {expr.id} {{\n')
     for member in expr.members:
       c_type = self._get_c_type(member.type)
-      init_expr = '' if member.type.is_struct else '{0}'
+
+      init_expr = '{0}'
+      # Handle `field: u8[32]` as a C style array i.e. `uint8_t field[32]`
+      if member.type.has_user_size and member.type.id == 'u8':
+        init_expr = f'[{member.type.size}]'
+      elif member.type.is_struct:
+        init_expr = ''
+
       file.write(f'  {c_type} {member.id}{init_expr};\n')
 
     if not expr.is_dynamic:
@@ -143,7 +150,6 @@ class CodeGenerator:
 
       self._generate_struct_stream_decls(header)
 
-
   def _write_read_type(self, file, label, members: List[CheckedAssignExpression]):
     write(file, f"""
       {_READTYPE_PROTOTYPE.format(label)} {{
@@ -180,6 +186,10 @@ class CodeGenerator:
             file.write(
               f'  obj.{member.id} = TRY(CopyU24(region, {offset_str}));\n')
             offset = offset + 3
+          elif member.type.id == 'u8' and member.type.has_user_size:
+            file.write(
+                f'  RETURN_IF_ERROR(region.ReadRaw(&obj.{member.id}, {offset_str}, {member.type.size}));\n')
+            offset = offset + member.type.size
           else:
             file.write(
                 f'  obj.{member.id} = TRY(region.Read<{c_type}>({offset_str}));\n')
@@ -207,6 +217,11 @@ class CodeGenerator:
       write(file, f"""
         RETURN_IF_ERROR(WriteU24({name}, region, total_offset));
         total_offset += 3;
+      """, indent=indent)
+    elif type_expr.id == 'u8' and type_expr.has_user_size:
+      write(file, f"""
+        RETURN_IF_ERROR(region.WriteRaw({name}, total_offset, {type_expr.size}));
+        total_offset += {type_expr.size};
       """, indent=indent)
     else:
       write(file, f"""
@@ -240,10 +255,14 @@ class CodeGenerator:
       line_end = ' << ", "' if index + 1 != len(members) else ''
       stream_value = f'obj.{member.id}'
 
-      # Cast value to an int to work around printing u8 and having them appear as char...
-      # Without this any u8 set to 0 ends up being interpreted as an \0 for a string.
       if member.type.id == 'u8':
-        stream_value = f'int({stream_value})'
+        if member.type.has_user_size:
+          # Handle special case of a byte array by printing its size
+          stream_value = f'"u8[{member.type.size}]"'
+        else:
+          # Ensure `u8` is not printed as a char (prints invisible/random chars
+          # or is interpreted as an \0 i.e. null-terminator).
+          stream_value = f'int({stream_value})'
       elif member.type.id == 'Boolean':
         stream_value = f'({stream_value} ? "True" : "False")'
       elif 'Handle' in member.type.id or member.type.id == 'Ptr':

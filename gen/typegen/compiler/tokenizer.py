@@ -12,6 +12,8 @@ class Token:
     SEMICOLON = auto()
     START_CURLY_BRACKET = auto()
     END_CURLY_BRACKET = auto()
+    START_SQUARE_BRACKET = auto()
+    END_SQUARE_BRACKET = auto()
     END_OF_FILE = auto()
     GARBAGE = auto()
 
@@ -153,6 +155,16 @@ class Tokenizer:
 
       if self._current == '}':
         tokens.append(Token(Token.Type.END_CURLY_BRACKET, char_span))
+        self._advance()
+        continue
+
+      if self._current == '[':
+        tokens.append(Token(Token.Type.START_SQUARE_BRACKET, char_span))
+        self._advance()
+        continue
+
+      if self._current == ']':
+        tokens.append(Token(Token.Type.END_SQUARE_BRACKET, char_span))
         self._advance()
         continue
 

@@ -11,6 +11,7 @@ class CheckedTypeExpression:
   size: int
   is_dynamic: bool
   is_struct: bool
+  has_user_size: bool = False
 
 
 @dataclass
@@ -66,7 +67,14 @@ class TypeChecker:
         raise ParserException(
           'type expressions can not reference themselves', expr.type.span)
 
-      return check_type_exists(expr.type)
+      checked_type = check_type_exists(expr.type)
+
+      # Handle special case of user provided size (i.e. u8[64] or str[64])
+      if expr.type.size != None:
+        checked_type.size = expr.type.size
+        checked_type.has_user_size = True
+
+      return checked_type
 
     def check_assign_expr(expr: AssignExpression):
       try:
