@@ -1706,6 +1706,35 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       });
     }
 
+    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-88.html
+    case Trap::FixRatio: {
+      auto denom = TRY(Pop<uint16_t>());
+      auto numer = TRY(Pop<uint16_t>());
+      LOG_TRAP() << "FixRatio(numer: " << numer << ", denom: " << denom << ")";
+      return TrapReturn<uint32_t>((static_cast<uint32_t>(numer) << 16) / denom);
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-68.html
+    case Trap::FixMul: {
+      uint64_t v2 = TRY(Pop<uint32_t>());
+      uint64_t v1 = TRY(Pop<uint32_t>());
+      LOG_TRAP() << "FixMul(v1: " << v1 << ", v2: " << v2 << ")";
+      uint64_t result = v1 * v2;
+      return TrapReturn<uint32_t>(result >> 16);
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-89.html
+    case Trap::FixRound: {
+      uint32_t v = TRY(Pop<uint32_t>());
+      LOG_TRAP() << "FixRound(v: " << v << ")";
+      // Separate integer and fractional values
+      uint16_t integer = v >> 16;
+      uint16_t fractional = v & 0xFFFF;
+      // Round up only if `fractional` is greater than 0.5
+      if (fractional > 32767) {
+        integer = integer + 1;
+      }
+      return TrapReturn<uint16_t>(integer);
+    }
+
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unimplemented Toolbox trap: '", GetTrapName(trap), "'"));
