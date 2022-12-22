@@ -11,9 +11,14 @@ namespace {
 constexpr uint8_t kMenuPattern[8] = {0x00, 0x00, 0x00, 0x00,
                                      0x00, 0x00, 0x00, 0x00};
 
+constexpr uint8_t kMenuIcon[32] = {
+    0x00, 0x00, 0x00, 0x00, 0x07, 0xFE, 0x37, 0xFE, 0x3F, 0xFE, 0x37,
+    0x9E, 0x37, 0x6E, 0x37, 0x7E, 0x37, 0x6E, 0x37, 0x9E, 0x3F, 0xFE,
+    0x37, 0xFE, 0x07, 0xFE, 0x03, 0xFC, 0x01, 0xF8, 0x00, 0x00};
+
 constexpr int kMenuBarHeight = 20;
-constexpr int kMenuBarWidthPadding = 3;
-constexpr int kMenuBarItemWidthPadding = 3;
+constexpr int kMenuBarWidthPadding = 6;
+constexpr int kMenuBarItemWidthPadding = 4;
 constexpr int kMenuBarItemHeightPadding = 6;
 
 }  // namespace
@@ -34,9 +39,16 @@ void MenuManager::DrawMenuBar() const {
 
   int x_offset = kMenuBarWidthPadding;
   for (auto& menu : menus_) {
-    DrawString(screen_, menu.title, x_offset + kMenuBarItemWidthPadding,
-               kMenuBarItemHeightPadding);
-    x_offset += (menu.title.size() * 8) + (kMenuBarItemWidthPadding * 2);
+    // FIXME: Should detect  menu in a better way than `size == 1`
+    if (menu.title.length() == 1) {
+      screen_.CopyBits(kMenuIcon, {0, 0, 16, 16}, {0, 0, 16, 16},
+                       NewRect(x_offset + kMenuBarItemWidthPadding, 2, 16, 16));
+      x_offset += 16 + (kMenuBarItemWidthPadding * 2);
+    } else {
+      DrawString(screen_, menu.title, x_offset + kMenuBarItemWidthPadding,
+                 kMenuBarItemHeightPadding);
+      x_offset += (menu.title.size() * 8) + (kMenuBarItemWidthPadding * 2);
+    }
   }
 }
 
@@ -57,8 +69,10 @@ void MenuManager::OnMouseMove(const Point& mouse) {
 
   int x_offset = kMenuBarWidthPadding;
   for (auto& menu : menus_) {
+    // FIXME: Should detect  menu in a better way than `size == 1`
     int menu_bar_item_width =
-        (menu.title.size() * 8) + (kMenuBarItemWidthPadding * 2);
+        (menu.title.size() == 1 ? 16 : menu.title.size() * 8) +
+        (kMenuBarItemWidthPadding * 2);
 
     int next_x_offset = x_offset + menu_bar_item_width;
     if (mouse.x > x_offset && mouse.x < next_x_offset &&
