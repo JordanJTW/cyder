@@ -10,6 +10,7 @@ class CheckedTypeExpression:
   id: str
   size: int
   is_dynamic: bool
+  is_struct: bool
 
 
 @dataclass
@@ -42,19 +43,19 @@ class TypeChecker:
     def check_type_exists(expr: LabelExpression):
       if size := _INTEGER_SIZES.get(expr.label, None):
         return CheckedTypeExpression(
-            expr.label, size, is_dynamic=False)
+            expr.label, size, is_dynamic=False, is_struct=False)
 
       if expr.label == 'str':
         return CheckedTypeExpression(
-            expr.label, size=1, is_dynamic=True)
+            expr.label, size=1, is_dynamic=True, is_struct=True)
 
       if ref := global_types.get(expr.label, None):
         if isinstance(ref, CheckedAssignExpression):
           return CheckedTypeExpression(
-              expr.label, ref.type.size, ref.type.is_dynamic)
+              expr.label, ref.type.size, ref.type.is_dynamic, ref.type.is_struct)
         elif isinstance(ref, CheckedStructExpression):
           return CheckedTypeExpression(
-              expr.label, ref.size, ref.is_dynamic)
+              expr.label, ref.size, ref.is_dynamic, is_struct=True)
 
       raise ParserException(f'unknown type "{expr.label}"', expr.span)
 

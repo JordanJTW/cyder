@@ -46,28 +46,7 @@ class CodeGenerator:
     ]
     self._errors: List[str] = []
 
-  @functools.lru_cache
-  def _get_type_size(self, type_id: str):
-    builtin_type_sizes = {
-      'u8': 1,
-      'u16': 2,
-      'i16': 2,
-      'u24': 3,
-      'u32': 4,
-      'i32': 4,
-    }
-    if size := builtin_type_sizes.get(type_id, None):
-      return size
-
-    for expr in reversed(self._type_expressions):
-      if expr.id == type_id:
-        return self._get_type_size(expr.type.id)
-
-    # FIXME: Errors should be tagged with the span of the token
-    self._errors.append(f'No size found for type: {type_id}')
-    return 0
-
-  def _get_c_type(self, type: CheckedTypeExpression) -> Tuple[str, bool]:
+  def _get_c_type(self, type: CheckedTypeExpression) -> str:
     builtin_types = {
       'u8': 'uint8_t',
       'u16': 'uint16_t',
@@ -79,26 +58,26 @@ class CodeGenerator:
 
     for struct in self._struct_expressions:
       if struct.id == type.id:
-        return (type.id, True)
+        return type.id
 
     if 'str' == type.id:
-      return ('std::string', True)
+      return 'std::string'
 
-    return (builtin_types.get(type.id, type.id), False)
+    return builtin_types.get(type.id, type.id)
 
   def _write_type(self, file, label, type):
     file.write(f'using {label} = {type};\n')
 
   def _generate_type_decls(self, file):
     for expr in self._type_expressions:
-      (c_type, _) = self._get_c_type(expr.type)
+      c_type = self._get_c_type(expr.type)
       self._write_type(file, expr.id, c_type)
 
   def _write_struct(self, file, expr: CheckedStructExpression):
     file.write(f'struct {expr.id} {{\n')
     for member in expr.members:
-      (c_type, is_struct) = self._get_c_type(member.type)
-      init_expr = '' if is_struct else '{0}'
+      c_type = self._get_c_type(member.type)
+      init_expr = '' if member.type.is_struct else '{0}'
       file.write(f'  {c_type} {member.id}{init_expr};\n')
 
     if not expr.is_dynamic:
@@ -166,22 +145,6 @@ class CodeGenerator:
 
       self._generate_struct_stream_decls(header)
 
-  def _get_first_field_type(self, type):
-    assert isinstance(
-      type, CheckedTypeExpression), "loop type must be a non-array type"
-
-    if type.id == 'str':
-      return 'uint8_t'
-
-    (c_type, is_struct) = self._get_c_type(type)
-    if not is_struct:
-      return c_type
-
-    for struct in self._struct_expressions:
-      if struct.id == c_type and len(struct.members) > 0:
-        return self._get_first_field_type(struct.members[0].type)
-
-    assert False, f'Type "{type}" not found'
 
   def _write_read_type(self, file, label, members: List[CheckedAssignExpression]):
     write(file, f"""
@@ -209,9 +172,9 @@ class CodeGenerator:
             f'  obj.{member.id} = TRY(ReadType<std::string>(region, {offset_str}));\n')
           offset_variables.append(f'{member.id}.size() + 1')
         else:
-          (c_type, is_struct) = self._get_c_type(member.type)
+          c_type = self._get_c_type(member.type)
 
-          if is_struct:
+          if member.type.is_struct:
             file.write(
                 f'  obj.{member.id} = TRY(ReadType<{c_type}>(region, {offset_str}));\n')
             offset_variables.append(f'{member.id}.size()')
@@ -222,7 +185,7 @@ class CodeGenerator:
           else:
             file.write(
                 f'  obj.{member.id} = TRY(region.Read<{c_type}>({offset_str}));\n')
-            offset = offset + self._get_type_size(member.type.id)
+            offset = offset + member.type.size
 
     file.write('  return obj;\n')
     file.write('}\n\n')
@@ -233,9 +196,9 @@ class CodeGenerator:
     file.write('}\n\n')
 
   def _write_write_type_value(self, file, type_expr: CheckedTypeExpression, name, indent):
-    (c_type, is_struct) = self._get_c_type(type_expr)
+    c_type = self._get_c_type(type_expr)
 
-    if is_struct:
+    if type_expr.is_struct:
       # If the struct is a 'str' we must account for the proceeding length byte
       is_string = type_expr.id == 'str'
       write(file, f"""
