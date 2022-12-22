@@ -45,5 +45,6 @@ target_link_libraries(rsrcfork CORE_LIB RESOURCE_TYPES TYPEGEN_PRELUDE)
 target_link_libraries(rsrcfork absl::statusor)
 
 add_executable(rsrcloader main.cc)
-target_link_libraries(rsrcloader CORE_LIB MAIN_LIB MUSASHI_LIB rsrcfork TYPEGEN_PRELUDE)
+target_link_libraries(rsrcloader CORE_LIB MAIN_LIB MUSASHI_LIB rsrcfork
+                      TYPEGEN_PRELUDE)
 target_link_libraries(rsrcloader absl::flags absl::statusor)

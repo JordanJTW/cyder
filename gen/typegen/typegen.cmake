@@ -10,12 +10,10 @@ macro(typegen target_name type_definition)
   add_custom_command(
     OUTPUT ${output_name}.cc ${output_name}.h
     COMMAND
-    ${Python3_EXECUTABLE}
-    ${CMAKE_SOURCE_DIR}/gen/typegen/main.py
-    ${CMAKE_CURRENT_SOURCE_DIR}/${type_definition}
-    ${CMAKE_CURRENT_BINARY_DIR}/${output_name}
-    DEPENDS ${TYPEGEN_SRC} ${type_definition}
-  )
+      ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/gen/typegen/main.py
+      ${CMAKE_CURRENT_SOURCE_DIR}/${type_definition}
+      ${CMAKE_CURRENT_BINARY_DIR}/${output_name}
+    DEPENDS ${TYPEGEN_SRC} ${type_definition})
 
   add_library(${target_name} OBJECT ${output_name}.cc)
   target_link_libraries(${target_name} CORE_LIB absl::statusor TYPEGEN_PRELUDE)
