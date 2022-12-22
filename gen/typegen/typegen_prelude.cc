@@ -1,5 +1,9 @@
 #include "typegen_prelude.h"
 
+Field Field::operator+(const Field& other) const {
+  return Field{offset + other.offset, other.size};
+}
+
 template <>
 absl::StatusOr<absl::string_view> ReadType(const core::MemoryRegion& region,
                                            size_t offset) {

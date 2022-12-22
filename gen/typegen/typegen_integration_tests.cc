@@ -91,3 +91,16 @@ TEST_F(TypegenIntegrationTests, ByteWidth) {
 
   CheckWriteType<ByteWidth>(obj);
 }
+
+TEST(TypegenReflection, FieldAddition) {
+  auto field1 = Field {.offset = 369, .size = 109};
+  auto field2 = Field {.offset = 1, .size = 3087};
+
+  auto v1 = field1 + field2;
+  EXPECT_EQ(v1.offset, 370);
+  EXPECT_EQ(v1.size, 3087);
+
+  auto v2 = field2 + field1;
+  EXPECT_EQ(v2.offset, 370);
+  EXPECT_EQ(v2.size, 109);
+}

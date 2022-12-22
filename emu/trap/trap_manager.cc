@@ -486,7 +486,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       auto event = event_manager_.GetNextEvent(event_mask);
 
-      // FIXME: Monitor the field accesses with RESTRICT_FIELD_ACCESS.
       RETURN_IF_ERROR(WriteType<EventRecord>(
           std::move(event), memory::kSystemMemory, the_event_var));
 
@@ -510,7 +509,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       auto event = event_manager_.GetNextEvent(event_mask);
 
-      // FIXME: Monitor the field accesses with RESTRICT_FIELD_ACCESS.
       RETURN_IF_ERROR(WriteType<EventRecord>(
           std::move(event), memory::kSystemMemory, the_event_var));
 
@@ -567,7 +565,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-183.html
       std::vector<MenuItemResource> menu_items;
       while (reader.HasNext() && TRY(reader.Peek<uint8_t>()) != 0) {
-        LOG(INFO) << "InsertMenu: " << TRY(reader.NextType<MenuItemResource>());
+        menu_items.push_back(TRY(reader.NextType<MenuItemResource>()));
       }
 
       menu_manager_.InsertMenu(std::move(menu), std::move(menu_items));
@@ -1221,11 +1219,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       RESTRICT_FIELD_ACCESS(
           QDGlobals, qd_ptr, QDGlobalsFields::random_seed,
-          // TODO: Figure out a more elegant way to allow access to Rects
           QDGlobalsFields::screen_bits + BitMapFields::bounds,
-          QDGlobalsFields::screen_bits + BitMapFields::bounds + 2,
-          QDGlobalsFields::screen_bits + BitMapFields::bounds + 4,
-          QDGlobalsFields::screen_bits + BitMapFields::bounds + 6,
           QDGlobalsFields::the_port);
 
       return absl::OkStatus();
@@ -1247,11 +1241,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto ptr = memory_manager_.Allocate(GrafPort::fixed_size);
       RETURN_IF_ERROR(WriteType<GrafPort>(port, memory::kSystemMemory, ptr));
 
-      RESTRICT_FIELD_ACCESS(
-          GrafPort, ptr, GrafPortFields::port_bits + BitMapFields::bounds,
-          GrafPortFields::port_bits + BitMapFields::bounds + 2,
-          GrafPortFields::port_bits + BitMapFields::bounds + 4,
-          GrafPortFields::port_bits + BitMapFields::bounds + 6);
+      RESTRICT_FIELD_ACCESS(GrafPort, ptr,
+                            GrafPortFields::port_bits + BitMapFields::bounds);
 
       RETURN_IF_ERROR(
           memory::kSystemMemory.Write<Ptr>(GlobalVars::WMgrPort, ptr));

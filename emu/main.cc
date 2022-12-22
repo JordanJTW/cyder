@@ -154,7 +154,7 @@ void cpu_instr_callback(unsigned int pc) {
     LOG(INFO) << COLOR(240) << "Handles: " << memory_manager_ptr->LogHandles()
               << COLOR_RESET();
 
-    cyder::memory::debug::LogStack();
+    cyder::memory::debug::LogStack(m68k_get_reg(/*context=*/NULL, M68K_REG_SP));
 #undef REG
 
     char buffer[255];

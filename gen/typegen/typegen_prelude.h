@@ -12,6 +12,13 @@
 // This is just used to make clear when a `u24` is used.
 using uint24_t = uint32_t;
 
+struct Field {
+  const size_t offset;
+  const size_t size;
+
+  Field operator+(const Field& other) const;
+};
+
 template <>
 absl::StatusOr<absl::string_view> ReadType(const core::MemoryRegion& region,
                                            size_t offset);

@@ -98,9 +98,7 @@ class CodeGenerator:
     file.write(f'namespace {expr.id}Fields {{\n')
     for member in expr.members:
       write(file,
-            f'const static size_t {member.id} = 0x{field_offset:x};\n', indent=2)
-      assert isinstance(
-        member.type, CheckedTypeExpression), 'Unexpected field type in static struct'
+            f"""const static Field {member.id} = {{.offset = 0x{field_offset:x}, .size = {member.type.size}}};\n""", indent=2)
       field_offset += member.type.size
     file.write(f'}}  // namespace {expr.id}Fields\n\n')
 

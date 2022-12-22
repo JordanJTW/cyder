@@ -5,7 +5,6 @@
 
 #include "core/logging.h"
 #include "gen/global_names.h"
-#include "third_party/musashi/src/m68k.h"
 
 namespace cyder {
 namespace memory {
@@ -26,7 +25,7 @@ struct RegionEntry {
   std::string name;
   size_t start;
   size_t end;
-  std::vector<size_t> whitelist;
+  std::vector<Field> whitelist;
 };
 
 std::vector<RegionEntry> log_read_regions;
@@ -63,9 +62,11 @@ constexpr GlobalVars kWhitelistWriteGlobalVars[] = {
 
 bool ShouldLogAccess(const RegionEntry& entry, uint32_t address) {
   size_t relative_offset = address - entry.start;
-  return std::none_of(
-      entry.whitelist.cbegin(), entry.whitelist.cend(),
-      [&](size_t field_offset) { return field_offset == relative_offset; });
+  return std::none_of(entry.whitelist.cbegin(), entry.whitelist.cend(),
+                      [&](Field field) {
+                        return field.offset <= relative_offset &&
+                               relative_offset < field.offset + field.size;
+                      });
 }
 
 }  // namespace
@@ -303,20 +304,36 @@ std::string MemoryMapToStr() {
   return ss.str();
 }
 
+void MaybeRemoveOverlappingEntry(std::vector<RegionEntry>& entries,
+                            size_t new_offset,
+                            size_t new_size) {
+  auto current_iter =
+      std::find_if(entries.begin(), entries.end(), [&](RegionEntry& entry) {
+        return std::max(entry.start, new_offset) <
+               std::min(entry.end, new_offset + new_size);
+      });
+  if (current_iter != entries.end()) {
+    entries.erase(current_iter);
+  }
+}
+
 void LogRegionAccess(size_t offset,
                      size_t length,
                      bool on_read,
                      bool on_write,
                      const std::string& region_name,
-                     std::vector<size_t> whitelist_fields) {
+                     std::vector<Field> whitelist_fields) {
   auto region_entry = RegionEntry{.name = region_name,
                                   .start = offset,
                                   .end = offset + length,
                                   .whitelist = std::move(whitelist_fields)};
+
   if (on_read) {
+    MaybeRemoveOverlappingEntry(log_read_regions, offset, length);
     log_read_regions.push_back(region_entry);
   }
   if (on_write) {
+    MaybeRemoveOverlappingEntry(log_write_regions, offset, length);
     log_write_regions.push_back(region_entry);
   }
 }
@@ -335,8 +352,7 @@ void LogAppGlobals() {
                                          below_a5_size));
 }
 
-void LogStack() {
-  uint32_t stack_head = m68k_get_reg(/*context=*/NULL, M68K_REG_SP);
+void LogStack(uint32_t stack_head) {
   LOG(INFO) << "Stack:\n"
             << MUST(memory::kSystemMemory.Create("Stack", stack_head,
                                                  kStackStart - stack_head));

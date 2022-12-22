@@ -4,6 +4,7 @@
 
 #include "core/literal_helpers.h"
 #include "core/memory_region.h"
+#include "gen/typegen/typegen_prelude.h"
 
 namespace cyder {
 namespace memory {
@@ -109,7 +110,7 @@ void LogRegionAccess(size_t offset,
                      bool on_read,
                      bool on_write,
                      const std::string& region_name,
-                     std::vector<size_t> whitelist_fields);
+                     std::vector<Field> whitelist_fields);
 
 #define RESTRICT_FIELD_ACCESS(type, address, ...)                       \
   memory::LogRegionAccess(address, type::fixed_size, true, true, #type, \
@@ -118,7 +119,7 @@ void LogRegionAccess(size_t offset,
 namespace debug {
 void LogA5World();  // Logs the A5 World (from below to above A5)
 void LogAppGlobals();
-void LogStack();
+void LogStack(uint32_t stack_head);
 }  // namespace debug
 
 }  // namespace memory
