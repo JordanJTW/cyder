@@ -37,8 +37,6 @@ namespace {
 
 using rsrcloader::GetTypeName;
 
-constexpr Pattern kBackgroundPattern = {
-    .bytes = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
 constexpr Pattern kForegroundPattern = {
     .bytes = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
 
@@ -738,10 +736,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "PaintRect(rect: " << rect << ")";
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
-
-      // FIXME: Paint with the color set for QuickDraw (A5 World?)
-      screen_.FillRect(rect, kForegroundPattern.bytes);
-      return absl::OkStatus();
+      return WithPort([&](const GrafPort& port) {
+        screen_.FillRect(rect, port.fill_pattern.bytes);
+        return absl::OkStatus();
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-99.html
     case Trap::FillRect: {
@@ -750,7 +748,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "FillRect(rect: " << rect << ", pat: " << pattern << ")";
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
-
       screen_.FillRect(rect, pattern.bytes);
       return absl::OkStatus();
     }
@@ -760,7 +757,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "FrameRect(rect: " << rect << ")";
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
-
       return WithPort([&](GrafPort& port) {
         // TODO: Respect the pen size when framing rects
         screen_.FrameRect(rect, port.pen_pattern.bytes,
@@ -774,9 +770,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "EraseRect(rect: " << rect << ")";
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
-      // FIXME: Clear with the color set for QuickDraw (A5 World?)
-      screen_.FillRect(rect, kBackgroundPattern.bytes);
-      return absl::OkStatus();
+      return WithPort([&](const GrafPort& port) {
+        screen_.FillRect(rect, port.back_pattern.bytes);
+        return absl::OkStatus();
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-63.html
     case Trap::Random: {
@@ -791,9 +788,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "PaintOval(rect: " << rect << ")";
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
-      // FIXME: Paint with the color set for QuickDraw (A5 World?)
-      screen_.FillEllipse(rect, kForegroundPattern.bytes);
-      return absl::OkStatus();
+      return WithPort([&](const GrafPort& port) {
+        screen_.FillEllipse(rect, port.fill_pattern.bytes);
+        return absl::OkStatus();
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-112.html
     case Trap::EraseOval: {
@@ -801,9 +799,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "EraseOval(rect: " << rect << ")";
 
       rect = TRY(port::ConvertLocalToGlobal(rect));
-      // FIXME: Clear with the color set for QuickDraw (A5 World?)
-      screen_.FillEllipse(rect, kBackgroundPattern.bytes);
-      return absl::OkStatus();
+      return WithPort([&](const GrafPort& port) {
+        screen_.FillEllipse(rect, port.back_pattern.bytes);
+        return absl::OkStatus();
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-86.html
     case Trap::SetRect: {
