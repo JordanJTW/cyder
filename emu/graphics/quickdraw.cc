@@ -51,5 +51,10 @@ absl::StatusOr<Rect> ConvertLocalToGlobal(Rect rect) {
   return OffsetRect(rect, offset.x, offset.y);
 }
 
+Rect LocalToGlobal(const GrafPort& port, const Rect& rect) {
+  return OffsetRect(rect, -port.port_bits.bounds.left,
+                    -port.port_bits.bounds.top);
+}
+
 }  // namespace port
 }  // namespace cyder

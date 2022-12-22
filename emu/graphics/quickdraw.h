@@ -16,5 +16,7 @@ absl::Status SetThePort(Ptr port);
 absl::StatusOr<Point> GetLocalToGlobalOffset();
 absl::StatusOr<Rect> ConvertLocalToGlobal(Rect rect);
 
+Rect LocalToGlobal(const GrafPort& port, const Rect& rect);
+
 }  // namespace port
 }  // namespace cyder

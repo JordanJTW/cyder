@@ -735,9 +735,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = TRY(PopRef<Rect>());
       LOG_TRAP() << "PaintRect(rect: " << rect << ")";
 
-      rect = TRY(port::ConvertLocalToGlobal(rect));
       return WithPort([&](const GrafPort& port) {
-        screen_.FillRect(rect, port.fill_pattern.bytes);
+        screen_.FillRect(port::LocalToGlobal(port, rect),
+                         port.fill_pattern.bytes);
         return absl::OkStatus();
       });
     }
@@ -747,19 +747,20 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = TRY(PopRef<Rect>());
       LOG_TRAP() << "FillRect(rect: " << rect << ", pat: " << pattern << ")";
 
-      rect = TRY(port::ConvertLocalToGlobal(rect));
-      screen_.FillRect(rect, pattern.bytes);
-      return absl::OkStatus();
+      return WithPort([&](const GrafPort& port) {
+        screen_.FillRect(port::LocalToGlobal(port, rect), pattern.bytes);
+        return absl::OkStatus();
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-97.html
     case Trap::FrameRect: {
       auto rect = TRY(PopRef<Rect>());
       LOG_TRAP() << "FrameRect(rect: " << rect << ")";
 
-      rect = TRY(port::ConvertLocalToGlobal(rect));
-      return WithPort([&](GrafPort& port) {
+      return WithPort([&](const GrafPort& port) {
         // TODO: Respect the pen size when framing rects
-        screen_.FrameRect(rect, port.pen_pattern.bytes,
+        screen_.FrameRect(port::LocalToGlobal(port, rect),
+                          port.pen_pattern.bytes,
                           ConvertMode(port.pattern_mode));
         return absl::OkStatus();
       });
@@ -769,9 +770,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = TRY(PopRef<Rect>());
       LOG_TRAP() << "EraseRect(rect: " << rect << ")";
 
-      rect = TRY(port::ConvertLocalToGlobal(rect));
       return WithPort([&](const GrafPort& port) {
-        screen_.FillRect(rect, port.back_pattern.bytes);
+        screen_.FillRect(port::LocalToGlobal(port, rect),
+                         port.back_pattern.bytes);
         return absl::OkStatus();
       });
     }
@@ -787,9 +788,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = TRY(PopRef<Rect>());
       LOG_TRAP() << "PaintOval(rect: " << rect << ")";
 
-      rect = TRY(port::ConvertLocalToGlobal(rect));
       return WithPort([&](const GrafPort& port) {
-        screen_.FillEllipse(rect, port.fill_pattern.bytes);
+        screen_.FillEllipse(port::LocalToGlobal(port, rect),
+                            port.fill_pattern.bytes);
         return absl::OkStatus();
       });
     }
@@ -798,9 +799,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = TRY(PopRef<Rect>());
       LOG_TRAP() << "EraseOval(rect: " << rect << ")";
 
-      rect = TRY(port::ConvertLocalToGlobal(rect));
       return WithPort([&](const GrafPort& port) {
-        screen_.FillEllipse(rect, port.back_pattern.bytes);
+        screen_.FillEllipse(port::LocalToGlobal(port, rect),
+                            port.back_pattern.bytes);
         return absl::OkStatus();
       });
     }
@@ -970,11 +971,12 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = TRY(PopRef<Rect>());
       LOG_TRAP() << "InvertRect(r: " << rect << ")";
 
-      screen_.FillRect(TRY(port::ConvertLocalToGlobal(rect)),
-                       kForegroundPattern.bytes,
-                       graphics::BitmapImage::FillMode::XOr);
-
-      return absl::OkStatus();
+      return WithPort([&](const GrafPort& port) {
+        screen_.FillRect(port::LocalToGlobal(port, rect),
+                         kForegroundPattern.bytes,
+                         graphics::BitmapImage::FillMode::XOr);
+        return absl::OkStatus();
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-89.html
     case Trap::SectRect: {
@@ -1056,7 +1058,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto pt_var = TRY(Pop<Ptr>());
       LOG_TRAP() << "GetPen(VAR pt: 0x" << std::hex << pt_var << ")";
 
-      return WithPort([&](GrafPort& port) {
+      return WithPort([&](const GrafPort& port) {
         return WithType<Point>(pt_var, [&](Point& pt) {
           pt.x = port.pen_location.x;
           pt.y = port.pen_location.y;
@@ -1103,7 +1105,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "Line(dh: " << dh << ", dv: " << dv << ")";
       // TODO: Support drawing arbitrarily sloped lines...
       // CHECK(dv == 0) << "Only horizontal lines are supported currently";
-      return WithPort([&](GrafPort& port) {
+      return WithPort([&](const GrafPort& port) {
         screen_.FillRow(port.pen_location.y - port.port_bits.bounds.top,
                         port.pen_location.x - port.port_bits.bounds.left,
                         port.pen_location.x - port.port_bits.bounds.left + dh,
@@ -1447,9 +1449,11 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "FillRgn(region: " << region << " @ 0x" << std::hex
                  << region_handle << ", pattern: " << pattern << ")";
 
-      auto region_frame = TRY(port::ConvertLocalToGlobal(region.bounding_box));
-      screen_.FillRect(region_frame, pattern.bytes);
-      return absl::OkStatus();
+      return WithPort([&](const GrafPort& port) {
+        screen_.FillRect(port::LocalToGlobal(port, region.bounding_box),
+                         pattern.bytes);
+        return absl::OkStatus();
+      });
     }
 
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-350.html
@@ -1471,11 +1475,11 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       RETURN_IF_ERROR(graphics::ParsePICTv1(pict_data, /*output=*/picture));
 
-      auto offset = TRY(port::GetLocalToGlobalOffset());
-      auto target_rect = OffsetRect(dst_rect, offset.x, offset.y);
-
-      screen_.CopyBits(picture, pict_frame, pict_frame, target_rect);
-      return absl::OkStatus();
+      return WithPort([&](const GrafPort& port) {
+        screen_.CopyBits(picture, pict_frame, pict_frame,
+                         port::LocalToGlobal(port, dst_rect));
+        return absl::OkStatus();
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-351.html
     case Trap::GetPicture: {
@@ -1694,12 +1698,14 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "PlotIcon(theRect: " << the_rect << ", theHandle: 0x"
                  << std::hex << the_handle << ")";
 
-      the_rect = TRY(port::ConvertLocalToGlobal(the_rect));
-
-      screen_.CopyBits(memory::kSystemMemory.raw_ptr() + icon_ptr,
-                       NewRect(0, 0, 32, 32), NewRect(0, 0, 32, 32), the_rect);
-      return absl::OkStatus();
+      return WithPort([&](const GrafPort& port) {
+        screen_.CopyBits(memory::kSystemMemory.raw_ptr() + icon_ptr,
+                         NewRect(0, 0, 32, 32), NewRect(0, 0, 32, 32),
+                         port::LocalToGlobal(port, the_rect));
+        return absl::OkStatus();
+      });
     }
+
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unimplemented Toolbox trap: '", GetTrapName(trap), "'"));
