@@ -1685,6 +1685,14 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       return absl::UnimplementedError("WIP: partial implementation");
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-396.html
+    case Trap::StopAlert: {
+      auto filter_proc = TRY(Pop<Ptr>());
+      auto alert_id = TRY(Pop<uint16_t>());
+      LOG_TRAP() << "StopAlert(alertID: " << alert_id << ", filterProc: 0x"
+                 << std::hex << filter_proc << ")";
+      return TrapReturn<int16_t>(-1);
+    }
 
     // ======================  Icon Utilities  =======================
 
