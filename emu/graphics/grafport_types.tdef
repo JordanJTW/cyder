@@ -2,6 +2,7 @@
 type Integer: u16;
 type Ptr: u32;
 type Boolean: u8;
+type Fixed: u32;
 
 type Handle: Ptr;
 type RegionHandle: Handle;
@@ -57,7 +58,7 @@ struct GrafPort {
   text_face: Integer;
   text_mode: Integer;
   text_size: Integer;
-  extra_space: Integer;
+  extra_space: Fixed;
   foreground_color: u32;
   background_color: u32;
   color_bit: Integer;
@@ -94,7 +95,7 @@ struct QDGlobals {
 // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-296.html#HEADING296-96
 struct WindowRecord {
   port: GrafPort;
-  window_kind: u8;
+  window_kind: Integer;
   is_visible: Boolean;
   hilited: Boolean;
   has_close: Boolean;
@@ -105,7 +106,7 @@ struct WindowRecord {
   window_definition_proc: Handle;
   data_handle: Handle;
   title_handle: Handle;
-  title_width: u8;
+  title_width: Integer;
   control_list: Handle;
   next_window: Ptr;
   picture_handle: Handle;
