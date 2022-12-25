@@ -15,11 +15,17 @@ constexpr uint8_t kMenuIcon[32] = {
     0x00, 0x00, 0x00, 0x00, 0x07, 0xFE, 0x37, 0xFE, 0x3F, 0xFE, 0x37,
     0x9E, 0x37, 0x6E, 0x37, 0x7E, 0x37, 0x6E, 0x37, 0x9E, 0x3F, 0xFE,
     0x37, 0xFE, 0x07, 0xFE, 0x03, 0xFC, 0x01, 0xF8, 0x00, 0x00};
+constexpr Rect kMenuIconRect = {0, 0, 16, 16};
 
 constexpr int kMenuBarHeight = 20;
 constexpr int kMenuBarWidthPadding = 6;
 constexpr int kMenuBarItemWidthPadding = 4;
 constexpr int kMenuBarItemHeightPadding = 6;
+
+bool IsAppleMenu(const MenuResource& menu) {
+  // The Apple menu's title should be just the "Apple" (code 0x14)
+  return menu.title == "\x14";
+}
 
 }  // namespace
 
@@ -39,11 +45,12 @@ void MenuManager::DrawMenuBar() const {
 
   int x_offset = kMenuBarWidthPadding;
   for (auto& menu : menus_) {
-    // FIXME: Should detect  menu in a better way than `size == 1`
-    if (menu.title.length() == 1) {
-      screen_.CopyBits(kMenuIcon, {0, 0, 16, 16}, {0, 0, 16, 16},
-                       NewRect(x_offset + kMenuBarItemWidthPadding, 2, 16, 16));
-      x_offset += 16 + (kMenuBarItemWidthPadding * 2);
+    if (IsAppleMenu(menu)) {
+      screen_.CopyBits(
+          kMenuIcon, kMenuIconRect, kMenuIconRect,
+          OffsetRect(kMenuIconRect, x_offset + kMenuBarItemWidthPadding,
+                     (kMenuBarHeight - RectHeight(kMenuIconRect)) / 2));
+      x_offset += RectWidth(kMenuIconRect) + (kMenuBarItemWidthPadding * 2);
     } else {
       DrawString(screen_, menu.title, x_offset + kMenuBarItemWidthPadding,
                  kMenuBarItemHeightPadding);
@@ -69,9 +76,8 @@ void MenuManager::OnMouseMove(const Point& mouse) {
 
   int x_offset = kMenuBarWidthPadding;
   for (auto& menu : menus_) {
-    // FIXME: Should detect  menu in a better way than `size == 1`
     int menu_bar_item_width =
-        (menu.title.size() == 1 ? 16 : menu.title.size() * 8) +
+        (IsAppleMenu(menu) ? RectWidth(kMenuIconRect) : menu.title.size() * 8) +
         (kMenuBarItemWidthPadding * 2);
 
     int next_x_offset = x_offset + menu_bar_item_width;
