@@ -221,6 +221,12 @@ SDL_Surface* const MakeSurface(const BitmapImage& screen) {
   return surface;
 }
 
+void SaveScreenshot(const BitmapImage& screen) {
+  auto path = absl::StrCat("/tmp/cyder-", absl::ToUnixMillis(absl::Now()));
+  screen.SaveBitmap(path);
+  LOG(INFO) << "Screenshot saved to: " << path;
+}
+
 absl::Status Main(const core::Args& args) {
   auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
 
@@ -371,8 +377,12 @@ absl::Status Main(const core::Args& args) {
     while (SDL_PollEvent(&event)) {
       switch (event.type) {
         case SDL_KEYDOWN:
-          event_manager.QueueKeyDown();
-          single_step = false;
+          if (event.key.keysym.sym == SDLK_F2) {
+            SaveScreenshot(screen);
+          } else {
+            event_manager.QueueKeyDown();
+            single_step = false;
+          }
           break;
         case SDL_MOUSEBUTTONDOWN:
           SDL_SetWindowGrab(window, SDL_TRUE);
