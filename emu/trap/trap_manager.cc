@@ -1147,6 +1147,29 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "PtInRect(pt: " << pt << ", r: " << r << ")";
       return TrapReturn<bool>(PointInRect(pt, r));
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-133.html
+    case Trap::OpenRgn: {
+      return WithPort([this](GrafPort& port) {
+        // TODO: "region_save" should probably be a BitmapImage we draw to
+        //       and then use to consturct the final Region in CloseRgn
+        port.region_save =
+            memory_manager_.AllocateHandle(Region::fixed_size, "OpenRgn");
+        return absl::OkStatus();
+      });
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-134.html
+    case Trap::CloseRgn: {
+      auto dst_rgn = TRY(Pop<Handle>());
+      LOG_TRAP() << "CloseRgn(dstRgn: 0x" << std::hex << dst_rgn << ")";
+
+      return WithPort([&](GrafPort& port) {
+        return WithType<Region>(port.region_save, [&](const Region& region) {
+          return memory_manager_.WriteTypeToHandle<Region>(region, dst_rgn);
+        });
+        port.region_save = 0;
+        return absl::OkStatus();
+      });
+    }
 
     // ================== Resource Manager ==================
 
