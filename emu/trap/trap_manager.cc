@@ -8,6 +8,7 @@
 
 #include "absl/strings/escaping.h"
 #include "absl/strings/string_view.h"
+#include "absl/time/time.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "emu/graphics/font/basic_font.h"
@@ -1755,6 +1756,39 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       return TrapReturn<uint16_t>(integer);
     }
 
+    // =====================  OS Utilities  =======================
+
+    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-113.html
+    case Trap::SecondsToDate: {
+      uint32_t number_of_seconds = m68k_get_reg(NULL, M68K_REG_D0);
+      Ptr record_ptr = m68k_get_reg(NULL, M68K_REG_A0);
+
+      static auto kLocalTimeZone = absl::LocalTimeZone();
+
+      return WithType<DateTimeRec>(record_ptr, [&](DateTimeRec& record) {
+        auto breakdown = absl::FromUnixSeconds(number_of_seconds - 2082844800)
+                             .In(kLocalTimeZone);
+        record.day = breakdown.day;
+        record.month = breakdown.month;
+        record.year = breakdown.year;
+        record.dayOfWeek = breakdown.weekday;
+        record.hour = breakdown.hour;
+        record.minute = breakdown.minute;
+        record.second = breakdown.second;
+        return absl::OkStatus();
+      });
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-114.html
+    case Trap::DateToSeconds: {
+      Ptr record_ptr = m68k_get_reg(NULL, M68K_REG_A0);
+      return WithType<DateTimeRec>(record_ptr, [&](const DateTimeRec& record) {
+        absl::Time time = absl::FromDateTime(
+            record.year, record.month, record.day, record.hour, record.minute,
+            record.second, absl::LocalTimeZone());
+        m68k_set_reg(M68K_REG_D0, absl::ToUnixSeconds(time) + 2082844800);
+        return absl::OkStatus();
+      });
+    }
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unimplemented Toolbox trap: '", GetTrapName(trap), "'"));

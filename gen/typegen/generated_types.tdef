@@ -26,6 +26,17 @@ struct MenuResource {
   title: str;
 }
 
+// Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-98.html
+struct DateTimeRec {
+  year: Integer;
+  month: Integer;
+  day: Integer;
+  hour: Integer;
+  minute: Integer;
+  second: Integer;
+  dayOfWeek: Integer;
+}
+
 // Link:
 // https://dev.os9.ca/techpubs/mac/Files/Files-301A.html#HEADING301-362
 struct IOParam {
