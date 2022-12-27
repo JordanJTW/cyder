@@ -31,6 +31,7 @@ class MemoryManager {
   uint32_t GetHandleSize(Handle handle) const;
 
   bool SetApplLimit(Ptr last_addr);
+  uint32_t GetFreeMemorySize() const;
 
   template <typename Type>
   absl::StatusOr<Type> ReadTypeFromHandle(Handle handle) const {

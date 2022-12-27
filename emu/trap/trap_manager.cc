@@ -331,6 +331,12 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, result_code);
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-110.html
+    case Trap::FreeMem: {
+      LOG_TRAP() << "FreeMem()";
+      m68k_set_reg(M68K_REG_D0, memory_manager_.GetFreeMemorySize());
+      return absl::OkStatus();
+    }
 
     // =======================  Trap Manager  ====================
 

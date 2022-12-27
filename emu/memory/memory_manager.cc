@@ -133,5 +133,9 @@ bool MemoryManager::SetApplLimit(Ptr last_addr) {
   return true;
 }
 
+uint32_t MemoryManager::GetFreeMemorySize() const {
+  return kHeapEnd - heap_offset_;
+}
+
 }  // namespace memory
 }  // namespace cyder
