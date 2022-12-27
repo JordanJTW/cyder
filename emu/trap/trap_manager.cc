@@ -1825,6 +1825,37 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       }
       return absl::OkStatus();
     }
+
+    // ======================  Sound Manager  ========================
+
+    // Link: http://0.0.0.0:8000/docs/mac/Sound/Sound-97.html
+    case Trap::SndNewChannel: {
+      auto user_routine = TRY(Pop<Ptr>());
+      auto init = TRY(Pop<uint32_t>());
+      auto synth = TRY(Pop<uint16_t>());
+      auto chan_var = TRY(Pop<Ptr>());
+      LOG(INFO) << "SndNewChannel(VAR chan: 0x" << std::hex << chan_var
+                << ", synth: " << std::dec << synth << ", init: " << init
+                << ", userRoutine: 0x" << std::hex << user_routine << ")";
+      return TrapReturn<uint16_t>(-204 /*resProblem*/);
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Sound/Sound-35.html
+    case Trap::SndPlay: {
+      auto async = TRY(Pop<uint16_t>());
+      auto snd_hdl = TRY(Pop<Handle>());
+      auto chan = TRY(Pop<Ptr>());
+      LOG(INFO) << "SndPlay(chan: 0x" << std::hex << chan << ", sndHdl: 0x"
+                << snd_hdl << ", async: " << (async ? "True" : "False") << ")";
+      return TrapReturn<uint16_t>(-201 /*notEnoughHardwareErr*/);
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Sound/Sound-98.html
+    case Trap::SndDisposeChannel: {
+      auto quiet_now = TRY(Pop<uint16_t>());
+      auto chan = TRY(Pop<Ptr>());
+      LOG(INFO) << "SndDisposeChannel(chan: 0x" << std::hex << chan
+                << ", quietNow: " << (quiet_now ? "True" : "False") << ")";
+      return TrapReturn<uint16_t>(0 /*noErr*/);
+    }
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unimplemented Toolbox trap: '", GetTrapName(trap), "'"));
