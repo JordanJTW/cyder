@@ -1505,6 +1505,19 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return absl::OkStatus();
       });
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-234.html
+    case Trap::SelectWindow: {
+      auto the_window = TRY(Pop<Ptr>());
+      LOG_TRAP() << "SelectWindow(theWindow: 0x" << std::hex << the_window
+                 << ")";
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-235.html
+    case Trap::ShowWindow: {
+      auto the_window = TRY(Pop<Ptr>());
+      LOG_TRAP() << "ShowWindow(theWindow: 0x" << std::hex << the_window <<
+      ")"; return absl::OkStatus();
+    }
 
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
     case Trap::BeginUpDate: {
