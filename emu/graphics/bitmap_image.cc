@@ -30,6 +30,11 @@ BitmapImage::BitmapImage(int width, int height)
 
 BitmapImage::~BitmapImage() = default;
 
+void BitmapImage::SetClipRect(const Rect& rect) {
+  clip_rect_ = IntersectRect(rect, {0, 0, static_cast<int16_t>(height_),
+                                    static_cast<int16_t>(width_)});
+}
+
 void BitmapImage::FillRect(const Rect& rect,
                            const uint8_t pattern[8],
                            FillMode mode) {
