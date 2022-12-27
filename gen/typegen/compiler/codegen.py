@@ -188,7 +188,7 @@ class CodeGenerator:
             offset = offset + 3
           elif member.type.id == 'u8' and member.type.has_user_size:
             file.write(
-                f'  RETURN_IF_ERROR(region.ReadRaw(&obj.{member.id}, {offset_str}, {member.type.size}));\n')
+                f'  RETURN_IF_ERROR(region.ReadRaw(obj.{member.id}, {offset_str}, {member.type.size}));\n')
             offset = offset + member.type.size
           else:
             file.write(
