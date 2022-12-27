@@ -812,13 +812,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return absl::OkStatus();
       });
     }
-    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-63.html
-    case Trap::Random: {
-      LOG_TRAP() << "Random()";
-      // FIXME: Use the same algorithm used in Mac OS to generate rand()
-      RETURN_IF_ERROR(TrapReturn<int16_t>(0xFFFF * rand()));
-      return absl::OkStatus();
-    }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-110.html
     case Trap::PaintOval: {
       auto rect = TRY(PopRef<Rect>());
@@ -1170,6 +1163,56 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return absl::OkStatus();
       });
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-153.html
+    case Trap::FillRgn: {
+      auto pattern = TRY(PopRef<Pattern>());
+      auto region_handle = TRY(Pop<Handle>());
+
+      auto region_ptr = memory_manager_.GetPtrForHandle(region_handle);
+      auto region = TRY(ReadType<Region>(memory::kSystemMemory, region_ptr));
+
+      LOG_TRAP() << "FillRgn(region: " << region << " @ 0x" << std::hex
+                 << region_handle << ", pattern: " << pattern << ")";
+
+      return WithPort([&](const GrafPort& port) {
+        screen_.FillRect(port::LocalToGlobal(port, region.bounding_box),
+                         pattern.bytes);
+        return absl::OkStatus();
+      });
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-350.html
+    case Trap::DrawPicture: {
+      auto dst_rect = TRY(PopRef<Rect>());
+      auto my_picture = TRY(Pop<Handle>());
+
+      LOG_TRAP() << "DrawPicture(myPicture: 0x" << std::hex << my_picture
+                 << ", dstRect: " << std::dec << dst_rect << ")";
+
+      auto pict_data = memory_manager_.GetRegionForHandle(my_picture);
+
+      auto pict_frame = TRY(graphics::GetPICTFrame(pict_data));
+
+      size_t picture_size =
+          PixelWidthToBytes(pict_frame.right) * pict_frame.bottom;
+      uint8_t picture[picture_size];
+      std::memset(picture, 0, picture_size);
+
+      RETURN_IF_ERROR(graphics::ParsePICTv1(pict_data, /*output=*/picture));
+
+      return WithPort([&](const GrafPort& port) {
+        screen_.CopyBits(picture, pict_frame, pict_frame,
+                         port::LocalToGlobal(port, dst_rect));
+        return absl::OkStatus();
+      });
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-351.html
+    case Trap::GetPicture: {
+      auto pict_id = TRY(Pop<Integer>());
+      LOG_TRAP() << "GetPicture(picId: " << pict_id << ")";
+
+      Handle handle = resource_manager_.GetResource('PICT', pict_id);
+      return TrapReturn<Handle>(handle);
+    }
 
     // ================== Resource Manager ==================
 
@@ -1238,15 +1281,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto the_resource = TRY(Pop<Handle>());
       LOG_TRAP() << "WriteResource(theResource: 0x" << std::hex << the_resource
                  << ")";
-      return absl::OkStatus();
-    }
-
-    // ====================  Sound Manager  =====================
-
-    // Link: http://0.0.0.0:8000/docs/mac/Sound/Sound-90.html
-    case Trap::SysBeep: {
-      uint16_t duration = TRY(Pop<Integer>());
-      LOG_TRAP() << "SysBeep(duration: " << duration << ")";
       return absl::OkStatus();
     }
 
@@ -1538,10 +1572,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-235.html
     case Trap::ShowWindow: {
       auto the_window = TRY(Pop<Ptr>());
-      LOG_TRAP() << "ShowWindow(theWindow: 0x" << std::hex << the_window <<
-      ")"; return absl::OkStatus();
+      LOG_TRAP() << "ShowWindow(theWindow: 0x" << std::hex << the_window << ")";
+      return absl::OkStatus();
     }
-
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
     case Trap::BeginUpDate: {
       auto the_window = TRY(Pop<Ptr>());
@@ -1549,59 +1582,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                  << ")";
       return absl::OkStatus();
     }
-
-    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-153.html
-    case Trap::FillRgn: {
-      auto pattern = TRY(PopRef<Pattern>());
-      auto region_handle = TRY(Pop<Handle>());
-
-      auto region_ptr = memory_manager_.GetPtrForHandle(region_handle);
-      auto region = TRY(ReadType<Region>(memory::kSystemMemory, region_ptr));
-
-      LOG_TRAP() << "FillRgn(region: " << region << " @ 0x" << std::hex
-                 << region_handle << ", pattern: " << pattern << ")";
-
-      return WithPort([&](const GrafPort& port) {
-        screen_.FillRect(port::LocalToGlobal(port, region.bounding_box),
-                         pattern.bytes);
-        return absl::OkStatus();
-      });
-    }
-
-    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-350.html
-    case Trap::DrawPicture: {
-      auto dst_rect = TRY(PopRef<Rect>());
-      auto my_picture = TRY(Pop<Handle>());
-
-      LOG_TRAP() << "DrawPicture(myPicture: 0x" << std::hex << my_picture
-                 << ", dstRect: " << std::dec << dst_rect << ")";
-
-      auto pict_data = memory_manager_.GetRegionForHandle(my_picture);
-
-      auto pict_frame = TRY(graphics::GetPICTFrame(pict_data));
-
-      size_t picture_size =
-          PixelWidthToBytes(pict_frame.right) * pict_frame.bottom;
-      uint8_t picture[picture_size];
-      std::memset(picture, 0, picture_size);
-
-      RETURN_IF_ERROR(graphics::ParsePICTv1(pict_data, /*output=*/picture));
-
-      return WithPort([&](const GrafPort& port) {
-        screen_.CopyBits(picture, pict_frame, pict_frame,
-                         port::LocalToGlobal(port, dst_rect));
-        return absl::OkStatus();
-      });
-    }
-    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-351.html
-    case Trap::GetPicture: {
-      auto pict_id = TRY(Pop<Integer>());
-      LOG_TRAP() << "GetPicture(picId: " << pict_id << ")";
-
-      Handle handle = resource_manager_.GetResource('PICT', pict_id);
-      return TrapReturn<Handle>(handle);
-    }
-
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
     case Trap::EndUpDate: {
       auto the_window = TRY(Pop<Ptr>());
@@ -1826,35 +1806,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       });
     }
 
-    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-88.html
-    case Trap::FixRatio: {
-      auto denom = TRY(Pop<uint16_t>());
-      auto numer = TRY(Pop<uint16_t>());
-      LOG_TRAP() << "FixRatio(numer: " << numer << ", denom: " << denom << ")";
-      return TrapReturn<uint32_t>((static_cast<uint32_t>(numer) << 16) / denom);
-    }
-    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-68.html
-    case Trap::FixMul: {
-      uint64_t v2 = TRY(Pop<uint32_t>());
-      uint64_t v1 = TRY(Pop<uint32_t>());
-      LOG_TRAP() << "FixMul(v1: " << v1 << ", v2: " << v2 << ")";
-      uint64_t result = v1 * v2;
-      return TrapReturn<uint32_t>(result >> 16);
-    }
-    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-89.html
-    case Trap::FixRound: {
-      uint32_t v = TRY(Pop<uint32_t>());
-      LOG_TRAP() << "FixRound(v: " << v << ")";
-      // Separate integer and fractional values
-      uint16_t integer = v >> 16;
-      uint16_t fractional = v & 0xFFFF;
-      // Round up only if `fractional` is greater than 0.5
-      if (fractional > 32767) {
-        integer = integer + 1;
-      }
-      return TrapReturn<uint16_t>(integer);
-    }
-
     // ==============  Date, Time, and Measurement Utilities  ===============
 
     // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-113.html
@@ -1918,6 +1869,41 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       }
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-63.html
+    case Trap::Random: {
+      LOG_TRAP() << "Random()";
+      // FIXME: Use the same algorithm used in Mac OS to generate rand()
+      RETURN_IF_ERROR(TrapReturn<int16_t>(0xFFFF * rand()));
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-88.html
+    case Trap::FixRatio: {
+      auto denom = TRY(Pop<uint16_t>());
+      auto numer = TRY(Pop<uint16_t>());
+      LOG_TRAP() << "FixRatio(numer: " << numer << ", denom: " << denom << ")";
+      return TrapReturn<uint32_t>((static_cast<uint32_t>(numer) << 16) / denom);
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-68.html
+    case Trap::FixMul: {
+      uint64_t v2 = TRY(Pop<uint32_t>());
+      uint64_t v1 = TRY(Pop<uint32_t>());
+      LOG_TRAP() << "FixMul(v1: " << v1 << ", v2: " << v2 << ")";
+      uint64_t result = v1 * v2;
+      return TrapReturn<uint32_t>(result >> 16);
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-89.html
+    case Trap::FixRound: {
+      uint32_t v = TRY(Pop<uint32_t>());
+      LOG_TRAP() << "FixRound(v: " << v << ")";
+      // Separate integer and fractional values
+      uint16_t integer = v >> 16;
+      uint16_t fractional = v & 0xFFFF;
+      // Round up only if `fractional` is greater than 0.5
+      if (fractional > 32767) {
+        integer = integer + 1;
+      }
+      return TrapReturn<uint16_t>(integer);
+    }
 
     // ======================  Sound Manager  ========================
 
@@ -1949,6 +1935,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                 << ", quietNow: " << (quiet_now ? "True" : "False") << ")";
       return TrapReturn<uint16_t>(0 /*noErr*/);
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Sound/Sound-90.html
+    case Trap::SysBeep: {
+      uint16_t duration = TRY(Pop<Integer>());
+      LOG_TRAP() << "SysBeep(duration: " << duration << ")";
+      return absl::OkStatus();
+    }
+
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unimplemented Toolbox trap: '", GetTrapName(trap), "'"));
