@@ -1193,6 +1193,20 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       uint16_t attrs = 8;
       return TrapReturn<uint16_t>(attrs);
     }
+    // Link: http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-63.html
+    case Trap::ChangedResource: {
+      auto the_resource = TRY(Pop<Handle>());
+      LOG_TRAP() << "ChangedResource(theResource: 0x" << std::hex
+                 << the_resource << ")";
+      return absl::OkStatus();
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-67.html
+    case Trap::WriteResource: {
+      auto the_resource = TRY(Pop<Handle>());
+      LOG_TRAP() << "WriteResource(theResource: 0x" << std::hex << the_resource
+                 << ")";
+      return absl::OkStatus();
+    }
 
     // ====================  Sound Manager  =====================
 
