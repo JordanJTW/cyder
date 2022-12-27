@@ -32,6 +32,15 @@ class WindowManager : public MouseListener {
 
   void DragWindow(Ptr window_ptr, const Point& start);
 
+  enum MoveType {
+    Relative,
+    Absolute,
+  };
+  void MoveWindow(Ptr window_ptr,
+                  MoveType move_type,
+                  const Point& location,
+                  bool bring_to_front);
+
   void DragGrayRegion(const Region& region,
                       const Point& start,
                       std::function<void(const Point&)> on_drag_end);

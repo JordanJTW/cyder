@@ -136,4 +136,25 @@ inline Rect NewRect(int16_t x, int16_t y, int16_t width, int16_t height) {
   return rect;
 }
 
+// Move |rect| so the top, left corner is at (x, y)
+inline Rect MoveRect(Rect rect, int16_t x, int16_t y) {
+  auto width = RectWidth(rect);
+  auto height = RectHeight(rect);
+  return NewRect(x, y, width, height);
+}
+
+inline Point operator+(const Point& v1, const Point& v2) {
+  Point result;
+  result.x = v1.x + v2.x;
+  result.y = v1.y + v2.y;
+  return result;
+}
+
+inline Point operator-(const Point& v1, const Point& v2) {
+  Point result;
+  result.x = v1.x - v2.x;
+  result.y = v1.y - v2.y;
+  return result;
+}
+
 }  // namespace cyder

@@ -135,21 +135,44 @@ void WindowManager::DragWindow(Ptr window_ptr, const Point& start) {
       MUST(memory_.ReadTypeFromHandle<Region>(window.structure_region));
 
   // Be careful with lambda captures as it will be called outside function scope
-  DragGrayRegion(struct_region, start, [this, window_ptr](const Point& end) {
-    auto status =
-        WithType<WindowRecord>(window_ptr, [&](WindowRecord& window_record) {
-          RepaintDesktopOverWindow(window_record);
-
-          window_record.port.port_bits.bounds.left -= end.x;
-          window_record.port.port_bits.bounds.top -= end.y;
-          SetStructRegionAndDrawFrame(screen_, window_record, memory_);
-          MoveToFront(window_ptr);
-          InvalidateWindows();
-          return absl::OkStatus();
-        });
-    CHECK(status.ok()) << "Failed WithType<WindowRecord>: "
-                       << std::move(status).message();
+  DragGrayRegion(struct_region, start, [this, window_ptr](const Point& delta) {
+    MoveWindow(window_ptr, MoveType::Relative, delta, /*bring_to_front=*/true);
   });
+}
+
+void WindowManager::MoveWindow(Ptr window_ptr,
+                               MoveType move_type,
+                               const Point& location,
+                               bool bring_to_front) {
+  LOG(INFO) << "Bring to front: " << (bring_to_front ? "True" : "False");
+  auto status =
+      WithType<WindowRecord>(window_ptr, [&](WindowRecord& window_record) {
+        // 1. Clear the current window location with the desktop pattern
+        RepaintDesktopOverWindow(window_record);
+        // 2. Update the window bounds relative to the global origin
+        switch (move_type) {
+          case MoveType::Absolute:
+            window_record.port.port_bits.bounds = MoveRect(
+                window_record.port.port_bits.bounds, -location.x, -location.y);
+            break;
+          case MoveType::Relative:
+            window_record.port.port_bits.bounds = OffsetRect(
+                window_record.port.port_bits.bounds, -location.x, -location.y);
+            break;
+          default:
+            NOTREACHED() << "Unknown WindowManager::MoveType";
+        }
+        // 3. If the window is in front, then update it before invalidating
+        //    the windows as it will affect the drawing order
+        if (bring_to_front) {
+          MoveToFront(window_ptr);
+        }
+        // 4. Invalidate all windows redrawing from back-to-front in list
+        InvalidateWindows();
+        return absl::OkStatus();
+      });
+  CHECK(status.ok()) << "Failed WithType<WindowRecord>: "
+                     << std::move(status).message();
 }
 
 void WindowManager::DragGrayRegion(
@@ -222,10 +245,7 @@ void WindowManager::OnMouseUp(const Point& mouse) {
   saved_bitmap_.reset();
 
   if (on_drag_end_) {
-    Point delta;
-    delta.x = mouse.x - start_pt_.x;
-    delta.y = mouse.y - start_pt_.y;
-    std::move(on_drag_end_)(delta);
+    std::move(on_drag_end_)(mouse - start_pt_);
   }
 }
 

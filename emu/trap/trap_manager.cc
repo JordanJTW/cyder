@@ -1450,6 +1450,21 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       window_manager_.DragWindow(the_window, start_pt);
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-246.html
+    case Trap::MoveWindow: {
+      auto front = TRY(Pop<uint16_t>());
+      auto v_global = TRY(Pop<int16_t>());
+      auto h_global = TRY(Pop<int16_t>());
+      auto the_window = TRY(Pop<Ptr>());
+      LOG_TRAP() << "MoveWindow(theWindow: 0x" << std::hex << the_window
+                 << std::dec << ", hGlobal: " << h_global
+                 << ", vGlobal: " << v_global
+                 << ", front: " << (front ? "True" : "False") << ")";
+      window_manager_.MoveWindow(the_window, WindowManager::MoveType::Absolute,
+                                 {v_global, h_global},
+                                 /*bring_to_front=*/front != 0);
+      return absl::OkStatus();
+    }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-247.html
     case Trap::DragGrayRgn: {
       auto action_proc = TRY(Pop<Ptr>());
