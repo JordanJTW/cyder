@@ -35,6 +35,10 @@ MenuManager::MenuManager(graphics::BitmapImage& screen,
 
 void MenuManager::InsertMenu(MenuResource menu,
                              std::vector<MenuItemResource> menu_items) {
+  // TODO: Should a duplicate inserted menu be ignored or replace existing menu?
+  if (menu_items_.find(menu.id) != menu_items_.cend())
+    return;
+
   menu_items_[menu.id] = std::move(menu_items);
   menus_.push_back(std::move(menu));
 }
