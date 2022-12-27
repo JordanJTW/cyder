@@ -721,9 +721,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-32.html
     case Trap::OpenPort: {
-      auto thePortPtr = TRY(Pop<GrafPtr>());
-      LOG_TRAP() << "OpenPort(port: 0x" << std::hex << thePortPtr << ")";
-      return absl::OkStatus();
+      auto the_port = TRY(Pop<GrafPtr>());
+      LOG_TRAP() << "OpenPort(port: 0x" << std::hex << the_port << ")";
+      RETURN_IF_ERROR(port::SetThePort(the_port));
+      return WithType<GrafPort>(the_port, [](GrafPort& port) {
+        InitGrafPort(port);
+        return absl::OkStatus();
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-392.html
     case Trap::HideCursor: {
@@ -1232,6 +1236,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       RETURN_IF_ERROR(
           memory::kSystemMemory.Write<Ptr>(GlobalVars::WMgrPort, ptr));
+
+      RETURN_IF_ERROR(port::SetThePort(ptr));
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-114.html
