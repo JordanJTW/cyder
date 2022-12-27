@@ -1762,7 +1762,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       return TrapReturn<uint16_t>(integer);
     }
 
-    // =====================  OS Utilities  =======================
+    // ==============  Date, Time, and Measurement Utilities  ===============
 
     // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-113.html
     case Trap::SecondsToDate: {
@@ -1794,6 +1794,36 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         m68k_set_reg(M68K_REG_D0, absl::ToUnixSeconds(time) + 2082844800);
         return absl::OkStatus();
       });
+    }
+
+    // ==================  Math and Logical Utilities  ====================
+
+    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-56.html
+    case Trap::HiWord: {
+      auto x = TRY(Pop<uint32_t>());
+      LOG_TRAP() << "HiWord(x: " << x << ")";
+      return TrapReturn<uint16_t>((x >> 16) & 0xFFFF);
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-57.html
+    case Trap::LoWord: {
+      auto x = TRY(Pop<uint32_t>());
+      LOG_TRAP() << "LoWord(x: " << x << ")";
+      return TrapReturn<uint16_t>(x & 0xFFFF);
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-58.html
+    case Trap::StuffHex: {
+      auto s = TRY(PopRef<std::string>());
+      auto thing_ptr = TRY(Pop<Ptr>());
+      LOG_TRAP() << "StuffHex(thingPtr: 0x" << std::hex << thing_ptr << ", s: '"
+                 << s << "')";
+      for (size_t i = 0; i < s.length() / 2; ++i) {
+        auto hex = s.substr(i * 2, 2);
+        // TODO: Error check? Documentation implies it will always be valid
+        auto value = strtol(hex.c_str(), NULL, 16);
+        RETURN_IF_ERROR(
+            memory::kSystemMemory.Write<uint8_t>(thing_ptr + i, value));
+      }
+      return absl::OkStatus();
     }
     default:
       return absl::UnimplementedError(absl::StrCat(
