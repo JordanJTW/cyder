@@ -110,7 +110,8 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
   RESTRICT_FIELD_ACCESS(
       WindowRecord, window_storage,
       WindowRecordFields::port + GrafPortFields::visible_region,
-      WindowRecordFields::port + GrafPortFields::port_rect);
+      WindowRecordFields::port + GrafPortFields::port_rect,
+      WindowRecordFields::window_kind, WindowRecordFields::structure_region);
 
   RETURN_IF_ERROR(
       WriteType<WindowRecord>(record, memory::kSystemMemory, window_storage));
