@@ -812,6 +812,33 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return absl::OkStatus();
       });
     }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-103.html
+    case Trap::FrameRoundRect: {
+      auto oval_height = TRY(Pop<uint16_t>());
+      auto oval_width = TRY(Pop<uint16_t>());
+      auto rect = TRY(PopRef<Rect>());
+      LOG(INFO) << "FrameRoundRect(rect: " << rect
+                << ", ovalWidth: " << oval_width
+                << ", ovalHeight: " << oval_height << ")";
+
+      return WithPort([&](const GrafPort& port) {
+        if (port.region_save) {
+          // TODO: Implement proper Region support!
+          return WithType<Region>(port.region_save, [&](Region& region) {
+            region.region_size = 10;
+            region.bounding_box = rect;
+            return absl::OkStatus();
+          });
+        }
+
+        // TODO: Respect the pen size when framing rects
+        // TODO: Implement support for rounded rects i.e. squircles
+        screen_.FrameRect(port::LocalToGlobal(port, rect),
+                          port.pen_pattern.bytes,
+                          ConvertMode(port.pattern_mode));
+        return absl::OkStatus();
+      });
+    }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-110.html
     case Trap::PaintOval: {
       auto rect = TRY(PopRef<Rect>());
