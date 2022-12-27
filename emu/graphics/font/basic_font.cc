@@ -136,7 +136,140 @@ uint8_t basic_font[128][8] = {
     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},  // U+007F
 };
 
+struct GlyphMetric glyph_metrics[128] = {
+    {.start = 0, .width = 0, .follow = 0},  // U+0000
+    {.start = 0, .width = 0, .follow = 0},  // U+0001
+    {.start = 0, .width = 0, .follow = 0},  // U+0002
+    {.start = 0, .width = 0, .follow = 0},  // U+0003
+    {.start = 0, .width = 0, .follow = 0},  // U+0004
+    {.start = 0, .width = 0, .follow = 0},  // U+0005
+    {.start = 0, .width = 0, .follow = 0},  // U+0006
+    {.start = 0, .width = 0, .follow = 0},  // U+0007
+    {.start = 0, .width = 0, .follow = 0},  // U+0008
+    {.start = 0, .width = 0, .follow = 0},  // U+0009
+    {.start = 0, .width = 0, .follow = 0},  // U+000A
+    {.start = 0, .width = 0, .follow = 0},  // U+000B
+    {.start = 0, .width = 0, .follow = 0},  // U+000C
+    {.start = 0, .width = 0, .follow = 0},  // U+000D
+    {.start = 0, .width = 0, .follow = 0},  // U+000E
+    {.start = 0, .width = 0, .follow = 0},  // U+000F
+    {.start = 0, .width = 0, .follow = 0},  // U+0010
+    {.start = 0, .width = 0, .follow = 0},  // U+0011
+    {.start = 0, .width = 0, .follow = 0},  // U+0012
+    {.start = 0, .width = 0, .follow = 0},  // U+0013
+    {.start = 0, .width = 0, .follow = 0},  // U+0014
+    {.start = 0, .width = 0, .follow = 0},  // U+0015
+    {.start = 0, .width = 0, .follow = 0},  // U+0016
+    {.start = 0, .width = 0, .follow = 0},  // U+0017
+    {.start = 0, .width = 0, .follow = 0},  // U+0018
+    {.start = 0, .width = 0, .follow = 0},  // U+0019
+    {.start = 0, .width = 0, .follow = 0},  // U+001A
+    {.start = 0, .width = 0, .follow = 0},  // U+001B
+    {.start = 0, .width = 0, .follow = 0},  // U+001C
+    {.start = 0, .width = 0, .follow = 0},  // U+001D
+    {.start = 0, .width = 0, .follow = 0},  // U+001E
+    {.start = 0, .width = 0, .follow = 0},  // U+001F
+    {.start = 0, .width = 6, .follow = 0},  // U+0020 ( )
+    {.start = 3, .width = 3, .follow = 1},  // U+0021 (!)
+    {.start = 2, .width = 4, .follow = 1},  // U+0022 (")
+    {.start = 0, .width = 7, .follow = 1},  // U+0023 (#)
+    {.start = 0, .width = 6, .follow = 1},  // U+0024 ($)
+    {.start = 0, .width = 7, .follow = 1},  // U+0025 (%)
+    {.start = 0, .width = 7, .follow = 1},  // U+0026 (&)
+    {.start = 0, .width = 3, .follow = 1},  // U+0027 (')
+    {.start = 2, .width = 3, .follow = 1},  // U+0028 (()
+    {.start = 2, .width = 3, .follow = 1},  // U+0029 ())
+    {.start = 0, .width = 8, .follow = 1},  // U+002A (*)
+    {.start = 0, .width = 6, .follow = 1},  // U+002B (+)
+    {.start = 2, .width = 2, .follow = 1},  // U+002C (,)
+    {.start = 0, .width = 6, .follow = 1},  // U+002D (-)
+    {.start = 3, .width = 1, .follow = 1},  // U+002E (.)
+    {.start = 0, .width = 7, .follow = 1},  // U+002F (/)
+    {.start = 0, .width = 7, .follow = 1},  // U+0030 (0)
+    {.start = 0, .width = 6, .follow = 1},  // U+0031 (1)
+    {.start = 0, .width = 6, .follow = 1},  // U+0032 (2)
+    {.start = 0, .width = 6, .follow = 1},  // U+0033 (3)
+    {.start = 0, .width = 7, .follow = 1},  // U+0034 (4)
+    {.start = 0, .width = 6, .follow = 1},  // U+0035 (5)
+    {.start = 0, .width = 6, .follow = 1},  // U+0036 (6)
+    {.start = 0, .width = 6, .follow = 1},  // U+0037 (7)
+    {.start = 0, .width = 6, .follow = 1},  // U+0038 (8)
+    {.start = 0, .width = 6, .follow = 1},  // U+0039 (9)
+    {.start = 3, .width = 1, .follow = 1},  // U+003A (:)
+    {.start = 2, .width = 2, .follow = 1},  // U+003B (;)
+    {.start = 0, .width = 5, .follow = 1},  // U+003C (<)
+    {.start = 0, .width = 6, .follow = 1},  // U+003D (=)
+    {.start = 2, .width = 4, .follow = 1},  // U+003E (>)
+    {.start = 0, .width = 6, .follow = 1},  // U+003F (?)
+    {.start = 0, .width = 7, .follow = 1},  // U+0040 (@)
+    {.start = 0, .width = 6, .follow = 1},  // U+0041 (A)
+    {.start = 0, .width = 7, .follow = 1},  // U+0042 (B)
+    {.start = 0, .width = 7, .follow = 1},  // U+0043 (C)
+    {.start = 0, .width = 7, .follow = 1},  // U+0044 (D)
+    {.start = 0, .width = 7, .follow = 1},  // U+0045 (E)
+    {.start = 0, .width = 7, .follow = 1},  // U+0046 (F)
+    {.start = 0, .width = 7, .follow = 1},  // U+0047 (G)
+    {.start = 0, .width = 6, .follow = 1},  // U+0048 (H)
+    {.start = 2, .width = 3, .follow = 1},  // U+0049 (I)
+    {.start = 0, .width = 7, .follow = 1},  // U+004A (J)
+    {.start = 0, .width = 7, .follow = 1},  // U+004B (K)
+    {.start = 0, .width = 7, .follow = 1},  // U+004C (L)
+    {.start = 0, .width = 7, .follow = 1},  // U+004D (M)
+    {.start = 0, .width = 7, .follow = 1},  // U+004E (N)
+    {.start = 0, .width = 7, .follow = 1},  // U+004F (O)
+    {.start = 0, .width = 7, .follow = 1},  // U+0050 (P)
+    {.start = 0, .width = 6, .follow = 1},  // U+0051 (Q)
+    {.start = 0, .width = 7, .follow = 1},  // U+0052 (R)
+    {.start = 0, .width = 6, .follow = 1},  // U+0053 (S)
+    {.start = 0, .width = 6, .follow = 1},  // U+0054 (T)
+    {.start = 0, .width = 6, .follow = 1},  // U+0055 (U)
+    {.start = 0, .width = 6, .follow = 1},  // U+0056 (V)
+    {.start = 0, .width = 7, .follow = 1},  // U+0057 (W)
+    {.start = 0, .width = 7, .follow = 1},  // U+0058 (X)
+    {.start = 0, .width = 6, .follow = 1},  // U+0059 (Y)
+    {.start = 0, .width = 7, .follow = 1},  // U+005A (Z)
+    {.start = 2, .width = 3, .follow = 1},  // U+005B ([)
+    {.start = 0, .width = 7, .follow = 1},  // U+005C (\)
+    {.start = 2, .width = 3, .follow = 1},  // U+005D (])
+    {.start = 0, .width = 7, .follow = 1},  // U+005E (^)
+    {.start = 0, .width = 8, .follow = 1},  // U+005F (_)
+    {.start = 3, .width = 2, .follow = 1},  // U+0060 (`)
+    {.start = 0, .width = 7, .follow = 1},  // U+0061 (a)
+    {.start = 0, .width = 7, .follow = 1},  // U+0062 (b)
+    {.start = 0, .width = 6, .follow = 1},  // U+0063 (c)
+    {.start = 0, .width = 7, .follow = 1},  // U+0064 (d)
+    {.start = 0, .width = 6, .follow = 1},  // U+0065 (e)
+    {.start = 0, .width = 6, .follow = 1},  // U+0066 (f)
+    {.start = 0, .width = 7, .follow = 1},  // U+0067 (g)
+    {.start = 0, .width = 7, .follow = 1},  // U+0068 (h)
+    {.start = 2, .width = 3, .follow = 1},  // U+0069 (i)
+    {.start = 0, .width = 6, .follow = 1},  // U+006A (j)
+    {.start = 0, .width = 7, .follow = 1},  // U+006B (k)
+    {.start = 2, .width = 3, .follow = 1},  // U+006C (l)
+    {.start = 0, .width = 7, .follow = 1},  // U+006D (m)
+    {.start = 0, .width = 6, .follow = 1},  // U+006E (n)
+    {.start = 0, .width = 6, .follow = 1},  // U+006F (o)
+    {.start = 0, .width = 7, .follow = 1},  // U+0070 (p)
+    {.start = 0, .width = 7, .follow = 1},  // U+0071 (q)
+    {.start = 0, .width = 7, .follow = 1},  // U+0072 (r)
+    {.start = 0, .width = 6, .follow = 1},  // U+0073 (s)
+    {.start = 2, .width = 4, .follow = 1},  // U+0074 (t)
+    {.start = 0, .width = 7, .follow = 1},  // U+0075 (u)
+    {.start = 0, .width = 6, .follow = 1},  // U+0076 (v)
+    {.start = 0, .width = 7, .follow = 1},  // U+0077 (w)
+    {.start = 0, .width = 7, .follow = 1},  // U+0078 (x)
+    {.start = 0, .width = 6, .follow = 1},  // U+0079 (y)
+    {.start = 0, .width = 6, .follow = 1},  // U+007A (z)
+    {.start = 0, .width = 6, .follow = 1},  // U+007B ({)
+    {.start = 4, .width = 1, .follow = 1},  // U+007C (|)
+    {.start = 0, .width = 6, .follow = 1},  // U+007D (})
+    {.start = 0, .width = 7, .follow = 1},  // U+007E (~)
+    {.start = 0, .width = 0, .follow = 0},  // U+007F
+};
+
 namespace cyder {
+
+#define IGNORE_FONT_METRICS 1
 
 int DrawString(graphics::BitmapImage& screen,
                absl::string_view string,
@@ -144,9 +277,17 @@ int DrawString(graphics::BitmapImage& screen,
                int y) {
   int x_offset = 0;
   for (int c : string) {
+#if IGNORE_FONT_METRICS
     screen.CopyBits(basic_font[c], NewRect(0, 0, 8, 8), NewRect(0, 0, 8, 8),
                     NewRect(x + x_offset, y, 8, 8));
     x_offset += 8;
+#else
+    int width = glyph_metrics[c].width;
+    screen.CopyBits(basic_font[c], NewRect(0, 0, 8, 8),
+                    NewRect(glyph_metrics[c].start, 0, width, 8),
+                    NewRect(x + x_offset, y, width, 8));
+    x_offset += (width + glyph_metrics[c].follow);
+#endif  // IGNORE_FONT_METRICS
   }
   return x_offset;
 }
