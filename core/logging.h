@@ -34,10 +34,10 @@ const LogSeverity FATAL = 3;
 #define CHECK(expr) \
   LAZY_CHECK_STREAM(LOG(FATAL), (expr)) << "CHECK(" << #expr << ") failed: "
 // Operator extenstions to CHECK macro:
-#define CHECK_EQ(lhs, rhs) CHECK(lhs == rhs)
-#define CHECK_NE(lhs, rhs) CHECK(lhs != rhs)
-#define CHECK_LT(lhs, rhs) CHECK(lhs < rhs)
-#define CHECK_GT(lhs, rhs) CHECK(lhs > rhs)
+#define CHECK_EQ(lhs, rhs) CHECK((lhs) == (rhs))
+#define CHECK_NE(lhs, rhs) CHECK((lhs) != (rhs))
+#define CHECK_LT(lhs, rhs) CHECK((lhs) < (rhs))
+#define CHECK_GT(lhs, rhs) CHECK((lhs) > (rhs))
 
 // Indicates a point which should not be reached in code.
 #define NOTREACHED() LOG(FATAL) << "NOTREACHED(): "
