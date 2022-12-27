@@ -1487,6 +1487,25 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       });
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-230.html
+    case Trap::SetWTitle: {
+      auto title = TRY(PopRef<absl::string_view>());
+      auto the_window = TRY(Pop<Ptr>());
+      LOG_TRAP() << "SetWTitle(theWindow: 0x" << std::hex << the_window
+                 << ", title: '" << title << "')";
+
+      auto handle =
+          memory_manager_.AllocateHandle(title.size() + 1, "SetWTitle");
+      auto memory = memory_manager_.GetRegionForHandle(handle);
+      RETURN_IF_ERROR(
+          WriteType<absl::string_view>(title, memory, /*offset=*/0));
+
+      return WithType<WindowRecord>(the_window, [&](WindowRecord& window) {
+        window.title_handle = handle;
+        SetStructRegionAndDrawFrame(screen_, window, memory_manager_);
+        return absl::OkStatus();
+      });
+    }
 
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
     case Trap::BeginUpDate: {
