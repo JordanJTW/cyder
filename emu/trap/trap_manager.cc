@@ -1482,8 +1482,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto region = TRY(memory_manager_.ReadTypeFromHandle<Region>(the_rgn));
 
       window_manager_.DragGrayRegion(region, start_pt, [](const Point& pt) {
-        // Reverse the high/low words to account for endian-ness differences
-        return TrapReturn<uint32_t>(pt.x << 16 | pt.y);
+        return TrapReturn<uint32_t>(pt.y << 16 | pt.x);
       });
       return absl::OkStatus();
     }
