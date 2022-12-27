@@ -702,6 +702,16 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                  << ", item: " << std::dec << item << ")";
       return absl::OkStatus();
     }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-158.html
+    case Trap::CheckItem: {
+      auto checked = TRY(Pop<int16_t>());
+      auto item = TRY(Pop<int16_t>());
+      auto the_menu_handle = TRY(Pop<Handle>());
+      LOG_TRAP() << "CheckItem(theMenu: 0x" << std::hex << the_menu_handle
+                 << std::dec << ", item: " << item
+                 << ", checked: " << (checked != 0 ? "True" : "False");
+      return absl::OkStatus();
+    }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-141.html
     case Trap::GetMenuHandle: {
       auto menu_id = TRY(Pop<uint16_t>());
