@@ -429,6 +429,21 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
                 << TRY(ReadType<IOParam>(memory::kSystemMemory, ptr));
       return absl::OkStatus();
     }
+
+    // =====================  OS Utilities  =======================
+
+    // Link: http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-106.html
+    case Trap::ReadDateTime: {
+      Ptr time_var = m68k_get_reg(NULL, M68K_REG_A0);
+      LOG_TRAP() << "ReadDateTime(VAR time: 0x" << std::hex << time_var << ")";
+      // Time is set with the current time before each emulation time slice.
+      RETURN_IF_ERROR(memory::kSystemMemory.Write<uint32_t>(
+          time_var,
+          TRY(memory::kSystemMemory.Read<uint32_t>(GlobalVars::Time))));
+      m68k_set_reg(M68K_REG_D0, 0 /*noErr*/);
+      return absl::OkStatus();
+    }
+
     default:
       return absl::UnimplementedError(
           absl::StrCat("Unimplemented system trap: '", GetTrapName(trap), "'"));

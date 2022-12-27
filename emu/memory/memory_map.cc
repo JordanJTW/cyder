@@ -33,7 +33,7 @@ std::vector<RegionEntry> log_write_regions;
 
 constexpr GlobalVars kWhitelistReadGlobalVars[] = {
     GlobalVars::CurrentA5, GlobalVars::CurApName, GlobalVars::CurStackBase,
-    GlobalVars::AppParmHandle, GlobalVars::WMgrPort,
+    GlobalVars::AppParmHandle, GlobalVars::WMgrPort, GlobalVars::Time,
     // Scratch space used by the S.A.N.E. PACK 4 (floating point ops)
     GlobalVars::FPState,
     // `TST.W HpChk` appears in a few programs and may be related to
@@ -305,8 +305,8 @@ std::string MemoryMapToStr() {
 }
 
 void MaybeRemoveOverlappingEntry(std::vector<RegionEntry>& entries,
-                            size_t new_offset,
-                            size_t new_size) {
+                                 size_t new_offset,
+                                 size_t new_size) {
   auto current_iter =
       std::find_if(entries.begin(), entries.end(), [&](RegionEntry& entry) {
         return std::max(entry.start, new_offset) <

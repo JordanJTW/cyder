@@ -221,6 +221,11 @@ SDL_Surface* const MakeSurface(const BitmapImage& screen) {
   return surface;
 }
 
+absl::Status UpdateGlobalTime() {
+  return kSystemMemory.Write<uint32_t>(
+      GlobalVars::Time, absl::ToUnixSeconds(absl::Now()) + 2082844800);
+}
+
 void SaveScreenshot(const BitmapImage& screen) {
   auto path = absl::StrCat("/tmp/cyder-", absl::ToUnixMillis(absl::Now()));
   screen.SaveBitmap(path);
@@ -356,12 +361,14 @@ absl::Status Main(const core::Args& args) {
   RETURN_IF_ERROR(cyder::trap::Push<uint32_t>(
       cyder::memory::kBaseToolboxTrapAddress +
       (Trap::ExitToShell & 0x03FF) * sizeof(uint16_t)));
+
   SDL_Event event;
   bool should_exit = false;
   while (!should_exit) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(renderer);
 
+    RETURN_IF_ERROR(UpdateGlobalTime());
     if (!single_step) {
       m68k_execute(100000);
     }
