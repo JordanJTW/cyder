@@ -19,18 +19,36 @@ inline int FrameRectToBytes(const Rect& rect) {
   return rect.bottom * PixelWidthToBytes(rect.right);
 }
 
-// Offset |rect| by the given offsets
-inline Rect OffsetRect(Rect rect, int16_t offset_x, int16_t offset_y) {
-  rect.left += offset_x;
-  rect.right += offset_x;
-  rect.top += offset_y;
-  rect.bottom += offset_y;
+inline Rect OffsetRect(Rect rect, int16_t dh, int16_t dv) {
+  rect.left += dh;
+  rect.right += dh;
+  rect.top += dv;
+  rect.bottom += dv;
+  return rect;
+}
+
+// Ensure that invalid rects (with negative heights/widths) are zeroed
+inline void ValidateRect(Rect& rect) {
+  if (rect.top >= rect.bottom || rect.left >= rect.right) {
+    rect.top = 0;
+    rect.bottom = 0;
+    rect.left = 0;
+    rect.right = 0;
+  }
+}
+
+inline Rect InsetRect(Rect rect, int16_t dh, int16_t dv) {
+  rect.left += dh;
+  rect.right -= dh;
+  rect.top += dv;
+  rect.bottom -= dv;
+  ValidateRect(rect);
   return rect;
 }
 
 // Normalize the |rect| so that its origin is at (0, 0) with the same dimensions
 inline Rect NormalizeRect(Rect rect) {
-  return OffsetRect(rect, -rect.left, -rect.top);
+  return OffsetRect(std::move(rect), -rect.left, -rect.top);
 }
 
 // Return a rectangle which is just large enough to contain the provided rects
@@ -51,13 +69,7 @@ inline Rect IntersectRect(Rect r1, Rect r2) {
   rect.bottom = std::min(r1.bottom, r2.bottom);
   rect.left = std::max(r1.left, r2.left);
   rect.right = std::min(r1.right, r2.right);
-
-  if (rect.top >= rect.bottom || rect.left >= rect.right) {
-    rect.top = 0;
-    rect.bottom = 0;
-    rect.left = 0;
-    rect.right = 0;
-  }
+  ValidateRect(rect);
   return rect;
 }
 

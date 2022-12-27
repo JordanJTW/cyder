@@ -855,37 +855,28 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto dv = TRY(Pop<int16_t>());
       auto dh = TRY(Pop<int16_t>());
       auto rect_var = TRY(Pop<Ptr>());
-      auto rect = TRY(ReadType<Rect>(memory::kSystemMemory, rect_var));
-      LOG_TRAP() << "InsetRect(VAR r: " << rect << " @ 0x" << std::hex
-                 << rect_var << std::dec << ", dh: " << dh << ", dv: " << dv
-                 << ")";
-      rect.left += dh;
-      rect.right -= dh;
-      rect.top += dv;
-      rect.bottom -= dv;
 
-      if (rect.right - rect.left < 0 || rect.bottom - rect.top < 0) {
-        rect.left = 0;
-        rect.top = 0;
-        rect.right = 0;
-        rect.bottom = 0;
-      }
-
-      RETURN_IF_ERROR(WriteType<Rect>(rect, memory::kSystemMemory, rect_var));
-      return absl::OkStatus();
+      return WithType<Rect>(rect_var, [&](Rect& rect) {
+        LOG_TRAP() << "InsetRect(VAR r: " << rect << " @ 0x" << std::hex
+                   << rect_var << std::dec << ", dh: " << dh << ", dv: " << dv
+                   << ")";
+        rect = InsetRect(rect, dh, dv);
+        return absl::OkStatus();
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-87.html
     case Trap::OffsetRect: {
       auto dv = TRY(Pop<int16_t>());
       auto dh = TRY(Pop<int16_t>());
       auto rect_var = TRY(Pop<Ptr>());
-      auto rect = TRY(ReadType<Rect>(memory::kSystemMemory, rect_var));
-      LOG_TRAP() << "OffsetRect(r: " << rect << " @ 0x" << std::hex << rect_var
-                 << std::dec << ", dh: " << dh << ", dv: " << dv << ")";
 
-      rect = OffsetRect(rect, dh, dv);
-      RETURN_IF_ERROR(WriteType<Rect>(rect, memory::kSystemMemory, rect_var));
-      return absl::OkStatus();
+      return WithType<Rect>(rect_var, [&](Rect& rect) {
+        LOG_TRAP() << "OffsetRect(r: " << rect << " @ 0x" << std::hex
+                   << rect_var << std::dec << ", dh: " << dh << ", dv: " << dv
+                   << ")";
+        rect = OffsetRect(rect, dh, dv);
+        return absl::OkStatus();
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-93.html
     case Trap::PtToAngle: {
