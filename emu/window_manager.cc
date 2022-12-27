@@ -291,6 +291,15 @@ void SetStructRegionAndDrawFrame(BitmapImage& screen,
       OffsetRect(window.port.port_rect, -window.port.port_bits.bounds.left,
                  -window.port.port_bits.bounds.top);
 
+  {
+    Region content_region;
+    content_region.region_size = 10;
+    content_region.bounding_box = global_port_rect;
+    CHECK(
+        memory.WriteTypeToHandle<Region>(content_region, window.content_region)
+            .ok());
+  }
+
   Rect frame_rect;
   frame_rect.left = global_port_rect.left - kFrameWidth;
   frame_rect.right = global_port_rect.right + kFrameWidth;
