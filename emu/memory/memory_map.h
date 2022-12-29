@@ -112,9 +112,9 @@ void LogRegionAccess(size_t offset,
                      const std::string& region_name,
                      std::vector<Field> whitelist_fields);
 
-#define RESTRICT_FIELD_ACCESS(type, address, ...)                       \
-  memory::LogRegionAccess(address, type::fixed_size, true, true, #type, \
-                          {__VA_ARGS__});
+#define RESTRICT_FIELD_ACCESS(type, address, ...)                         \
+  ::cyder::memory::LogRegionAccess(address, type::fixed_size, true, true, \
+                                   #type, {__VA_ARGS__});
 
 namespace debug {
 void LogA5World();  // Logs the A5 World (from below to above A5)
