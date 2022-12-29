@@ -331,6 +331,14 @@ absl::Status Main(const core::Args& args) {
   // TODO: Store the application name here as a Pascal string
   RETURN_IF_ERROR(kSystemMemory.Write<uint8_t>(GlobalVars::CurApName, 0));
 
+  // Write low-memory constants:
+  RETURN_IF_ERROR(
+      kSystemMemory.Write<uint32_t>(GlobalVars::MinusOne, 0xFFFFFFFF));
+  RETURN_IF_ERROR(
+      kSystemMemory.Write<uint32_t>(GlobalVars::OneOne, 0x00010001));
+  RETURN_IF_ERROR(
+      kSystemMemory.Write<uint32_t>(GlobalVars::Lo3Bytes, 0x00FFFFFF));
+
   // Assembly: RTS
   RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
       cyder::memory::kTrapManagerEntryAddress, 0x4E75));

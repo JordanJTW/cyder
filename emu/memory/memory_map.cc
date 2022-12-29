@@ -34,8 +34,10 @@ std::vector<RegionEntry> log_write_regions;
 constexpr GlobalVars kWhitelistReadGlobalVars[] = {
     GlobalVars::CurrentA5, GlobalVars::CurApName, GlobalVars::CurStackBase,
     GlobalVars::AppParmHandle, GlobalVars::WMgrPort, GlobalVars::Time,
-    // Scratch space used by the S.A.N.E. PACK 4 (floating point ops)
-    GlobalVars::FPState,
+    // Low-memory global constants (read-only)
+    GlobalVars::MinusOne, GlobalVars::OneOne, GlobalVars::Lo3Bytes,
+    // Low-memory communal scratch space (read/write) 
+    GlobalVars::FPState, GlobalVars::TempRect, GlobalVars::IconBitmap,
     // `TST.W HpChk` appears in a few programs and may be related to
     // MPW which reuses this location for its own purposes?
     GlobalVars::HpChk,
@@ -47,7 +49,7 @@ constexpr GlobalVars kWhitelistReadGlobalVars[] = {
     GlobalVars::ROM85};
 
 constexpr GlobalVars kWhitelistWriteGlobalVars[] = {
-    GlobalVars::FPState,
+    GlobalVars::FPState, GlobalVars::TempRect, GlobalVars::IconBitmap,
     // Currently we _always_ load resources regardless of this flag which
     // should be fine (but does possibly cause us to run out of memory :P)
     GlobalVars::ResLoad,
