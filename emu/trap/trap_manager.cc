@@ -1191,12 +1191,24 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return absl::OkStatus();
       });
     }
-    // http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-91.html
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-91.html
     case Trap::PtInRect: {
       auto r = TRY(PopRef<Rect>());
       auto pt = TRY(PopType<Point>());
       LOG_TRAP() << "PtInRect(pt: " << pt << ", r: " << r << ")";
       return TrapReturn<bool>(PointInRect(pt, r));
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-146.html
+    case Trap::PtInRgn: {
+      auto rgn_handle = TRY(Pop<Handle>());
+      auto pt = TRY(PopType<Point>());
+      LOG_TRAP() << "PtInRgn(pt: " << pt << ", rgn: 0x" << std::hex
+                 << rgn_handle << ")";
+
+      return WithHandleToType<Region>(rgn_handle, [&](const Region& region) {
+        CHECK_EQ(region.region_size, 10u) << "Only rect regions are supported!";
+        return TrapReturn<bool>(PointInRect(pt, region.bounding_box));
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-133.html
     case Trap::OpenRgn: {
