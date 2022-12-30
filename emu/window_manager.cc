@@ -35,6 +35,37 @@ inline Rect CalculateDesktopRegion(const BitmapImage& screen) {
   return NewRect(0, 20, screen.width(), screen.height() - 20);
 }
 
+// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-191.html
+enum WindowType {
+  kDocument = 0,       // standard document  window, no zoom box
+  kDialog = 1,         // alert box or modal  dialog box
+  kPlainDialog = 2,    // plain box
+  kAltDialog = 3,      // plain box with shadow
+  kNoGrowDoc = 4,      // movable window,  no size box or zoom box
+  kMovableDialog = 5,  // movable modal dialog box
+  kZoomDoc = 8,        // standard document window
+  kZoomNoGrow = 12,    // zoomable, nonresizable  window
+};
+
+bool HasTitleBar(const WindowRecord& window_record) {
+  uint8_t variation_type = window_record.window_definition_proc;
+
+  switch (variation_type) {
+    case WindowType::kDocument:
+    case WindowType::kNoGrowDoc:
+    case WindowType::kMovableDialog:
+    case WindowType::kZoomDoc:
+    case WindowType::kZoomNoGrow:
+      return true;
+    case WindowType::kAltDialog:
+    case WindowType::kPlainDialog:
+      return false;
+    default:
+      NOTREACHED() << "Unsupported window variation: " << variation_type;
+      return false;
+  }
+}
+
 }  // namespace
 
 WindowManager::WindowManager(NativeBridge& native_bridge,
@@ -65,7 +96,7 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
   auto create_rect_region =
       [&](Rect rect, const std::string& name) -> absl::StatusOr<Handle> {
     Region region;
-    region.region_size = Rect::fixed_size;
+    region.region_size = Region::fixed_size;
     region.bounding_box = rect;
 
     return TRY(memory_.NewHandleFor<Region>(region, name));
@@ -102,12 +133,25 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
   record.is_visible = is_visible;
   record.has_close = has_close;
   record.reference_constant = reference_constant;
-  record.content_region = TRY(create_rect_region(bounds_rect, "ContentRegion"));
-  record.update_region = TRY(create_rect_region(bounds_rect, "UpdateRegion"));
   record.title_handle = TRY(create_title_handle());
-  record.title_width = title.size() * 8;
-  record.structure_region =
-      TRY(create_rect_region(bounds_rect, "StructRegion"));
+  record.title_width = title.size() * 8; // Assumes 8x8 fixed-width font
+
+  auto create_empty_region = [&](std::string name) -> absl::StatusOr<Handle> {
+    return TRY(memory_.NewHandleFor<Region>(Region{}, std::move(name)));
+  };
+
+  record.content_region = TRY(create_empty_region("ContentRegion"));
+  record.structure_region = TRY(create_empty_region("StructRegion"));
+  record.update_region = TRY(create_empty_region("UpdateRegion"));
+
+  // The resource ID of the window definition function is in the upper
+  // 12 bits of the definition ID ('WDEF' ID 0 is the default function provided
+  // by the OS). The optional variation code is placed in the lower 4 bits.
+  CHECK_EQ(window_definition_id & 0xFFF0, 0) << "Only 'WDEF' ID 0 is supported";
+
+  // This is obviously not a Handle and as such should only be accessed by us!
+  record.window_definition_proc = window_definition_id & 0x000F;
+  UpdateWindowRegions(record, memory_);
 
   RESTRICT_FIELD_ACCESS(
       WindowRecord, window_storage,
@@ -231,12 +275,14 @@ WindowManager::RegionType WindowManager::GetWindowAt(const Point& mouse,
     auto window_record =
         MUST(ReadType<WindowRecord>(memory::kSystemMemory, current_window));
 
-    auto title_rect = GetRegionRect(window_record.structure_region);
-    title_rect.bottom = title_rect.top + kFrameTitleHeight;
+    if (HasTitleBar(window_record)) {
+      auto title_rect = GetRegionRect(window_record.structure_region);
+      title_rect.bottom = title_rect.top + kFrameTitleHeight;
 
-    if (PointInRect(mouse, title_rect)) {
-      target_window = current_window;
-      return RegionType::Drag;
+      if (PointInRect(mouse, title_rect)) {
+        target_window = current_window;
+        return RegionType::Drag;
+      }
     }
 
     auto content_rect = GetRegionRect(window_record.content_region);
@@ -345,6 +391,10 @@ void DrawWindowFrame(const WindowRecord& window, BitmapImage& screen) {
   screen.FillRect(struct_region.bounding_box, kWhitePattern);
   screen.FrameRect(struct_region.bounding_box, kBlackPattern);
 
+  if (!HasTitleBar(window)) {
+    return;
+  }
+
   auto title_bar_rect = struct_region.bounding_box;
   title_bar_rect.bottom = title_bar_rect.top + kFrameTitleHeight;
 
@@ -385,10 +435,11 @@ void UpdateWindowRegions(WindowRecord& window, const MemoryManager& memory) {
 
   write_region_to_handle(window.content_region, global_port_rect);
 
-  Rect frame_rect = InsetRect(global_port_rect, -kFrameWidth, -kFrameWidth);
-  frame_rect.top -= kFrameTitleHeight;
-
-  write_region_to_handle(window.structure_region, frame_rect);
+  Rect struct_rect = InsetRect(global_port_rect, -kFrameWidth, -kFrameWidth);
+  if (HasTitleBar(window)) {
+    struct_rect.top -= kFrameTitleHeight;
+  }
+  write_region_to_handle(window.structure_region, struct_rect);
 }
 
 }  // namespace cyder
