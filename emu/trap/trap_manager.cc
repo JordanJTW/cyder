@@ -512,7 +512,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       if (event.what == 6 /*updateEvt*/) {
         RETURN_IF_ERROR(
             WithType<WindowRecord>(event.message, [&](WindowRecord& window) {
-              SetStructRegionAndDrawFrame(screen_, window, memory_manager_);
+              DrawWindowFrame(window, screen_);
               return absl::OkStatus();
             }));
       }
@@ -535,7 +535,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       if (event.what == 6 /*updateEvt*/) {
         RETURN_IF_ERROR(
             WithType<WindowRecord>(event.message, [&](WindowRecord& window) {
-              SetStructRegionAndDrawFrame(screen_, window, memory_manager_);
+              DrawWindowFrame(window, screen_);
               return absl::OkStatus();
             }));
       }
@@ -1628,7 +1628,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       return WithType<WindowRecord>(the_window, [&](WindowRecord& window) {
         window.title_handle = handle;
-        SetStructRegionAndDrawFrame(screen_, window, memory_manager_);
+        window.title_width = title.size() * 8;  // Assumes fixed-width 8x8 font
+        DrawWindowFrame(window, screen_);
         return absl::OkStatus();
       });
     }
@@ -1637,6 +1638,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto the_window = TRY(Pop<Ptr>());
       LOG_TRAP() << "SelectWindow(theWindow: 0x" << std::hex << the_window
                  << ")";
+      window_manager_.SelectWindow(the_window);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-235.html

@@ -8,6 +8,7 @@
 
 using ::cyder::graphics::BitmapImage;
 using ::cyder::graphics::TempClipRect;
+using ::cyder::memory::kSystemMemory;
 using ::cyder::memory::MemoryManager;
 
 namespace cyder {
@@ -25,7 +26,8 @@ constexpr uint8_t kBlackPattern[8] = {0xFF, 0xFF, 0xFF, 0xFF,
 constexpr uint8_t kTitleBarPattern[8] = {0xFF, 0x00, 0xFF, 0x00,
                                          0xFF, 0x00, 0xFF, 0x00};
 
-constexpr uint16_t kFrameTitleHeight = 16u;
+constexpr uint16_t kFrameTitleHeight = 17u;
+constexpr uint16_t kFrameWidth = 1u;
 
 // Return a clip region which represents the entire screen minus the menu bar
 // FIXME: Grab this from the WinMgr's GrafPort::clip_region (once we have one)?
@@ -103,9 +105,9 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
   record.content_region = TRY(create_rect_region(bounds_rect, "ContentRegion"));
   record.update_region = TRY(create_rect_region(bounds_rect, "UpdateRegion"));
   record.title_handle = TRY(create_title_handle());
+  record.title_width = title.size() * 8;
   record.structure_region =
       TRY(create_rect_region(bounds_rect, "StructRegion"));
-  SetStructRegionAndDrawFrame(screen_, record, memory_);
 
   RESTRICT_FIELD_ACCESS(
       WindowRecord, window_storage,
@@ -117,6 +119,7 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
       WriteType<WindowRecord>(record, memory::kSystemMemory, window_storage));
 
   window_list_.push_front(window_storage);
+  SelectWindow(window_storage);
   return window_storage;
 }
 
@@ -140,39 +143,73 @@ void WindowManager::DragWindow(Ptr window_ptr, const Point& start) {
   });
 }
 
+// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-246.html
 void WindowManager::MoveWindow(Ptr window_ptr,
                                MoveType move_type,
                                const Point& location,
                                bool bring_to_front) {
-  LOG(INFO) << "Bring to front: " << (bring_to_front ? "True" : "False");
+  auto window_record = MUST(ReadType<WindowRecord>(kSystemMemory, window_ptr));
+
+  // 1. Clear the current window location with the desktop pattern
+  RepaintDesktopOverWindow(window_record);
+
+  // 2. Update the window bounds relative to the global origin
+  switch (move_type) {
+    case MoveType::Absolute:
+      window_record.port.port_bits.bounds = MoveRect(
+          window_record.port.port_bits.bounds, -location.x, -location.y);
+      break;
+    case MoveType::Relative:
+      window_record.port.port_bits.bounds = OffsetRect(
+          window_record.port.port_bits.bounds, -location.x, -location.y);
+      break;
+    default:
+      NOTREACHED() << "Unknown WindowManager::MoveType";
+  }
+  UpdateWindowRegions(window_record, memory_);
+
   auto status =
-      WithType<WindowRecord>(window_ptr, [&](WindowRecord& window_record) {
-        // 1. Clear the current window location with the desktop pattern
-        RepaintDesktopOverWindow(window_record);
-        // 2. Update the window bounds relative to the global origin
-        switch (move_type) {
-          case MoveType::Absolute:
-            window_record.port.port_bits.bounds = MoveRect(
-                window_record.port.port_bits.bounds, -location.x, -location.y);
-            break;
-          case MoveType::Relative:
-            window_record.port.port_bits.bounds = OffsetRect(
-                window_record.port.port_bits.bounds, -location.x, -location.y);
-            break;
-          default:
-            NOTREACHED() << "Unknown WindowManager::MoveType";
-        }
-        // 3. If the window is in front, then update it before invalidating
-        //    the windows as it will affect the drawing order
-        if (bring_to_front) {
-          MoveToFront(window_ptr);
-        }
-        // 4. Invalidate all windows redrawing from back-to-front in list
-        InvalidateWindows();
-        return absl::OkStatus();
-      });
-  CHECK(status.ok()) << "Failed WithType<WindowRecord>: "
+      WriteType<WindowRecord>(window_record, kSystemMemory, window_ptr);
+  CHECK(status.ok()) << "Failed to WriteType<WindowRecord>: "
                      << std::move(status).message();
+
+  // 3. If the value of the front parameter is TRUE and the window is not
+  //    active, MoveWindow makes it active by calling SelectWindow.
+  // 4. Ensure that the windows are invalidated and redrawn
+  if (bring_to_front && !window_record.hilited) {
+    SelectWindow(window_ptr);  // Handles invalidating windows
+  } else {
+    InvalidateWindows();
+  }
+}
+
+// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-234.html
+void WindowManager::SelectWindow(Ptr target_ptr) {
+  bool is_already_active =
+      MUST(kSystemMemory.Read<Boolean>(
+          target_ptr + WindowRecordFields::hilited.offset)) == 0xFF /*true*/;
+
+  // If the specified window is already active, SelectWindow has no effect.
+  if (is_already_active) {
+    return;
+  }
+
+  // 1. Update windows so only |target_ptr| is active (hilited).
+  for (auto window_ptr : window_list_) {
+    auto status = kSystemMemory.Write<Boolean>(
+        window_ptr + WindowRecordFields::hilited.offset,
+        target_ptr == window_ptr ? 0xFF /*true*/ : 0x00 /*false*/);
+    CHECK(status.ok()) << "Setting WindowRecord::hilited failed: "
+                       << std::move(status).message();
+  }
+  // 2. Bring the specified window to the front
+  MoveToFront(target_ptr);
+  // 3. Generate the activate events to deactivate the previously active
+  //    window and activate the specified window
+  // FIXME: Handle deacitvating the previously active window?
+  event_manager_.QueueWindowActivate(target_ptr);
+  // 4. Ensure that the windows are invalidated and redrawn
+  InvalidateWindows();
 }
 
 void WindowManager::DragGrayRegion(
@@ -300,60 +337,58 @@ Rect WindowManager::GetRegionRect(Handle handle) const {
   return region.bounding_box;
 }
 
-void SetStructRegionAndDrawFrame(BitmapImage& screen,
-                                 WindowRecord& window,
-                                 const MemoryManager& memory) {
+void DrawWindowFrame(const WindowRecord& window, BitmapImage& screen) {
   TempClipRect _(screen, CalculateDesktopRegion(screen));
 
-  constexpr uint16_t kFrameWidth = 1u;
+  auto struct_region = MUST(ReadHandleToType<Region>(window.structure_region));
 
+  screen.FillRect(struct_region.bounding_box, kWhitePattern);
+  screen.FrameRect(struct_region.bounding_box, kBlackPattern);
+
+  auto title_bar_rect = struct_region.bounding_box;
+  title_bar_rect.bottom = title_bar_rect.top + kFrameTitleHeight;
+
+  screen.FrameRect(title_bar_rect, kBlackPattern);
+  if (window.hilited) {
+    // Inset the pattern to better match the look of Classic Mac OS 6:
+    // https://cdn.osxdaily.com/wp-content/uploads/2010/02/mac-evolution-system-6.jpg
+    screen.FillRect(InsetRect(title_bar_rect, 2, 3), kTitleBarPattern);
+  }
+
+  constexpr uint16_t kTitlePaddingWidth = 4u;
+
+  auto title_rect = InsetRect(
+      title_bar_rect,
+      (RectWidth(title_bar_rect) - window.title_width) / 2 - kTitlePaddingWidth,
+      kFrameWidth);
+
+  screen.FillRect(title_rect, kWhitePattern);
+  DrawString(
+      screen, MUST(ReadHandleToType<absl::string_view>(window.title_handle)),
+      title_rect.left + kTitlePaddingWidth,
+      title_rect.top + (RectHeight(title_bar_rect) - 8 /*8x8 fixed font*/) / 2);
+}
+
+void UpdateWindowRegions(WindowRecord& window, const MemoryManager& memory) {
   Rect global_port_rect =
       OffsetRect(window.port.port_rect, -window.port.port_bits.bounds.left,
                  -window.port.port_bits.bounds.top);
 
-  {
-    Region content_region;
-    content_region.region_size = 10;
-    content_region.bounding_box = global_port_rect;
-    CHECK(
-        memory.WriteTypeToHandle<Region>(content_region, window.content_region)
-            .ok());
-  }
+  auto write_region_to_handle = [&](Handle handle, const Rect& rect) {
+    Region region;
+    region.region_size = 10;
+    region.bounding_box = rect;
+    auto status = memory.WriteTypeToHandle<Region>(region, handle);
+    CHECK(status.ok()) << "WriteTypeToHandle<Region> failed: "
+                       << std::move(status).message();
+  };
 
-  Rect frame_rect;
-  frame_rect.left = global_port_rect.left - kFrameWidth;
-  frame_rect.right = global_port_rect.right + kFrameWidth;
-  frame_rect.top = global_port_rect.top - kFrameWidth;
-  frame_rect.bottom = global_port_rect.bottom + kFrameWidth;
-  screen.FillRect(frame_rect, kWhitePattern);
-  screen.FrameRect(frame_rect, kBlackPattern);
+  write_region_to_handle(window.content_region, global_port_rect);
 
-  Rect title_bar_rect = NewRect(
-      global_port_rect.left - kFrameWidth, frame_rect.top - kFrameTitleHeight,
-      RectWidth(global_port_rect) + kFrameWidth * 2, kFrameTitleHeight);
+  Rect frame_rect = InsetRect(global_port_rect, -kFrameWidth, -kFrameWidth);
+  frame_rect.top -= kFrameTitleHeight;
 
-  screen.FillRect(title_bar_rect, kTitleBarPattern);
-  screen.FrameRect(title_bar_rect, kBlackPattern);
-
-  Region region;
-  region.bounding_box = UnionRect(frame_rect, title_bar_rect);
-  CHECK(memory.WriteTypeToHandle<Region>(region, window.structure_region).ok());
-
-  auto title =
-      MUST(memory.ReadTypeFromHandle<std::string>(window.title_handle));
-
-  constexpr uint16_t kTitlePaddingWidth = 4u;
-  uint16_t title_width = title.size() * 8;
-
-  Rect title_rect = NewRect((RectWidth(title_bar_rect) - title_width) / 2 +
-                                title_bar_rect.left - kTitlePaddingWidth,
-                            title_bar_rect.top + kFrameWidth,
-                            title_width + kTitlePaddingWidth * 2,
-                            kFrameTitleHeight - kFrameWidth * 2);
-
-  screen.FillRect(title_rect, kWhitePattern);
-  DrawString(screen, title, title_rect.left + kTitlePaddingWidth,
-             title_bar_rect.top + ((kFrameTitleHeight - 8) / 2));
+  write_region_to_handle(window.structure_region, frame_rect);
 }
 
 }  // namespace cyder

@@ -25,9 +25,15 @@ absl::Status WithType(Ptr ptr,
 
 template <typename Type>
 absl::Status WithHandleToType(Handle handle,
-                            std::function<absl::Status(Type& type)> cb) {
+                              std::function<absl::Status(Type& type)> cb) {
   auto ptr = TRY(memory::kSystemMemory.Read<Ptr>(handle));
   return WithType(ptr, std::move(cb));
+}
+
+template <typename Type>
+absl::StatusOr<Type> ReadHandleToType(Handle handle) {
+  auto ptr = TRY(memory::kSystemMemory.Read<Ptr>(handle));
+  return ReadType<Type>(memory::kSystemMemory, ptr);
 }
 
 }  // namespace cyder

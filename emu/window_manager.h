@@ -41,6 +41,8 @@ class WindowManager : public MouseListener {
                   const Point& location,
                   bool bring_to_front);
 
+  void SelectWindow(Ptr window_ptr);
+
   void DragGrayRegion(const Region& region,
                       const Point& start,
                       std::function<void(const Point&)> on_drag_end);
@@ -83,8 +85,8 @@ class WindowManager : public MouseListener {
   std::function<void(const Point&)> on_drag_end_;
 };
 
-void SetStructRegionAndDrawFrame(graphics::BitmapImage& screen,
-                                 WindowRecord& record,
+void DrawWindowFrame(const WindowRecord& window, graphics::BitmapImage& screen);
+void UpdateWindowRegions(WindowRecord& record,
                                  const memory::MemoryManager& memory);
 
 }  // namespace cyder
