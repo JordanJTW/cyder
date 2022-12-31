@@ -1,3 +1,6 @@
+// Copyright (c) 2022, Jordan Werthman
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include "emu/native_bridge.h"
 
 #include "core/logging.h"

@@ -1,3 +1,6 @@
+// Copyright (c) 2022, Jordan Werthman
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include "core/endian_helpers.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"

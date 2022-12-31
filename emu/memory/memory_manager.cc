@@ -1,3 +1,6 @@
+// Copyright (c) 2022, Jordan Werthman
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include "emu/memory/memory_manager.h"
 
 #include <iomanip>

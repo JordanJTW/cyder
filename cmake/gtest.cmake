@@ -1,3 +1,6 @@
+# Copyright (c) 2022, Jordan Werthman
+# SPDX-License-Identifier: BSD-2-Clause
+
 #! gtest: define and discover test targets in $target_name
 #
 # Expects a .cc file with the same name to be present

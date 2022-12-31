@@ -1,3 +1,7 @@
+// Copyright (c) 2022, Jordan Werthman
+// SPDX-License-Identifier: BSD-2-Clause
+
+
 // FIXME: Make these intrinsic types?
 type Ptr: u32;
 type Handle: Ptr;

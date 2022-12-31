@@ -1,9 +1,11 @@
-import functools
+# Copyright (c) 2022, Jordan Werthman
+# SPDX-License-Identifier: BSD-2-Clause
+
 import textwrap
 
 from compiler.type_checker import CheckedTypeExpression, CheckedStructExpression, CheckedAssignExpression
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import List
 
 _READTYPE_PROTOTYPE = \
     "template<> absl::StatusOr<{}> ReadType(const core::MemoryRegion& region, size_t offset)"

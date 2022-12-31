@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+#
+# Copyright (c) 2022, Jordan Werthman
+# SPDX-License-Identifier: BSD-2-Clause
 
 import argparse
 import sys

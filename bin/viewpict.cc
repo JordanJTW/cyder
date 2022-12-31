@@ -1,3 +1,6 @@
+// Copyright (c) 2022, Jordan Werthman
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/mman.h>

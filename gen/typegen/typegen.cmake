@@ -1,3 +1,6 @@
+# Copyright (c) 2022, Jordan Werthman
+# SPDX-License-Identifier: BSD-2-Clause
+
 find_package(Python3 3.8 COMPONENTS Interpreter)
 
 # All Python in `typegen` should be assumed to be the generator:

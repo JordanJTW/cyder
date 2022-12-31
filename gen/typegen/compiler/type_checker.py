@@ -1,3 +1,5 @@
+# Copyright (c) 2022, Jordan Werthman
+# SPDX-License-Identifier: BSD-2-Clause
 
 from dataclasses import dataclass
 from typing import List, Mapping, Tuple, Union

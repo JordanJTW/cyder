@@ -1,3 +1,6 @@
+// Copyright (c) 2022, Jordan Werthman
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include "typegen_prelude.h"
 
 Field Field::operator+(const Field& other) const {

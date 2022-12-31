@@ -1,3 +1,6 @@
+# Copyright (c) 2022, Jordan Werthman
+# SPDX-License-Identifier: BSD-2-Clause
+
 from enum import Enum, auto
 from typing import List, Optional, Tuple
 

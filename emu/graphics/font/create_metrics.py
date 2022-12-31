@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+#
+# Copyright (c) 2022, Jordan Werthman
+# SPDX-License-Identifier: BSD-2-Clause
 
 _FONT = [
     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],  # U+0000
