@@ -5,7 +5,7 @@
 #include <iostream>
 
 #include "absl/strings/str_format.h"
-#include "color_palette.h"
+#include "emu/graphics/color_palette.h"
 
 constexpr char HTML_TEMPLATE_HEADER[] = R"(
 <head>

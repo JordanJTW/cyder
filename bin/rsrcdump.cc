@@ -7,10 +7,10 @@
 #include <string>
 
 #include "absl/flags/flag.h"
-#include "color_palette.h"
 #include "core/logging.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
+#include "emu/graphics/color_palette.h"
 #include "emu/rsrc/resource_file.h"
 
 ABSL_FLAG(std::vector<std::string>,
