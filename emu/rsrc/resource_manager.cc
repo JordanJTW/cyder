@@ -1,7 +1,7 @@
 // Copyright (c) 2022, Jordan Werthman
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include "resource_manager.h"
+#include "emu/rsrc/resource_manager.h"
 
 #include "emu/memory/memory_map.h"
 #include "gen/global_names.h"
@@ -9,8 +9,8 @@
 namespace cyder {
 namespace {
 
-using rsrcloader::GetTypeName;
-using rsrcloader::Resource;
+using ::cyder::rsrc::GetTypeName;
+using ::cyder::rsrc::Resource;
 
 std::string GetUniqueId(ResType theType, ResId theId) {
   return absl::StrCat("Resource[", GetTypeName(theType), ":", theId, "]");
@@ -19,10 +19,10 @@ std::string GetUniqueId(ResType theType, ResId theId) {
 }  // namespace
 
 ResourceManager::ResourceManager(memory::MemoryManager& memory_manager,
-                                 rsrcloader::ResourceFile& resource_file)
+                                 rsrc::ResourceFile& resource_file)
     : memory_manager_(memory_manager), resource_file_(resource_file) {}
 
-const rsrcloader::Resource* ResourceManager::GetSegmentZero() const {
+const Resource* ResourceManager::GetSegmentZero() const {
   return resource_file_.FindByTypeAndId('CODE', 0);
 }
 

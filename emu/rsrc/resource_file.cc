@@ -1,7 +1,7 @@
 // Copyright (c) 2022, Jordan Werthman
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include "resource_file.h"
+#include "emu/rsrc/resource_file.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -18,9 +18,10 @@
 #include "core/logging.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
-#include "resource_types.tdef.h"
+#include "emu/rsrc/resource_types.tdef.h"
 
-namespace rsrcloader {
+namespace cyder {
+namespace rsrc {
 namespace {
 
 absl::Status LoadFileError(absl::string_view file_path) {
@@ -220,4 +221,5 @@ std::ostream& operator<<(std::ostream& out, const ResourceFile& value) {
   return out;
 }
 
-}  // namespace rsrcloader
+}  // namespace rsrc
+}  // namespace cyder

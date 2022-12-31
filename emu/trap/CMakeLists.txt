@@ -8,7 +8,7 @@ target_link_libraries(
   GRAPHICS_LIB
   MEMORY_LIB
   MUSASHI_LIB
-  rsrcfork
+  RSRC_LIB
   TRAP_NAMES
   TYPEGEN_PRELUDE)
 target_link_libraries(TRAP_LIB absl::statusor)

@@ -7,9 +7,9 @@
 
 #include "absl/status/statusor.h"
 #include "emu/memory/memory_manager.h"
+#include "emu/rsrc/resource_group.h"
+#include "emu/rsrc/resource_manager.h"
 #include "emu/segment_types.tdef.h"
-#include "resource_group.h"
-#include "resource_manager.h"
 
 namespace cyder {
 

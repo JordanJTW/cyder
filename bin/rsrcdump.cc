@@ -11,14 +11,14 @@
 #include "core/logging.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
-#include "resource_file.h"
+#include "emu/rsrc/resource_file.h"
 
 ABSL_FLAG(std::vector<std::string>,
           filter_type,
           /*default_value=*/{},
           "The resource group type(s) to filter on");
 
-using namespace rsrcloader;
+using namespace ::cyder::rsrc;
 
 void ParseIcon(const std::string& name,
                const uint8_t* const data,

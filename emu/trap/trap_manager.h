@@ -9,9 +9,9 @@
 #include "emu/graphics/bitmap_image.h"
 #include "emu/memory/memory_manager.h"
 #include "emu/menu_manager.h"
+#include "emu/rsrc/resource_manager.h"
 #include "emu/segment_loader.h"
 #include "emu/window_manager.h"
-#include "resource_file.h"
 
 struct SDL_Renderer;
 

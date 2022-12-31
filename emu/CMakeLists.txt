@@ -6,6 +6,7 @@ include_directories(${SDL2_INCLUDE_DIRS})
 
 add_subdirectory(graphics)
 add_subdirectory(memory)
+add_subdirectory(rsrc)
 add_subdirectory(trap)
 
 typegen(SEGMENT_TYPES segment_types.tdef)
@@ -19,7 +20,6 @@ add_executable(
   menu_manager.cc
   menu_popup.cc
   native_bridge.cc
-  resource_manager.cc
   segment_loader.cc
   window_manager.cc)
 target_link_libraries(
@@ -30,7 +30,8 @@ target_link_libraries(
   MEMORY_LIB
   MUSASHI_LIB
   PICT_LIB
-  rsrcfork
+  RSRC_LIB
+  RESOURCE_MANAGER
   SCREEN_LIB
   GLOBAL_NAMES
   GRAPHICS_LIB

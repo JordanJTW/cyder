@@ -4,11 +4,16 @@ target_link_libraries(colorswatch absl::str_format)
 
 add_executable(disasm disasm.cc)
 target_link_libraries(disasm CORE_LIB MAIN_LIB SEGMENT_TYPES TRAP_NAMES)
-target_link_libraries(disasm absl::statusor absl::strings rsrcfork MUSASHI_LIB
+target_link_libraries(disasm absl::statusor absl::strings RSRC_LIB MUSASHI_LIB
                       TYPEGEN_PRELUDE)
 
 add_executable(macbinary macbinary.cc finder_flags.cc)
-target_link_libraries(macbinary CORE_LIB MAIN_LIB rsrcfork)
+target_link_libraries(macbinary CORE_LIB MAIN_LIB RSRC_LIB)
+
+add_executable(rsrcdump rsrcdump.cc)
+target_link_libraries(rsrcdump CORE_LIB MAIN_LIB MUSASHI_LIB RSRC_LIB
+                      TYPEGEN_PRELUDE)
+target_link_libraries(rsrcdump absl::flags absl::statusor)
 
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})

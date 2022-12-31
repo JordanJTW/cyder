@@ -11,10 +11,11 @@
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "resource.h"
-#include "resource_group.h"
+#include "emu/rsrc/resource.h"
+#include "emu/rsrc/resource_group.h"
 
-namespace rsrcloader {
+namespace cyder {
+namespace rsrc {
 
 class ResourceFile {
  public:
@@ -44,4 +45,5 @@ class ResourceFile {
 
 std::ostream& operator<<(std::ostream&, const ResourceFile&);
 
-}  // namespace rsrcloader
+}  // namespace rsrc
+}  // namespace cyder

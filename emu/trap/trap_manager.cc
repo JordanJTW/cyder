@@ -21,12 +21,12 @@
 #include "emu/graphics/quickdraw.h"
 #include "emu/memory/memory_helpers.h"
 #include "emu/memory/memory_map.h"
+#include "emu/rsrc/resource.h"
 #include "emu/trap/stack_helpers.h"
 #include "emu/trap/trap_helpers.h"
 #include "gen/global_names.h"
 #include "gen/trap_names.h"
 #include "gen/typegen/typegen_prelude.h"
-#include "resource.h"
 #include "third_party/musashi/src/m68k.h"
 
 extern bool single_step;
@@ -39,7 +39,7 @@ namespace cyder {
 namespace trap {
 namespace {
 
-using rsrcloader::GetTypeName;
+using ::cyder::rsrc::GetTypeName;
 
 constexpr Pattern kForegroundPattern = {
     .bytes = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
@@ -1294,9 +1294,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto name = TRY(PopRef<absl::string_view>());
       ResType type = TRY(Pop<ResType>());
 
-      LOG_TRAP() << "Get1NamedResource(theType: '"
-                 << rsrcloader::GetTypeName(type) << "', name: \"" << name
-                 << "\")";
+      LOG_TRAP() << "Get1NamedResource(theType: '" << GetTypeName(type)
+                 << "', name: \"" << name << "\")";
 
       Handle handle = resource_manager_.GetResourseByName(type, name);
       return TrapReturn<uint32_t>(handle);

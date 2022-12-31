@@ -6,8 +6,8 @@
 #include "core/logging.h"
 #include "core/memory_region.h"
 #include "emu/memory/memory_map.h"
+#include "emu/rsrc/resource.h"
 #include "gen/global_names.h"
-#include "resource.h"
 
 namespace cyder {
 namespace memory {
@@ -45,8 +45,8 @@ absl::Status WriteAppParams(memory::MemoryManager& memory_manager,
 
 }  // namespace
 
-using rsrcloader::Resource;
-using rsrcloader::ResourceGroup;
+using ::cyder::rsrc::Resource;
+using ::cyder::rsrc::ResourceGroup;
 
 // static
 absl::StatusOr<SegmentLoader> SegmentLoader::Create(

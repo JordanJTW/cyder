@@ -1,7 +1,7 @@
 // Copyright (c) 2022, Jordan Werthman
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include "resource_group.h"
+#include "emu/rsrc/resource_group.h"
 
 #include <cstring>
 #include <iomanip>
@@ -9,7 +9,8 @@
 #include "core/endian_helpers.h"
 #include "core/status_helpers.h"
 
-namespace rsrcloader {
+namespace cyder {
+namespace rsrc {
 
 ResourceGroup::ResourceGroup(ResourceTypeItem type_item,
                              std::vector<Resource> resources)
@@ -63,4 +64,6 @@ std::ostream& operator<<(std::ostream& out, const ResourceGroup& value) {
   return out << "\n";
 }
 
-}  // namespace rsrcloader
+}  // namespace rsrc
+}  // namespace cyder
+

@@ -11,10 +11,11 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "core/memory_region.h"
-#include "resource.h"
-#include "resource_types.tdef.h"
+#include "emu/rsrc/resource.h"
+#include "emu/rsrc/resource_types.tdef.h"
 
-namespace rsrcloader {
+namespace cyder {
+namespace rsrc {
 
 class ResourceGroup {
  public:
@@ -44,4 +45,5 @@ class ResourceGroup {
 
 std::ostream& operator<<(std::ostream&, const ResourceGroup&);
 
-}  // namespace rsrcloader
+}  // namespace rsrc
+}  // namespace cyder

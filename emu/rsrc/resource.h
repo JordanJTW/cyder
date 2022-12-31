@@ -9,9 +9,10 @@
 
 #include "absl/status/statusor.h"
 #include "core/memory_region.h"
-#include "resource_types.tdef.h"
+#include "emu/rsrc/resource_types.tdef.h"
 
-namespace rsrcloader {
+namespace cyder {
+namespace rsrc {
 
 class Resource {
  public:
@@ -42,4 +43,5 @@ std::ostream& operator<<(std::ostream&, const Resource&);
 
 std::string GetTypeName(ResType);
 
-}  // namespace rsrcloader
+}  // namespace rsrc
+}  // namespace cyder

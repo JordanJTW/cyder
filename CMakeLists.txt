@@ -34,16 +34,3 @@ add_subdirectory(core)
 add_subdirectory(emu)
 add_subdirectory(gen)
 add_subdirectory(third_party/musashi)
-
-include(gen/typegen/typegen.cmake)
-
-typegen(RESOURCE_TYPES resource_types.tdef)
-
-add_library(rsrcfork resource_file.cc resource_group.cc resource.cc)
-target_link_libraries(rsrcfork CORE_LIB RESOURCE_TYPES TYPEGEN_PRELUDE)
-target_link_libraries(rsrcfork absl::statusor)
-
-add_executable(rsrcloader main.cc)
-target_link_libraries(rsrcloader CORE_LIB MAIN_LIB MUSASHI_LIB rsrcfork
-                      TYPEGEN_PRELUDE)
-target_link_libraries(rsrcloader absl::flags absl::statusor)

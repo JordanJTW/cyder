@@ -20,14 +20,14 @@
 #include "emu/memory/memory_map.h"
 #include "emu/menu_manager.h"
 #include "emu/native_bridge.h"
+#include "emu/rsrc/resource_file.h"
+#include "emu/rsrc/resource_manager.h"
 #include "emu/segment_loader.h"
 #include "emu/trap/stack_helpers.h"
 #include "emu/trap/trap_manager.h"
 #include "emu/window_manager.h"
 #include "gen/global_names.h"
 #include "gen/trap_names.h"
-#include "resource_file.h"
-#include "resource_manager.h"
 #include "third_party/musashi/src/m68k.h"
 
 ABSL_FLAG(bool,
@@ -208,11 +208,11 @@ using cyder::NewRect;
 using cyder::ResourceManager;
 using cyder::SegmentLoader;
 using cyder::WindowManager;
+using cyder::rsrc::ResourceFile;
 using cyder::graphics::BitmapImage;
 using cyder::memory::kSystemMemory;
 using cyder::memory::MemoryManager;
 using cyder::trap::TrapManager;
-using rsrcloader::ResourceFile;
 
 SDL_Surface* const MakeSurface(const BitmapImage& screen) {
   static SDL_Surface* const surface = SDL_CreateRGBSurfaceWithFormat(

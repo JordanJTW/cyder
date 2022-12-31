@@ -5,12 +5,12 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
+#include "emu/rsrc/resource_file.h"
 #include "emu/segment_types.tdef.h"
 #include "gen/trap_names.h"
-#include "resource_file.h"
 #include "third_party/musashi/src/m68k.h"
 
-using namespace rsrcloader;
+using namespace ::cyder::rsrc;
 
 const core::MemoryRegion* codeSegment;
 
@@ -61,7 +61,7 @@ bool IsDebugSection(uint16_t prevOp, uint16_t op) {
 }
 
 absl::Status ParseJumpTable(const core::MemoryRegion& data) {
- auto header = TRY(ReadType<SegmentTableHeader>(data, /*offset=*/0));
+  auto header = TRY(ReadType<SegmentTableHeader>(data, /*offset=*/0));
 
   printf("Above A5: 0x%x\n", header.above_a5);
   printf("Below A5: 0x%x\n", header.below_a5);

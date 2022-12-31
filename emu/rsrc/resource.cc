@@ -1,7 +1,7 @@
 // Copyright (c) 2022, Jordan Werthman
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include "resource.h"
+#include "emu/rsrc/resource.h"
 
 #include <cstring>
 #include <iomanip>
@@ -9,7 +9,8 @@
 #include "core/endian_helpers.h"
 #include "core/status_helpers.h"
 
-namespace rsrcloader {
+namespace cyder {
+namespace rsrc {
 
 // static
 absl::StatusOr<Resource> Resource::Load(
@@ -53,4 +54,6 @@ std::string GetTypeName(ResType theType) {
   return std::string(type_name, 4);
 }
 
-}  // namespace rsrcloader
+}  // namespace rsrc
+}  // namespace cyder
+
