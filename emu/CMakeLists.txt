@@ -26,7 +26,6 @@ target_link_libraries(
   emu
   event_manager
   CORE_LIB
-  IMGUI_LIB
   MAIN_LIB
   MEMORY_LIB
   MUSASHI_LIB

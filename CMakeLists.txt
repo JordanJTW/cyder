@@ -34,7 +34,6 @@ add_subdirectory(core)
 add_subdirectory(emu)
 add_subdirectory(gen)
 add_subdirectory(third_party/musashi)
-add_subdirectory(third_party/imgui)
 
 include(gen/typegen/typegen.cmake)
 
