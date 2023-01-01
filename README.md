@@ -1,4 +1,10 @@
-<div align="center"><img src="assets/logo.png?raw=true" height="40px"/></div>
+<div align="center">
+
+<img src="assets/logo.png?raw=true" height="40px"/>
+
+![Build/Test](https://github.com/JordanJTW/cyder/actions/workflows/cmake.yml/badge.svg?event=push)
+
+</div>
 
 # About
 
