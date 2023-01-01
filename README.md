@@ -16,13 +16,18 @@ Ensure submodules are sync'd:
 git submodule update --init --recursive
 ```
 
-**Dependencies**: [Python 3.8](https://www.python.org/downloads/release/python-380/) and [CMake 3.5](https://cmake.org/download/) (and optionally [Ninja](https://ninja-build.org/)) are required to build Cyder.
+**Dependencies**:
+ + [SDL2](https://www.libsdl.org/)
+ + [Python 3.8](https://www.python.org/downloads/release/python-380/)
+ + [CMake 3.5](https://cmake.org/download/)
+ + *Optionally [Ninja](https://ninja-build.org/)*
 
 # Build and Run
 
 <details><summary>Using cyder.py</summary>
 
-**NOTE**: *cyder.py uses [Ninja](https://ninja-build.org/) to build (allowing for faster incremental builds)*
+> cyder.py uses [Ninja](https://ninja-build.org/) to build (allowing for faster incremental builds)
+
 
 ```console
 # To build all targets
