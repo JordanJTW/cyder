@@ -135,7 +135,7 @@ void m68k_write_memory_32(unsigned int address, unsigned int value) {
       << " unable to write " << std::hex << value << " to " << address;
 }
 
-static DebugLogger logger;
+static ::cyder::DebugLogger logger;
 
 void cpu_instr_callback(unsigned int pc) {
   if (pc == break_on_line) {

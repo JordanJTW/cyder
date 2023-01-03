@@ -5,10 +5,11 @@
 
 #include "core/logging.h"
 #include "emu/memory/memory_map.h"
-#include "third_party/musashi/src/m68k.h"
 
+namespace cyder {
 namespace {
 
+// Track all registers _except_ the stack register (A7)
 constexpr m68k_register_t kRegistersToScan[] = {
     M68K_REG_A0, M68K_REG_A1, M68K_REG_A2, M68K_REG_A3,
     M68K_REG_A4, M68K_REG_A5, M68K_REG_A6, /*M68K_REG_A7,*/
@@ -16,7 +17,7 @@ constexpr m68k_register_t kRegistersToScan[] = {
     M68K_REG_D4, M68K_REG_D5, M68K_REG_D6, M68K_REG_D7,
 };
 
-constexpr char* kRegisterNames[] = {
+const char* kRegisterNames[] = {
     "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7",
     "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7",
 };
@@ -55,3 +56,5 @@ void DebugLogger::OnInstruction(uint32_t pc) {
   steps_.push_back({.pc = pc, .registers = std::move(registers)});
   last_context_ = std::move(context);
 }
+
+}  // namespace cyder
