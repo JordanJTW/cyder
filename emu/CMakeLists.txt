@@ -17,6 +17,7 @@ target_link_libraries(event_manager CORE_LIB GRAFPORT_TYPES TYPEGEN_PRELUDE)
 add_executable(
   emu
   main.cc
+  debug_logger.cc
   menu_manager.cc
   menu_popup.cc
   native_bridge.cc

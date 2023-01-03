@@ -13,6 +13,7 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
+#include "emu/debug_logger.h"
 #include "emu/event_manager.h"
 #include "emu/graphics/bitmap_image.h"
 #include "emu/graphics/graphics_helpers.h"
@@ -134,7 +135,7 @@ void m68k_write_memory_32(unsigned int address, unsigned int value) {
       << " unable to write " << std::hex << value << " to " << address;
 }
 
-cyder::memory::MemoryManager* memory_manager_ptr;
+static DebugLogger logger;
 
 void cpu_instr_callback(unsigned int pc) {
   if (pc == break_on_line) {
@@ -144,28 +145,9 @@ void cpu_instr_callback(unsigned int pc) {
 
   CHECK(pc != 0) << "Reset";
   if (absl::GetFlag(FLAGS_disassemble) || breakpoint) {
-#define REG(name)                                                    \
-  COLOR(240) << std::hex << " " << #name << ": 0x"                   \
-             << m68k_get_reg(NULL, M68K_REG_##name) << COLOR_RESET() \
-             << std::dec
-
-    LOG(INFO) << REG(A0) << REG(A1) << REG(A2) << REG(A3) << REG(A4) << REG(A5)
-              << REG(A6) << REG(A7);
-    LOG(INFO) << REG(D0) << REG(D1) << REG(D2) << REG(D3) << REG(D4) << REG(D5)
-              << REG(D6) << REG(D7);
-
-    LOG(INFO) << COLOR(240) << "Handles: " << memory_manager_ptr->LogHandles()
-              << COLOR_RESET();
-
-    cyder::memory::debug::LogStack(m68k_get_reg(/*context=*/NULL, M68K_REG_SP));
-#undef REG
-
-    char buffer[255];
-    m68k_disassemble(buffer, pc, M68K_CPU_TYPE_68000);
-    Handle handle = memory_manager_ptr->GetHandleThatContains(pc);
-    std::string tag = (handle == 0) ? "" : memory_manager_ptr->GetTag(handle);
-    LOG(INFO) << std::hex << pc << " (" << tag << "): " << buffer;
+    logger.OnInstruction(pc);
   }
+
   CHECK(m68k_get_reg(NULL, M68K_REG_ISP) <= cyder::memory::kStackStart);
   CHECK(m68k_get_reg(NULL, M68K_REG_ISP) > cyder::memory::kStackEnd);
 
@@ -208,10 +190,10 @@ using cyder::NewRect;
 using cyder::ResourceManager;
 using cyder::SegmentLoader;
 using cyder::WindowManager;
-using cyder::rsrc::ResourceFile;
 using cyder::graphics::BitmapImage;
 using cyder::memory::kSystemMemory;
 using cyder::memory::MemoryManager;
+using cyder::rsrc::ResourceFile;
 using cyder::trap::TrapManager;
 
 SDL_Surface* const MakeSurface(const BitmapImage& screen) {
@@ -239,7 +221,7 @@ absl::Status Main(const core::Args& args) {
   auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
 
   MemoryManager memory_manager;
-  memory_manager_ptr = &memory_manager;
+  logger.SetMemoryManager(&memory_manager);
 
   ResourceManager resource_manager(memory_manager, *file);
 
