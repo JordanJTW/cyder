@@ -137,7 +137,7 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
   record.has_close = has_close;
   record.reference_constant = reference_constant;
   record.title_handle = TRY(create_title_handle());
-  record.title_width = title.size() * 8; // Assumes 8x8 fixed-width font
+  record.title_width = title.size() * 8;  // Assumes 8x8 fixed-width font
 
   auto create_empty_region = [&](std::string name) -> absl::StatusOr<Handle> {
     return TRY(memory_.NewHandleFor<Region>(Region{}, std::move(name)));
@@ -303,32 +303,22 @@ void WindowManager::OnMouseMove(const Point& mouse) {
   int16_t outline_rect_width = RectWidth(outline_rect_);
   int16_t outline_rect_height = RectHeight(outline_rect_);
 
-  if (!saved_bitmap_) {
-    saved_bitmap_ =
-        absl::make_unique<BitmapImage>(outline_rect_width, outline_rect_height);
-  } else {
-    screen_.CopyBitmap(*saved_bitmap_, NormalizeRect(outline_rect_),
-                       outline_rect_);
-  }
+  screen_.FrameRect(outline_rect_, kGreyPattern,
+                    graphics::BitmapImage::FillMode::XOr);
 
   outline_rect_ =
       NewRect(mouse.x + target_offset_.x, mouse.y + target_offset_.y,
               outline_rect_width, outline_rect_height);
 
-  saved_bitmap_->CopyBitmap(screen_, outline_rect_,
-                            NormalizeRect(outline_rect_));
-  screen_.FrameRect(outline_rect_, kBlackPattern);
+  screen_.FrameRect(outline_rect_, kGreyPattern,
+                    graphics::BitmapImage::FillMode::XOr);
 }
 
 void WindowManager::OnMouseUp(const Point& mouse) {
   TempClipRect _(screen_, CalculateDesktopRegion(screen_));
 
-  // If window drag outline was drawn, restore the bitmap before anything else
-  if (saved_bitmap_) {
-    screen_.CopyBitmap(*saved_bitmap_, NormalizeRect(outline_rect_),
-                       outline_rect_);
-  }
-  saved_bitmap_.reset();
+  screen_.FrameRect(outline_rect_, kGreyPattern,
+                    graphics::BitmapImage::FillMode::XOr);
 
   if (on_drag_end_) {
     std::move(on_drag_end_)(mouse - start_pt_);

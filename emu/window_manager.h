@@ -84,7 +84,6 @@ class WindowManager : public MouseListener {
 
   Rect outline_rect_;
   Point start_pt_;
-  std::unique_ptr<graphics::BitmapImage> saved_bitmap_;
   std::function<void(const Point&)> on_drag_end_;
 };
 
