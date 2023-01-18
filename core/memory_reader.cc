@@ -9,7 +9,8 @@
 
 namespace core {
 
-MemoryReader::MemoryReader(const MemoryRegion& region) : region_(region) {}
+MemoryReader::MemoryReader(const MemoryRegion& region, size_t offset)
+    : region_(region), offset_(offset) {}
 
 absl::StatusOr<absl::string_view> MemoryReader::NextString(
     absl::optional<size_t> fixed_size) {

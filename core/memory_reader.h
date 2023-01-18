@@ -27,7 +27,7 @@ namespace core {
 // Reads data of various types sequentially from a MemoryRegion.
 class MemoryReader final {
  public:
-  explicit MemoryReader(const MemoryRegion& region);
+  MemoryReader(const MemoryRegion& region, size_t offset = 0);
 
   // Read the next integer from the MemoryRegion.
   template <typename IntegerType,
@@ -80,7 +80,7 @@ class MemoryReader final {
 
  private:
   const MemoryRegion region_;
-  size_t offset_{0};
+  size_t offset_;
 };
 
 }  // namespace core

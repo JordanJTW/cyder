@@ -8,7 +8,7 @@ target_link_libraries(disasm absl::statusor absl::strings RSRC_LIB MUSASHI_LIB
                       TYPEGEN_PRELUDE)
 
 add_executable(macbinary macbinary.cc finder_flags.cc)
-target_link_libraries(macbinary CORE_LIB MAIN_LIB RSRC_LIB)
+target_link_libraries(macbinary CORE_LIB MAIN_LIB MACBINARY_LIB RSRC_LIB)
 
 add_executable(rsrcdump rsrcdump.cc)
 target_link_libraries(rsrcdump CORE_LIB MAIN_LIB MUSASHI_LIB RSRC_LIB

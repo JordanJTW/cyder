@@ -15,6 +15,7 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
+#include "emu/rsrc/macbinary_helpers.h"
 #include "emu/rsrc/resource_file.h"
 #include "finder_flags.h"
 #include "gen/typegen/typegen_prelude.h"
@@ -22,7 +23,6 @@
 namespace {
 
 using ::cyder::hfs::ParseFinderFlags;
-using ::cyder::rsrc::GetTypeName;
 
 absl::Status LoadFileError(absl::string_view file_path) {
   return absl::InternalError(
@@ -92,66 +92,24 @@ absl::Status Main(const core::Args& args) {
   }
 
   core::MemoryRegion memory(mmap_ptr, size);
+  auto header = TRY(ReadType<MacBinaryHeader>(memory, 0));
 
-  // MacBinary II Header
-  // Link: https://files.stairways.com/other/macbinaryii-standard-info.txt
-  // Link: https://github.com/mietek/theunarchiver/wiki/MacBinarySpecs
-  core::MemoryReader reader(memory);
-  CHECK_EQ(0u, TRY(reader.Next<uint8_t>()));
-  auto filename = TRY(reader.NextString(/*fixed_length=*/63));
-  auto file_type = TRY(reader.Next<uint32_t>());
-  auto creator_type = TRY(reader.Next<uint32_t>());
-  auto finder_flags_high = TRY(reader.Next<uint8_t>());
-  CHECK_EQ(0u, TRY(reader.Next<uint8_t>()));
-  auto finder_vert_pos = TRY(reader.Next<uint16_t>());
-  auto finder_horr_pos = TRY(reader.Next<uint16_t>());
-  auto finder_folder_id = TRY(reader.Next<uint16_t>());
-  auto is_protected = TRY(reader.Next<uint8_t>());
-  CHECK_EQ(0u, TRY(reader.Next<uint8_t>()));
-  auto data_length = TRY(reader.Next<uint32_t>());
-  auto rsrc_length = TRY(reader.Next<uint32_t>());
-  // Dates are the number of seconds since Jan. 1, 1904:
-  auto creation_date = TRY(reader.Next<uint32_t>());
-  auto modified_date = TRY(reader.Next<uint32_t>());
-  auto info_length = TRY(reader.Next<uint16_t>());
-  auto finder_flags_low = TRY(reader.Next<uint8_t>());
-  reader.OffsetTo(116);
-  auto packed_files_count = TRY(reader.Next<uint32_t>());
-  auto second_header_length = TRY(reader.Next<uint16_t>());
-  auto macbinary_write_version = TRY(reader.Next<uint8_t>());
-  auto macbinary_read_version = TRY(reader.Next<uint8_t>());
-  auto header_crc = TRY(reader.Next<uint16_t>());
+  LOG(INFO) << "MacBinaryHeader: " << header;
 
-  RETURN_IF_ERROR(
-      MaybeWriteNextRegion(reader, output_dir, filename, "data", data_length));
-  RETURN_IF_ERROR(
-      MaybeWriteNextRegion(reader, output_dir, filename, "rsrc", rsrc_length));
+  core::MemoryReader reader(memory, 128);
+  RETURN_IF_ERROR(MaybeWriteNextRegion(reader, output_dir, header.filename,
+                                       "data", header.data_length));
+  RETURN_IF_ERROR(MaybeWriteNextRegion(reader, output_dir, header.filename,
+                                       "rsrc", header.rsrc_length));
 
-  LOG(INFO) << filename << " type: " << GetTypeName(file_type)
-            << " creator: " << GetTypeName(creator_type)
-            << " x: " << finder_horr_pos << ", y: " << finder_vert_pos
-            << " folder id: " << finder_folder_id
-            << " is_protected: " << (is_protected ? "true" : "false")
-            << " data length: " << data_length
-            << " rsrc length: " << rsrc_length << " created: " << creation_date
-            << " modified: " << modified_date << " info length: " << info_length
-            << " packed files count: " << packed_files_count
-            << " second header length: " << second_header_length
-            << " write version: " << int(macbinary_write_version)
-            << " read version: " << int(macbinary_read_version)
-            << " CRC: " << header_crc;
-
-  uint16_t finder_flags = finder_flags_low;
-  finder_flags = (finder_flags << 8) | finder_flags_high;
-
-  for (auto flag : ParseFinderFlags(finder_flags)) {
+  for (auto flag : ParseFinderFlags(header.finder_flags)) {
     LOG(INFO) << "Finder Flag: " << flag;
   }
 
   uint16_t calculated_crc =
       crc16(TRY(memory.Create("crc", /*offset=*/0, /*size=*/124)));
   LOG(INFO) << "Calculated CRC: " << calculated_crc;
-  CHECK_EQ(calculated_crc, header_crc);
+  CHECK_EQ(calculated_crc, header.header_checksum);
 
   return absl::OkStatus();
 }
