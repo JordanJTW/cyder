@@ -41,7 +41,7 @@ struct ResourceMapHeader {
 //    2 bytes: Offset from beginning of `type_list_offset` to reference list
 //                for this type
 struct ResourceTypeItem {
-  type_id: ResType;
+  type_id: OSType;
   count: u16;
   offset: u16;
 }

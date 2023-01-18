@@ -5,15 +5,15 @@
 
 #include "emu/memory/memory_map.h"
 #include "gen/global_names.h"
+#include "gen/typegen/typegen_prelude.h"
 
 namespace cyder {
 namespace {
 
-using ::cyder::rsrc::GetTypeName;
 using ::cyder::rsrc::Resource;
 
 std::string GetUniqueId(ResType theType, ResId theId) {
-  return absl::StrCat("Resource[", GetTypeName(theType), ":", theId, "]");
+  return absl::StrCat("Resource[", OSTypeName(theType), ":", theId, "]");
 }
 
 }  // namespace

@@ -33,7 +33,8 @@ class CheckedStructExpression:
 CheckedExpression = Union[CheckedStructExpression, CheckedAssignExpression]
 
 
-_INTEGER_SIZES = {'u8': 1, 'u16': 2, 'u24': 3, 'u32': 4, 'i16': 2, 'i32': 4}
+_STATIC_TYPE_SIZES = {'u8': 1, 'u16': 2, 'u24': 3,
+                      'u32': 4, 'i16': 2, 'i32': 4, 'OSType': 4}
 
 
 class TypeChecker:
@@ -44,7 +45,7 @@ class TypeChecker:
     errors: List[Tuple[str, Tuple[int, int]]] = []
 
     def check_type_exists(expr: LabelExpression):
-      if size := _INTEGER_SIZES.get(expr.label, None):
+      if size := _STATIC_TYPE_SIZES.get(expr.label, None):
         return CheckedTypeExpression(
             expr.label, size, is_dynamic=False, is_struct=False)
 

@@ -39,8 +39,6 @@ namespace cyder {
 namespace trap {
 namespace {
 
-using ::cyder::rsrc::GetTypeName;
-
 constexpr Pattern kForegroundPattern = {
     .bytes = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
 
@@ -631,7 +629,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto the_type = TRY(Pop<ResType>());
       auto the_menu = TRY(Pop<Handle>());
       LOG_TRAP() << "AppendResMenu(theMenu: 0x" << std::hex << the_menu
-                 << ", theType: " << GetTypeName(the_type) << ")";
+                 << ", theType: " << OSTypeName(the_type) << ")";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-130.html
@@ -1294,7 +1292,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto name = TRY(PopRef<absl::string_view>());
       ResType type = TRY(Pop<ResType>());
 
-      LOG_TRAP() << "Get1NamedResource(theType: '" << GetTypeName(type)
+      LOG_TRAP() << "Get1NamedResource(theType: '" << OSTypeName(type)
                  << "', name: \"" << name << "\")";
 
       Handle handle = resource_manager_.GetResourseByName(type, name);
@@ -1305,7 +1303,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto id = TRY(Pop<ResId>());
       auto type = TRY(Pop<ResType>());
 
-      LOG_TRAP() << "GetResource(theType: '" << GetTypeName(type)
+      LOG_TRAP() << "GetResource(theType: '" << OSTypeName(type)
                  << "', theID: " << id << ")";
 
       Handle handle = resource_manager_.GetResource(type, id);

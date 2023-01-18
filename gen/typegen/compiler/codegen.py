@@ -245,11 +245,6 @@ class CodeGenerator:
       }\n
     """)
 
-  def _generate_read_write_type(self, file):
-    for expr in self._struct_expressions:
-      self._write_read_type(file, expr.id, expr.members)
-      self._write_write_type(file, expr.id, expr.members)
-
   def _write_struct_stream(self, file, label, members):
     file.write(
       f'std::ostream& operator<<(std::ostream& os, const {label}& obj) {{ return os << "{{ "')
@@ -267,6 +262,8 @@ class CodeGenerator:
           stream_value = f'int({stream_value})'
       elif member.type.id == 'Boolean':
         stream_value = f'({stream_value} ? "True" : "False")'
+      elif member.type.id == 'OSType':
+        stream_value = f'OSTypeName({stream_value})'
       elif 'Handle' in member.type.id or member.type.id == 'Ptr':
         stream_value = f'std::hex << "0x" << {stream_value} << std::dec'
       elif member.type.id == 'str':
@@ -287,7 +284,9 @@ class CodeGenerator:
       self._write_includes(source, _SOURCE_INCLUDES)
       source.write('\n')
 
-      self._generate_read_write_type(source)
+      for expr in self._struct_expressions:
+        self._write_read_type(source, expr.id, expr.members)
+        self._write_write_type(source, expr.id, expr.members)
       source.write('\n')
 
       self._generate_struct_stream(source)

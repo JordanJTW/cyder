@@ -45,15 +45,6 @@ std::ostream& operator<<(std::ostream& out, const Resource& value) {
   return out << ") is " << value.GetSize() << " bytes";
 }
 
-std::string GetTypeName(ResType theType) {
-  char type_name[4];
-  // The type value is actually a 4 byte string so we must reverse it
-  // back to big endian for the text to appear correctly
-  uint32_t reversed_type = htobe(theType);
-  memcpy(type_name, &reversed_type, sizeof(uint32_t));
-  return std::string(type_name, 4);
-}
-
 }  // namespace rsrc
 }  // namespace cyder
 

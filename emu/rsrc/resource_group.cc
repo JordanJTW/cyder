@@ -57,7 +57,7 @@ const Resource* ResourceGroup::FindByName(absl::string_view theName) const {
 }
 
 std::ostream& operator<<(std::ostream& out, const ResourceGroup& value) {
-  out << "Group(type: '" << GetTypeName(value.GetType()) << "'):\n";
+  out << "Group(type: '" << OSTypeName(value.GetType()) << "'):\n";
   for (const auto& resource : value.resources_) {
     out << "  + " << resource << "\n";
   }

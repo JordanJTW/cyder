@@ -61,3 +61,12 @@ absl::Status WriteU24(uint24_t value,
   RETURN_IF_ERROR(region.WriteRaw(&value, offset, /*length=*/3));
   return absl::OkStatus();
 }
+
+std::string OSTypeName(uint32_t os_type) {
+  char type_name[4];
+  // The type value is actually a 4 byte string so we must reverse it
+  // back to big endian for the text to appear correctly
+  uint32_t reversed_type = htobe(os_type);
+  memcpy(type_name, &reversed_type, sizeof(uint32_t));
+  return std::string(type_name, 4);
+}

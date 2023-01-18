@@ -15,6 +15,9 @@
 // This is just used to make clear when a `u24` is used.
 using uint24_t = uint32_t;
 
+// A four character string identifier used through-out Mac OS
+using OSType = uint32_t;
+
 struct Field {
   const size_t offset;
   const size_t size;
@@ -48,3 +51,5 @@ template <>
 absl::Status WriteType(const absl::string_view& type,
                        core::MemoryRegion& region,
                        size_t offset);
+
+std::string OSTypeName(uint32_t os_type);

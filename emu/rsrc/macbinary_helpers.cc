@@ -43,8 +43,8 @@ absl::StatusOr<MacBinaryHeader> ReadType(const core::MemoryRegion& region,
 
 std::ostream& operator<<(std::ostream&os , const MacBinaryHeader& header) {
   return os << "{ filename: '" << header.filename
-            << "', type: " << header.file_type
-            << ", creator: " << header.creator_type
+            << "', type: " << OSTypeName(header.file_type)
+            << ", creator: " << OSTypeName(header.creator_type)
             << ", finder_flags: " << header.finder_flags
             << ", finder_position: " << header.finder_position
             << ", folder_id: " << header.folder_id

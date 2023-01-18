@@ -41,7 +41,5 @@ class Resource {
 
 std::ostream& operator<<(std::ostream&, const Resource&);
 
-std::string GetTypeName(ResType);
-
 }  // namespace rsrc
 }  // namespace cyder
