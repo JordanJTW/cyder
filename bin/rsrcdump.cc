@@ -155,7 +155,7 @@ absl::Status Main(const core::Args& args) {
   };
 
   for (const auto& group : file->groups()) {
-    const std::string type_str = GetTypeName(group.GetType());
+    const std::string type_str = OSTypeName(group.GetType());
     if (should_allow_type(type_str)) {
       LOG(INFO) << "Group(type: " << type_str << ", size: " << group.GetSize()
                 << "):";
