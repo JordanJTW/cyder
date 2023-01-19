@@ -41,6 +41,27 @@ absl::StatusOr<MacBinaryHeader> ReadType(const core::MemoryRegion& region,
   return header;
 }
 
+// Implements CRC-16/XModem calculation
+// Link: https://mdfs.net/Info/Comp/Comms/CRC16.htm, https://crccalc.com
+absl::StatusOr<uint16_t> MacBinaryChecksum(const core::MemoryRegion& region) {
+  // The header is 128 bytes minus 4 bytes to store the checksum
+  static size_t kHeaderSize = 124;
+  auto header_region = TRY(region.Create("crc", /*offset=*/0, kHeaderSize));
+
+  uint16_t crc = 0;
+  for (size_t i = 0; i < kHeaderSize; ++i) {
+    crc = crc ^ (header_region.raw_ptr()[i] << 8);
+    for (int byte = 0; byte < 8; ++byte) {
+      if (crc & 0x8000) {
+        crc = (crc << 1) ^ 0x1021;
+      } else {
+        crc <<= 1;
+      }
+    }
+  }
+  return crc;
+}
+
 std::ostream& operator<<(std::ostream& os, const MacBinaryHeader& header) {
   return os << "{ filename: '" << header.filename
             << "', type: " << OSTypeName(header.file_type)

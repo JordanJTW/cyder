@@ -54,23 +54,6 @@ absl::Status MaybeWriteNextRegion(core::MemoryReader& reader,
   return absl::OkStatus();
 }
 
-// Implements CRC-16/XModem calculation
-// Link: https://mdfs.net/Info/Comp/Comms/CRC16.htm, https://crccalc.com
-uint16_t crc16(const core::MemoryRegion& region, uint16_t initial_crc = 0) {
-  uint16_t crc = initial_crc;
-  for (size_t i = 0; i < region.size(); ++i) {
-    crc = crc ^ (region.raw_ptr()[i] << 8);
-    for (int byte = 0; byte < 8; ++byte) {
-      if (crc & 0x8000) {
-        crc = (crc << 1) ^ 0x1021;
-      } else {
-        crc <<= 1;
-      }
-    }
-  }
-  return crc;
-}
-
 absl::Status Main(const core::Args& args) {
   auto path = TRY(args.GetArg(1, "INPUT"));
   auto output_dir = TRY(args.GetArg(2, "OUTPUT_DIR"));
@@ -92,7 +75,7 @@ absl::Status Main(const core::Args& args) {
   }
 
   core::MemoryRegion memory(mmap_ptr, size);
-  auto header = TRY(ReadType<MacBinaryHeader>(memory, 0));
+  auto header = TRY(ReadType<MacBinaryHeader>(memory));
 
   LOG(INFO) << "MacBinaryHeader: " << header;
 
@@ -106,8 +89,7 @@ absl::Status Main(const core::Args& args) {
     LOG(INFO) << "Finder Flag: " << flag;
   }
 
-  uint16_t calculated_crc =
-      crc16(TRY(memory.Create("crc", /*offset=*/0, /*size=*/124)));
+  uint16_t calculated_crc = TRY(MacBinaryChecksum(memory));
   LOG(INFO) << "Calculated CRC: " << calculated_crc;
   CHECK_EQ(calculated_crc, header.header_checksum);
 

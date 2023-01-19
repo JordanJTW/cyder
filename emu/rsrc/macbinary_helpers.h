@@ -40,4 +40,7 @@ absl::StatusOr<MacBinaryHeader> ReadType(
     const core::MemoryRegion& region,
     size_t offset);
 
+// Calculates the MacBinary header checksum from the first 124 bytes of region
+absl::StatusOr<uint16_t> MacBinaryChecksum(const core::MemoryRegion&);
+
 std::ostream& operator<<(std::ostream&, const MacBinaryHeader&);
