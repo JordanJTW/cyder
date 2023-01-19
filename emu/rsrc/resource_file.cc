@@ -18,6 +18,7 @@
 #include "core/logging.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
+#include "emu/rsrc/macbinary_helpers.h"
 #include "emu/rsrc/resource_types.tdef.h"
 
 namespace cyder {
@@ -45,6 +46,7 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
   }
 
   size_t size = status.st_size;
+  // FIXME: We should not be leaking this memory :(
   void* mmap_ptr = mmap(0, size, PROT_READ, MAP_PRIVATE, fd, /*offset=*/0);
   if (mmap_ptr == MAP_FAILED) {
     return LoadFileError(path);
@@ -52,17 +54,29 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
 
   core::MemoryRegion base_region(mmap_ptr, size);
 
-  auto file_header = TRY(ReadType<ResourceHeader>(base_region, /*offset=*/0));
+  // Try to load as a MacBinary II file before falling back to raw rsrc_fork
+  auto macbinary_header = TRY(ReadType<MacBinaryHeader>(base_region));
+  if (macbinary_header.is_valid) {
+    return LoadRsrcFork(TRY(base_region.Create(
+        "rsrc", MacBinaryHeader::fixed_size, macbinary_header.rsrc_length)));
+  }
+  return LoadRsrcFork(base_region);
+}
+
+// static
+absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::LoadRsrcFork(
+    const core::MemoryRegion& region) {
+  auto file_header = TRY(ReadType<ResourceHeader>(region));
   LOG(INFO) << "ResourceHeader: " << file_header;
 
   auto map_header =
-      TRY(ReadType<ResourceMapHeader>(base_region, file_header.map_offset));
+      TRY(ReadType<ResourceMapHeader>(region, file_header.map_offset));
   LOG(INFO) << "ResourceMapHeader: " << map_header;
 
-  core::MemoryRegion data_region = TRY(base_region.Create(
-      "Data", file_header.data_offset, file_header.data_length));
-  core::MemoryRegion map_region = TRY(base_region.Create(
-      "Map", file_header.map_offset, file_header.map_length));
+  core::MemoryRegion data_region = TRY(
+      region.Create("Data", file_header.data_offset, file_header.data_length));
+  core::MemoryRegion map_region =
+      TRY(region.Create("Map", file_header.map_offset, file_header.map_length));
   core::MemoryRegion type_list_region =
       TRY(map_region.Create("TypeList", map_header.type_list_offset));
   core::MemoryRegion name_list_region =

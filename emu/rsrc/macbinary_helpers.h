@@ -30,6 +30,9 @@ struct MacBinaryHeader {
   uint8_t macbinary_write_version;
   uint8_t macbinary_read_version;
   uint16_t header_checksum;
+  bool is_valid = false;
+
+  const static size_t fixed_size = 128;
 };
 
 template <typename MacBinaryHeader>

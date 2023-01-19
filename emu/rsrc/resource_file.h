@@ -19,7 +19,11 @@ namespace rsrc {
 
 class ResourceFile {
  public:
+  // Loads a MacBinary or raw resource fork from the path given
   static absl::StatusOr<std::unique_ptr<ResourceFile>> Load(const std::string&);
+  // Loads a raw resource fork from the region given
+  static absl::StatusOr<std::unique_ptr<ResourceFile>> LoadRsrcFork(
+      const core::MemoryRegion&);
 
   const Resource* FindByTypeAndId(ResType, ResId) const;
   const Resource* FindByTypeAndName(ResType, absl::string_view) const;

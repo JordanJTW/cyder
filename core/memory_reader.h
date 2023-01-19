@@ -20,7 +20,8 @@
 // to create convience methods to read structs from memory. Notably, typegen
 // will auto-create ReadType specializations based on struct definitions :)
 template <typename Type>
-absl::StatusOr<Type> ReadType(const core::MemoryRegion& region, size_t offset);
+absl::StatusOr<Type> ReadType(const core::MemoryRegion& region,
+                              size_t offset = 0);
 
 namespace core {
 

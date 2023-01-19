@@ -9,17 +9,17 @@ absl::StatusOr<MacBinaryHeader> ReadType(const core::MemoryRegion& region,
   core::MemoryReader reader(region, offset);
 
   struct MacBinaryHeader header;
-  CHECK_EQ(0u, TRY(reader.Next<uint8_t>()));
+  header.is_valid = TRY(reader.Next<uint8_t>()) == 0u;  // Byte 00
   header.filename = std::string(TRY(reader.NextString(/*fixed_length=*/63)));
   header.file_type = TRY(reader.Next<uint32_t>());
   header.creator_type = TRY(reader.Next<uint32_t>());
   // Finder flags (8-15) to be combined with (0-7) below
   header.finder_flags = TRY(reader.Next<uint8_t>());
-  CHECK_EQ(0u, TRY(reader.Next<uint8_t>()));
+  header.is_valid &= TRY(reader.Next<uint8_t>()) == 0u;  // Byte 74
   header.finder_position = TRY(reader.NextType<Point>());
   header.folder_id = TRY(reader.Next<uint16_t>());
   header.is_protected = TRY(reader.Next<uint8_t>()) != 0;
-  CHECK_EQ(0u, TRY(reader.Next<uint8_t>()));
+  header.is_valid &= TRY(reader.Next<uint8_t>()) == 0u;  // Byte 82
   header.data_length = TRY(reader.Next<uint32_t>());
   header.rsrc_length = TRY(reader.Next<uint32_t>());
   // Dates are the number of seconds since Jan. 1, 1904 (HFS Epoch):
@@ -41,7 +41,7 @@ absl::StatusOr<MacBinaryHeader> ReadType(const core::MemoryRegion& region,
   return header;
 }
 
-std::ostream& operator<<(std::ostream&os , const MacBinaryHeader& header) {
+std::ostream& operator<<(std::ostream& os, const MacBinaryHeader& header) {
   return os << "{ filename: '" << header.filename
             << "', type: " << OSTypeName(header.file_type)
             << ", creator: " << OSTypeName(header.creator_type)
@@ -60,5 +60,6 @@ std::ostream& operator<<(std::ostream&os , const MacBinaryHeader& header) {
             << int(header.macbinary_write_version)
             << ", macbinary_read_version: "
             << int(header.macbinary_read_version)
-            << ", header_checksum: " << header.header_checksum << " }";
+            << ", header_checksum: " << header.header_checksum
+            << ", is_valid: " << (header.is_valid ? "True" : "False") << " }";
 }
