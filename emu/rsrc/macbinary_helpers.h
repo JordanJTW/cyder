@@ -36,11 +36,19 @@ struct MacBinaryHeader {
 };
 
 template <typename MacBinaryHeader>
-absl::StatusOr<MacBinaryHeader> ReadType(
-    const core::MemoryRegion& region,
-    size_t offset);
+absl::StatusOr<MacBinaryHeader> ReadType(const core::MemoryRegion& region,
+                                         size_t offset);
 
 // Calculates the MacBinary header checksum from the first 124 bytes of region
 absl::StatusOr<uint16_t> MacBinaryChecksum(const core::MemoryRegion&);
+
+inline size_t MacBinaryRsrcOffset(const MacBinaryHeader& header) {
+  static size_t kBlockSize = 128u;
+  if (header.data_length % kBlockSize) {
+    return MacBinaryHeader::fixed_size +
+           ((header.data_length / kBlockSize) + 1) * kBlockSize;
+  }
+  return MacBinaryHeader::fixed_size + header.data_length;
+}
 
 std::ostream& operator<<(std::ostream&, const MacBinaryHeader&);

@@ -57,8 +57,9 @@ absl::StatusOr<std::unique_ptr<ResourceFile>> ResourceFile::Load(
   // Try to load as a MacBinary II file before falling back to raw rsrc_fork
   auto macbinary_header = TRY(ReadType<MacBinaryHeader>(base_region));
   if (macbinary_header.is_valid) {
-    return LoadRsrcFork(TRY(base_region.Create(
-        "rsrc", MacBinaryHeader::fixed_size, macbinary_header.rsrc_length)));
+    return LoadRsrcFork(
+        TRY(base_region.Create("rsrc", MacBinaryRsrcOffset(macbinary_header),
+                               macbinary_header.rsrc_length)));
   }
   return LoadRsrcFork(base_region);
 }
