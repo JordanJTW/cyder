@@ -80,7 +80,7 @@ absl::Status TrapReturn(T value) {
   if (std::is_same<T, bool>::value) {
     Ptr current_stack = m68k_get_reg(NULL, M68K_REG_SP);
     RETURN_IF_ERROR(memory::kSystemMemory.Write<uint16_t>(
-        current_stack, value ? 0xFFFF : 0x0000));
+        current_stack, value ? 0x0100 : 0x0000));
   } else {
     static_assert(std::is_integral<T>::value,
                   "Only integers are stored on the stack");
