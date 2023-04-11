@@ -38,6 +38,9 @@ absl::StatusOr<MacBinaryHeader> ReadType(const core::MemoryRegion& region,
   header.macbinary_write_version = TRY(reader.Next<uint8_t>());
   header.macbinary_read_version = TRY(reader.Next<uint8_t>());
   header.header_checksum = TRY(reader.Next<uint16_t>());
+
+  header.is_valid &= (header.header_checksum ==
+                      TRY(MacBinaryChecksum(TRY(region.Create(offset)))));
   return header;
 }
 
