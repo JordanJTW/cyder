@@ -217,83 +217,7 @@ void SaveScreenshot(const BitmapImage& screen) {
   LOG(INFO) << "Screenshot saved to: " << path;
 }
 
-absl::Status Main(const core::Args& args) {
-  auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
-
-  MemoryManager memory_manager;
-  logger.SetMemoryManager(&memory_manager);
-
-  ResourceManager resource_manager(memory_manager, *file);
-
-  auto segment_loader =
-      TRY(SegmentLoader::Create(memory_manager, resource_manager));
-
-  size_t pc = TRY(segment_loader.Load(1));
-  LOG(INFO) << "Initialize PC: " << std::hex << pc;
-  LOG(INFO) << "Memory Map: " << cyder::memory::MemoryMapToStr();
-
-  BitmapImage screen(kScreenWidth, kScreenHeight);
-  NativeBridge native_bridge;
-
-  MenuManager menu_manager(screen, native_bridge);
-
-  // Draw classic Mac OS grey baground pattern
-  auto screen_rect = NewRect(0, 0, kScreenWidth, kScreenHeight);
-  screen.FillRect(screen_rect, kGreyPattern);
-
-  menu_manager.DrawMenuBar();
-
-  SDL_Init(SDL_INIT_VIDEO);
-
-  int window_width = int(kScreenWidth * kScaleFactor);
-  int window_height = int(kScreenHeight * kScaleFactor);
-
-  SDL_Window* window = SDL_CreateWindow(
-      "Cyder", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width,
-      window_height, SDL_WINDOW_ALLOW_HIGHDPI);
-
-  CHECK(window) << "Failing to create window: " << SDL_GetError();
-
-  SDL_Renderer* renderer =
-      SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
-
-  CHECK(renderer) << "Failing to create renderer: " << SDL_GetError();
-
-  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
-
-  EventManager event_manager;
-  WindowManager window_manager(native_bridge, event_manager, screen,
-                               memory_manager);
-  TrapManager trap_manager(memory_manager, resource_manager, segment_loader,
-                           event_manager, menu_manager, window_manager, screen);
-  on_emulated_subroutine = std::bind(&TrapManager::DispatchEmulatedSubroutine,
-                                     &trap_manager, std::placeholders::_1);
-
-  auto system_path = absl::GetFlag(FLAGS_system_file);
-  if (!system_path.empty()) {
-    auto system = TRY(ResourceFile::Load(system_path));
-    if (auto* version = system->FindByTypeAndId('STR ', 0)) {
-      LOG(INFO) << "Using System: " << system_path;
-      LOG(INFO) << TRY(ReadType<absl::string_view>(version->GetData(), 0));
-    }
-
-    if (auto* pack4 = system->FindByTypeAndId('PACK', 4)) {
-      LOG(INFO) << "Loading PACK4 into memory";
-      Handle handle =
-          memory_manager.AllocateHandleForRegion(pack4->GetData(), "PACK4");
-      size_t address = MUST(kSystemMemory.Read<uint32_t>(handle));
-      trap_manager.SetTrapAddress(Trap::Pack4, address);
-    }
-
-    if (auto* pack7 = system->FindByTypeAndId('PACK', 7)) {
-      LOG(INFO) << "Loading PACK7 into memory";
-      Handle handle =
-          memory_manager.AllocateHandleForRegion(pack7->GetData(), "PACK7");
-      size_t address = MUST(kSystemMemory.Read<uint32_t>(handle));
-      trap_manager.SetTrapAddress(Trap::Pack7, address);
-    }
-  }
-
+absl::Status InitializeVM(size_t pc) {
   m68k_init();
   m68k_set_instr_hook_callback(cpu_instr_callback);
   m68k_set_cpu_type(M68K_CPU_TYPE_68000);
@@ -354,6 +278,94 @@ absl::Status Main(const core::Args& args) {
   RETURN_IF_ERROR(cyder::trap::Push<uint32_t>(
       cyder::memory::kBaseToolboxTrapAddress +
       (Trap::ExitToShell & 0x03FF) * sizeof(uint16_t)));
+  return absl::OkStatus();
+}
+
+absl::Status InitTrapManager(MemoryManager& memory_manager,
+                             TrapManager& trap_manager) {
+  on_emulated_subroutine = std::bind(&TrapManager::DispatchEmulatedSubroutine,
+                                     &trap_manager, std::placeholders::_1);
+
+  auto system_path = absl::GetFlag(FLAGS_system_file);
+  if (!system_path.empty()) {
+    auto system = TRY(ResourceFile::Load(system_path));
+    if (auto* version = system->FindByTypeAndId('STR ', 0)) {
+      LOG(INFO) << "Using System: " << system_path;
+      LOG(INFO) << TRY(ReadType<absl::string_view>(version->GetData(), 0));
+    }
+
+    if (auto* pack4 = system->FindByTypeAndId('PACK', 4)) {
+      LOG(INFO) << "Loading PACK4 into memory";
+      Handle handle =
+          memory_manager.AllocateHandleForRegion(pack4->GetData(), "PACK4");
+      size_t address = MUST(kSystemMemory.Read<uint32_t>(handle));
+      trap_manager.SetTrapAddress(Trap::Pack4, address);
+    }
+
+    if (auto* pack7 = system->FindByTypeAndId('PACK', 7)) {
+      LOG(INFO) << "Loading PACK7 into memory";
+      Handle handle =
+          memory_manager.AllocateHandleForRegion(pack7->GetData(), "PACK7");
+      size_t address = MUST(kSystemMemory.Read<uint32_t>(handle));
+      trap_manager.SetTrapAddress(Trap::Pack7, address);
+    }
+  }
+  return absl::OkStatus();
+}
+
+absl::Status Main(const core::Args& args) {
+  auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
+
+  MemoryManager memory_manager;
+  logger.SetMemoryManager(&memory_manager);
+
+  ResourceManager resource_manager(memory_manager, *file);
+
+  auto segment_loader =
+      TRY(SegmentLoader::Create(memory_manager, resource_manager));
+
+  size_t pc = TRY(segment_loader.Load(1));
+  LOG(INFO) << "Initialize PC: " << std::hex << pc;
+  LOG(INFO) << "Memory Map: " << cyder::memory::MemoryMapToStr();
+
+  RETURN_IF_ERROR(InitializeVM(pc));
+
+  BitmapImage screen(kScreenWidth, kScreenHeight);
+  NativeBridge native_bridge;
+
+  MenuManager menu_manager(screen, native_bridge);
+
+  // Draw classic Mac OS grey baground pattern
+  auto screen_rect = NewRect(0, 0, kScreenWidth, kScreenHeight);
+  screen.FillRect(screen_rect, kGreyPattern);
+
+  menu_manager.DrawMenuBar();
+
+  SDL_Init(SDL_INIT_VIDEO);
+
+  int window_width = int(kScreenWidth * kScaleFactor);
+  int window_height = int(kScreenHeight * kScaleFactor);
+
+  SDL_Window* window = SDL_CreateWindow(
+      "Cyder", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width,
+      window_height, SDL_WINDOW_ALLOW_HIGHDPI);
+
+  CHECK(window) << "Failing to create window: " << SDL_GetError();
+
+  SDL_Renderer* renderer =
+      SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+
+  CHECK(renderer) << "Failing to create renderer: " << SDL_GetError();
+
+  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
+
+  EventManager event_manager;
+  WindowManager window_manager(native_bridge, event_manager, screen,
+                               memory_manager);
+  TrapManager trap_manager(memory_manager, resource_manager, segment_loader,
+                           event_manager, menu_manager, window_manager, screen);
+
+  RETURN_IF_ERROR(InitTrapManager(memory_manager, trap_manager));
 
   SDL_Event event;
   bool should_exit = false;
