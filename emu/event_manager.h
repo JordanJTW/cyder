@@ -22,10 +22,14 @@ enum EventType {
   kWindowActivate = 8,  // activate / deactivate window
 };
 
+constexpr Integer kMouseMove = 255;  // Custom `EventType` for native
+
 // Implements the event queue consumed by the MacOS application.
 class EventManager final {
  public:
   EventManager();
+
+  static EventManager& the();
 
   void QueueWindowActivate(Ptr window);
   void QueueWindowUpdate(Ptr window);
@@ -40,10 +44,18 @@ class EventManager final {
 
   bool HasMouseEvent(EventType type) const;
 
+  void OnMouseMove(int x, int y);
+
+  void RegisterNativeListener(std::function<void(EventRecord)> listener);
+
  private:
+  void QueueOrDispatchInputEvent(EventRecord record);
+
   std::list<EventRecord> activate_events_;
   std::list<EventRecord> input_events_;
   std::list<EventRecord> update_events_;
+
+  std::function<void(EventRecord)> native_listener_ = nullptr;
 };
 
 }  // namespace cyder

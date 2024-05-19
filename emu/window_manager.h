@@ -9,16 +9,13 @@
 #include "emu/graphics/bitmap_image.h"
 #include "emu/graphics/grafport_types.tdef.h"
 #include "emu/memory/memory_manager.h"
-#include "emu/mouse_listener.h"
-#include "emu/native_bridge.h"
 #include "gen/typegen/generated_types.tdef.h"
 
 namespace cyder {
 
-class WindowManager : public MouseListener {
+class WindowManager {
  public:
-  WindowManager(NativeBridge& native_bridge,
-                EventManager& event_manager,
+  WindowManager(EventManager& event_manager,
                 graphics::BitmapImage& screen,
                 memory::MemoryManager& memory);
 
@@ -59,9 +56,6 @@ class WindowManager : public MouseListener {
 
   Ptr GetFrontWindow() const;
 
-  // MouseListener implementation:
-  void OnMouseMove(const Point&);
-  void OnMouseUp(const Point&);
 
  private:
   // Reorders the window linked list so that |window_pt| comes first
@@ -73,18 +67,13 @@ class WindowManager : public MouseListener {
 
   Rect GetRegionRect(Handle handle) const;
 
-  NativeBridge& native_bridge_;
   EventManager& event_manager_;
   graphics::BitmapImage& screen_;
   memory::MemoryManager& memory_;
 
-  Point target_offset_;
-
   std::list<Ptr> window_list_;
 
   Rect outline_rect_;
-  Point start_pt_;
-  std::function<void(const Point&)> on_drag_end_;
 };
 
 void DrawWindowFrame(const WindowRecord& window, graphics::BitmapImage& screen);

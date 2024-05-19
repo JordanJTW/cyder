@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "emu/event_manager.h"
+#include "third_party/musashi/src/m68k.h"
+
+extern bool single_step;
 
 namespace cyder {
 namespace {
@@ -12,9 +15,18 @@ EventRecord NullEvent() {
   return null_event;
 }
 
+EventManager* s_instance;
+
 }  // namespace
 
-EventManager::EventManager() = default;
+EventManager::EventManager() {
+  s_instance = this;
+}
+
+// static
+EventManager& EventManager::the() {
+  return *s_instance;
+}
 
 void EventManager::QueueWindowActivate(Ptr window) {
   EventRecord record;
@@ -41,7 +53,7 @@ void EventManager::QueueMouseDown(int x, int y) {
   record.what = kMouseDown;
   record.where = where;
   record.when = NowTicks();
-  input_events_.push_back(std::move(record));
+  QueueOrDispatchInputEvent(std::move(record));
 }
 
 void EventManager::QueueMouseUp(int x, int y) {
@@ -53,7 +65,7 @@ void EventManager::QueueMouseUp(int x, int y) {
   record.what = kMouseUp;
   record.where = where;
   record.when = NowTicks();
-  input_events_.push_back(std::move(record));
+  QueueOrDispatchInputEvent(std::move(record));
 }
 
 void EventManager::QueueKeyDown() {
@@ -61,7 +73,15 @@ void EventManager::QueueKeyDown() {
   record.what = kKeyDown;
   record.when = NowTicks();
   // FIXME: Add keycode information in EventRecord::message
-  input_events_.push_back(std::move(record));
+  QueueOrDispatchInputEvent(std::move(record));
+}
+
+void EventManager::QueueOrDispatchInputEvent(EventRecord record) {
+  if (native_listener_) {
+    native_listener_(std::move(record));
+  } else {
+    input_events_.push_back(std::move(record));
+  }
 }
 
 void EventManager::QueueRawEvent(uint16_t raw_event_type, uint32_t message) {
@@ -145,6 +165,31 @@ bool EventManager::HasMouseEvent(EventType type) const {
                       [type](const EventRecord& event) {
                         return event.what == type;
                       }) != input_events_.end();
+}
+
+void EventManager::OnMouseMove(int x, int y) {
+  if (native_listener_) {
+    Point where;
+    where.x = x;
+    where.y = y;
+
+    EventRecord record;
+    record.what = kMouseMove;
+    record.where = where;
+    record.when = NowTicks();
+    native_listener_(std::move(record));
+  }
+}
+
+void EventManager::RegisterNativeListener(
+    std::function<void(EventRecord)> listener) {
+  native_listener_ = listener;
+  if (native_listener_) {
+    m68k_end_timeslice();
+    single_step = true;
+  } else {
+    single_step = false;
+  }
 }
 
 }  // namespace cyder

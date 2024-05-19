@@ -20,7 +20,6 @@
 #include "emu/memory/memory_manager.h"
 #include "emu/memory/memory_map.h"
 #include "emu/menu_manager.h"
-#include "emu/native_bridge.h"
 #include "emu/rsrc/resource_file.h"
 #include "emu/rsrc/resource_manager.h"
 #include "emu/segment_loader.h"
@@ -185,7 +184,6 @@ void PrintFrameTiming(std::ostream& os = std::cout, float period = 2.0f) {
 
 using cyder::EventManager;
 using cyder::MenuManager;
-using cyder::NativeBridge;
 using cyder::NewRect;
 using cyder::ResourceManager;
 using cyder::SegmentLoader;
@@ -331,9 +329,8 @@ absl::Status Main(const core::Args& args) {
   RETURN_IF_ERROR(InitializeVM(pc));
 
   BitmapImage screen(kScreenWidth, kScreenHeight);
-  NativeBridge native_bridge;
 
-  MenuManager menu_manager(screen, native_bridge);
+  MenuManager menu_manager(screen);
 
   // Draw classic Mac OS grey baground pattern
   auto screen_rect = NewRect(0, 0, kScreenWidth, kScreenHeight);
@@ -360,8 +357,7 @@ absl::Status Main(const core::Args& args) {
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
 
   EventManager event_manager;
-  WindowManager window_manager(native_bridge, event_manager, screen,
-                               memory_manager);
+  WindowManager window_manager(event_manager, screen, memory_manager);
   TrapManager trap_manager(memory_manager, resource_manager, segment_loader,
                            event_manager, menu_manager, window_manager, screen);
 
@@ -402,16 +398,13 @@ absl::Status Main(const core::Args& args) {
                                        event.button.y / kScaleFactor);
           break;
         case SDL_MOUSEMOTION:
-          native_bridge.OnMouseMove(event.motion.x / kScaleFactor,
+          event_manager.OnMouseMove(event.motion.x / kScaleFactor,
                                     event.motion.y / kScaleFactor);
           break;
         case SDL_MOUSEBUTTONUP:
           SDL_SetWindowGrab(window, SDL_FALSE);
-          if (!native_bridge.OnMouseUp(event.button.x / kScaleFactor,
-                                       event.button.y / kScaleFactor)) {
-            event_manager.QueueMouseUp(event.button.x / kScaleFactor,
-                                       event.button.y / kScaleFactor);
-          }
+          event_manager.QueueMouseUp(event.button.x / kScaleFactor,
+                                     event.button.y / kScaleFactor);
           break;
         case SDL_QUIT:
           should_exit = true;

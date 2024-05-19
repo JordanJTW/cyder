@@ -71,14 +71,10 @@ bool HasTitleBar(const WindowRecord& window_record) {
 
 }  // namespace
 
-WindowManager::WindowManager(NativeBridge& native_bridge,
-                             EventManager& event_manager,
+WindowManager::WindowManager(EventManager& event_manager,
                              BitmapImage& screen,
                              MemoryManager& memory)
-    : native_bridge_(native_bridge),
-      event_manager_(event_manager),
-      screen_(screen),
-      memory_(memory) {}
+    : event_manager_(event_manager), screen_(screen), memory_(memory) {}
 
 absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
                                              const Rect& bounds_rect,
@@ -264,12 +260,48 @@ void WindowManager::DragGrayRegion(
     const Point& start,
     std::function<void(const Point&)> on_drag_end) {
   outline_rect_ = region.bounding_box;
-  target_offset_.x = outline_rect_.left - start.x;
-  target_offset_.y = outline_rect_.top - start.y;
-  start_pt_ = start;
 
-  on_drag_end_ = std::move(on_drag_end);
-  native_bridge_.StartNativeMouseControl(this);
+  Point target_offset;
+  target_offset.x = outline_rect_.left - start.x;
+  target_offset.y = outline_rect_.top - start.y;
+
+  event_manager_.RegisterNativeListener(
+      [outline_rect = &outline_rect_, start = std::move(start),
+       target = std::move(target_offset), screen = &screen_,
+       on_drag_end = std::move(on_drag_end)](EventRecord record) {
+        switch (record.what) {
+          case kMouseMove: {
+            TempClipRect _(*screen, CalculateDesktopRegion(*screen));
+
+            int16_t outline_rect_width = RectWidth(*outline_rect);
+            int16_t outline_rect_height = RectHeight(*outline_rect);
+
+            screen->FrameRect(*outline_rect, kGreyPattern,
+                              graphics::BitmapImage::FillMode::XOr);
+
+            *outline_rect =
+                NewRect(record.where.x + target.x, record.where.y + target.y,
+                        outline_rect_width, outline_rect_height);
+
+            screen->FrameRect(*outline_rect, kGreyPattern,
+                              graphics::BitmapImage::FillMode::XOr);
+            break;
+          }
+          case kMouseUp: {
+            TempClipRect _(*screen, CalculateDesktopRegion(*screen));
+
+            screen->FrameRect(*outline_rect, kGreyPattern,
+                              graphics::BitmapImage::FillMode::XOr);
+
+            if (on_drag_end) {
+              std::move(on_drag_end)(record.where - start);
+            }
+            // Unregister this listener now that the interaction is finished.
+            EventManager::the().RegisterNativeListener(nullptr);
+            break;
+          }
+        }
+      });
 }
 
 WindowManager::RegionType WindowManager::GetWindowAt(const Point& mouse,
@@ -295,34 +327,6 @@ WindowManager::RegionType WindowManager::GetWindowAt(const Point& mouse,
     }
   }
   return RegionType::None;
-}
-
-void WindowManager::OnMouseMove(const Point& mouse) {
-  TempClipRect _(screen_, CalculateDesktopRegion(screen_));
-
-  int16_t outline_rect_width = RectWidth(outline_rect_);
-  int16_t outline_rect_height = RectHeight(outline_rect_);
-
-  screen_.FrameRect(outline_rect_, kGreyPattern,
-                    graphics::BitmapImage::FillMode::XOr);
-
-  outline_rect_ =
-      NewRect(mouse.x + target_offset_.x, mouse.y + target_offset_.y,
-              outline_rect_width, outline_rect_height);
-
-  screen_.FrameRect(outline_rect_, kGreyPattern,
-                    graphics::BitmapImage::FillMode::XOr);
-}
-
-void WindowManager::OnMouseUp(const Point& mouse) {
-  TempClipRect _(screen_, CalculateDesktopRegion(screen_));
-
-  screen_.FrameRect(outline_rect_, kGreyPattern,
-                    graphics::BitmapImage::FillMode::XOr);
-
-  if (on_drag_end_) {
-    std::move(on_drag_end_)(mouse - start_pt_);
-  }
 }
 
 void WindowManager::MoveToFront(Ptr window_ptr) {

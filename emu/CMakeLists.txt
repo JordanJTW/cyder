@@ -20,7 +20,6 @@ add_executable(
   debug_logger.cc
   menu_manager.cc
   menu_popup.cc
-  native_bridge.cc
   segment_loader.cc
   window_manager.cc)
 target_link_libraries(
