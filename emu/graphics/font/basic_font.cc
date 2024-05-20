@@ -280,10 +280,18 @@ int DrawString(graphics::BitmapImage& screen,
                int y) {
   int x_offset = 0;
   for (int c : string) {
+    if (c == '\r') {
+      x_offset = 0;
+      y += 8;
+    }
+
 #if IGNORE_FONT_METRICS
     screen.CopyBits(basic_font[c], NewRect(0, 0, 8, 8), NewRect(0, 0, 8, 8),
                     NewRect(x + x_offset, y, 8, 8));
-    x_offset += 8;
+    if (c == ' ') {
+      x_offset += 4;
+    } else
+      x_offset += 8;
 #else
     int width = glyph_metrics[c].width;
     screen.CopyBits(basic_font[c], NewRect(0, 0, 8, 8),
