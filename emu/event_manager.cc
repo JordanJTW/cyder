@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "emu/event_manager.h"
-#include "third_party/musashi/src/m68k.h"
 
 extern bool single_step;
 
@@ -19,7 +18,8 @@ EventManager* s_instance;
 
 }  // namespace
 
-EventManager::EventManager() {
+EventManager::EventManager(EmulatorControl* emulator_control)
+    : emulator_control_(emulator_control) {
   s_instance = this;
 }
 
@@ -184,11 +184,15 @@ void EventManager::OnMouseMove(int x, int y) {
 void EventManager::RegisterNativeListener(
     std::function<void(EventRecord)> listener) {
   native_listener_ = listener;
+
+  if (emulator_control_ == nullptr) {
+    return;
+  }
+
   if (native_listener_) {
-    m68k_end_timeslice();
-    single_step = true;
+    emulator_control_->Pause();
   } else {
-    single_step = false;
+    emulator_control_->Resume();
   }
 }
 

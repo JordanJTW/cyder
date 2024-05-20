@@ -24,10 +24,16 @@ enum EventType {
 
 constexpr Integer kMouseMove = 255;  // Custom `EventType` for native
 
+class EmulatorControl {
+ public:
+  virtual void Pause() = 0;
+  virtual void Resume() = 0;
+};
+
 // Implements the event queue consumed by the MacOS application.
 class EventManager final {
  public:
-  EventManager();
+  explicit EventManager(EmulatorControl* emulator_control);
 
   static EventManager& the();
 
@@ -50,6 +56,8 @@ class EventManager final {
 
  private:
   void QueueOrDispatchInputEvent(EventRecord record);
+
+  EmulatorControl* const emulator_control_;
 
   std::list<EventRecord> activate_events_;
   std::list<EventRecord> input_events_;

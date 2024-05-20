@@ -311,6 +311,16 @@ absl::Status InitTrapManager(MemoryManager& memory_manager,
   return absl::OkStatus();
 }
 
+class EmulatorControlImpl : public cyder::EmulatorControl {
+ public:
+  // cyder::EmulatorControl implementation:
+  void Pause() override {
+    m68k_end_timeslice();
+    single_step = true;
+  }
+  void Resume() override { single_step = false; }
+};
+
 absl::Status Main(const core::Args& args) {
   auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
 
@@ -356,7 +366,8 @@ absl::Status Main(const core::Args& args) {
 
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
 
-  EventManager event_manager;
+  EmulatorControlImpl emulator_control;
+  EventManager event_manager(&emulator_control);
   WindowManager window_manager(event_manager, screen, memory_manager);
   TrapManager trap_manager(memory_manager, resource_manager, segment_loader,
                            event_manager, menu_manager, window_manager, screen);

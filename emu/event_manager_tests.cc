@@ -17,13 +17,13 @@ constexpr Ptr kFakeWindowPtr = 0xDEADBEEF;
 }  // namespace
 
 TEST(EventManagerTests, NoEvents) {
-  EventManager event_manager;
+  EventManager event_manager(/*emulator_control=*/nullptr);
 
   EXPECT_EQ(event_manager.GetNextEvent(kEventEventMask).what, kNullEvent);
 }
 
 TEST(EventManagerTests, Priority) {
-  EventManager event_manager;
+  EventManager event_manager(/*emulator_control=*/nullptr);
 
   event_manager.QueueWindowUpdate(kFakeWindowPtr);
   event_manager.QueueMouseDown(0, 0);
@@ -39,7 +39,7 @@ TEST(EventManagerTests, Priority) {
 }
 
 TEST(EventManagerTests, InputIsFifo) {
-  EventManager event_manager;
+  EventManager event_manager(/*emulator_control=*/nullptr);
 
   event_manager.QueueMouseDown(0, 0);
   event_manager.QueueMouseDown(2, 0);
@@ -56,7 +56,7 @@ TEST(EventManagerTests, InputIsFifo) {
 }
 
 TEST(EventManagerTests, MaskEvents) {
-  EventManager event_manager;
+  EventManager event_manager(/*emulator_control=*/nullptr);
 
   event_manager.QueueKeyDown();
   event_manager.QueueMouseDown(0, 0);
@@ -70,7 +70,7 @@ TEST(EventManagerTests, MaskEvents) {
 }
 
 TEST(EventManagerTests, HasMouseEvent) {
-  EventManager event_manager;
+  EventManager event_manager(/*emulator_control=*/nullptr);
 
   event_manager.QueueKeyDown();
   event_manager.QueueMouseDown(0, 0);
@@ -83,7 +83,7 @@ TEST(EventManagerTests, HasMouseEvent) {
 }
 
 TEST(EventManagerTests, EventTicks) {
-  EventManager event_manager;
+  EventManager event_manager(/*emulator_control=*/nullptr);
 
   event_manager.QueueMouseDown(369, 109);
   // FIXME: Allow mocking the Tick time source so this hack is not necessary
