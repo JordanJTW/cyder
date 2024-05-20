@@ -8,6 +8,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "core/memory_region.h"
+#include "emu/base_types.h"
 #include "gen/typegen/typegen_prelude.h"
 #include "third_party/musashi/src/m68k.h"
 
@@ -56,6 +57,16 @@ template <typename T>
 absl::StatusOr<T> PopRef() {
   auto ptr = TRY(Pop<Ptr>());
   return ReadType<T>(memory::kSystemMemory, ptr);
+}
+
+template <typename T>
+absl::StatusOr<Var<T>> PopVar() {
+  auto ptr = TRY(Pop<Ptr>());
+  if constexpr (std::is_integral<T>::value) {
+    return Var<T>{ptr, TRY(memory::kSystemMemory.Read<T>(ptr))};
+  } else {
+    return Var<T>{ptr, TRY(ReadType<T>(memory::kSystemMemory, ptr))};
+  }
 }
 
 // Pushes `T` on to the stack
