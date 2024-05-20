@@ -13,35 +13,47 @@
 
 namespace cyder {
 
+using WindowPtr = Ptr;
+
 class WindowManager {
  public:
   WindowManager(EventManager& event_manager,
                 graphics::BitmapImage& screen,
                 memory::MemoryManager& memory);
 
-  absl::StatusOr<Ptr> NewWindow(Ptr window_storage,
-                                const Rect& bounds_rect,
-                                std::string title,
-                                bool is_visible,
-                                bool has_close,
-                                int16_t window_definition_id,
-                                Ptr behind_window,
-                                uint32_t reference_constant);
+  static WindowManager& the();
 
-  void DisposeWindow(Ptr window_ptr);
+  absl::StatusOr<WindowRecord> NewWindowRecord(const Rect& bounds_rect,
+                                               std::string title,
+                                               bool is_visible,
+                                               bool has_close,
+                                               int16_t window_definition_id,
+                                               WindowPtr behind_window,
+                                               uint32_t reference_constant);
 
-  void DragWindow(Ptr window_ptr, const Point& start);
+  absl::StatusOr<WindowPtr> NewWindow(Ptr window_storage,
+                                      const Rect& bounds_rect,
+                                      std::string title,
+                                      bool is_visible,
+                                      bool has_close,
+                                      int16_t window_definition_id,
+                                      WindowPtr behind_window,
+                                      uint32_t reference_constant);
+
+  void DisposeWindow(WindowPtr window_ptr);
+
+  void DragWindow(WindowPtr window_ptr, const Point& start);
 
   enum MoveType {
     Relative,
     Absolute,
   };
-  void MoveWindow(Ptr window_ptr,
+  void MoveWindow(WindowPtr window_ptr,
                   MoveType move_type,
                   const Point& location,
                   bool bring_to_front);
 
-  void SelectWindow(Ptr window_ptr);
+  void SelectWindow(WindowPtr window_ptr);
 
   void DragGrayRegion(const Region& region,
                       const Point& start,
@@ -56,6 +68,7 @@ class WindowManager {
 
   Ptr GetFrontWindow() const;
 
+  absl::Status ShowWindow(WindowPtr window);
 
  private:
   // Reorders the window linked list so that |window_pt| comes first
@@ -78,6 +91,6 @@ class WindowManager {
 
 void DrawWindowFrame(const WindowRecord& window, graphics::BitmapImage& screen);
 void UpdateWindowRegions(WindowRecord& record,
-                                 const memory::MemoryManager& memory);
+                         const memory::MemoryManager& memory);
 
 }  // namespace cyder

@@ -1645,7 +1645,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::ShowWindow: {
       auto the_window = TRY(Pop<Ptr>());
       LOG_TRAP() << "ShowWindow(theWindow: 0x" << std::hex << the_window << ")";
-      return absl::OkStatus();
+      return window_manager_.ShowWindow(the_window);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
     case Trap::BeginUpDate: {

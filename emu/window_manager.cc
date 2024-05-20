@@ -62,33 +62,38 @@ bool HasTitleBar(const WindowRecord& window_record) {
       return true;
     case WindowType::kAltDialog:
     case WindowType::kPlainDialog:
+    case WindowType::kDialog:
       return false;
     default:
-      NOTREACHED() << "Unsupported window variation: " << variation_type;
+      NOTREACHED() << "Unsupported window variation: " << (int)variation_type;
       return false;
   }
 }
+
+static WindowManager* s_instance;
 
 }  // namespace
 
 WindowManager::WindowManager(EventManager& event_manager,
                              BitmapImage& screen,
                              MemoryManager& memory)
-    : event_manager_(event_manager), screen_(screen), memory_(memory) {}
+    : event_manager_(event_manager), screen_(screen), memory_(memory) {
+  s_instance = this;
+}
 
-absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
-                                             const Rect& bounds_rect,
-                                             std::string title,
-                                             bool is_visible,
-                                             bool has_close,
-                                             int16_t window_definition_id,
-                                             Ptr behind_window,
-                                             uint32_t reference_constant) {
-  // If NULL is passed as |window_storage|, allocate space for the record.
-  if (window_storage == 0) {
-    window_storage = memory_.Allocate(WindowRecord::fixed_size);
-  }
+// static
+WindowManager& WindowManager::the() {
+  return *s_instance;
+}
 
+absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
+    const Rect& bounds_rect,
+    std::string title,
+    bool is_visible,
+    bool has_close,
+    int16_t window_definition_id,
+    Ptr behind_window,
+    uint32_t reference_constant) {
   auto port_frame = NormalizeRect(bounds_rect);
 
   // Returns a handle to a newly created Region defined by `rect`:
@@ -128,6 +133,8 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
 
   WindowRecord record;
   record.port = std::move(port);
+  // `userKind` constant from:
+  // https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-296.html#HEADING296-94
   record.window_kind = 8 /*userKind*/;
   record.is_visible = is_visible;
   record.has_close = has_close;
@@ -151,6 +158,21 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
   // This is obviously not a Handle and as such should only be accessed by us!
   record.window_definition_proc = window_definition_id & 0x000F;
   UpdateWindowRegions(record, memory_);
+  return record;
+}
+
+absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
+                                             const Rect& bounds_rect,
+                                             std::string title,
+                                             bool is_visible,
+                                             bool has_close,
+                                             int16_t window_definition_id,
+                                             Ptr behind_window,
+                                             uint32_t reference_constant) {
+  // If NULL is passed as |window_storage|, allocate space for the record.
+  if (window_storage == 0) {
+    window_storage = memory_.Allocate(WindowRecord::fixed_size);
+  }
 
   RESTRICT_FIELD_ACCESS(
       WindowRecord, window_storage,
@@ -158,10 +180,24 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
       WindowRecordFields::port + GrafPortFields::port_rect,
       WindowRecordFields::window_kind, WindowRecordFields::structure_region);
 
+  const WindowRecord record = TRY(
+      NewWindowRecord(bounds_rect, title, is_visible, has_close,
+                      window_definition_id, behind_window, reference_constant));
+
   RETURN_IF_ERROR(
       WriteType<WindowRecord>(record, memory::kSystemMemory, window_storage));
 
   window_list_.push_front(window_storage);
+
+  if (record.is_visible) {
+    RETURN_IF_ERROR(ShowWindow(window_storage));
+  }
+  // NewWindow calls OpenPort which "makes that graphics port the current port
+  // (by calling SetPort)" so we must do that here.
+  // Reference: https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-32.html
+  RETURN_IF_ERROR(
+      port::SetThePort(window_storage + WindowRecordFields::port.offset));
+  // Is every new window supposed to become active?
   SelectWindow(window_storage);
   return window_storage;
 }
@@ -349,6 +385,14 @@ Ptr WindowManager::GetFrontWindow() const {
     return 0;
 
   return window_list_.front();
+}
+
+absl::Status WindowManager::ShowWindow(WindowPtr the_window) {
+  return WithType<WindowRecord>(the_window, [&](WindowRecord& window) {
+    DrawWindowFrame(window, screen_);
+    event_manager_.QueueWindowUpdate(the_window);
+    return absl::OkStatus();
+  });
 }
 
 void WindowManager::InvalidateWindows() const {
