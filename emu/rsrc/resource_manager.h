@@ -20,6 +20,8 @@ class ResourceManager {
  public:
   ResourceManager(memory::MemoryManager&, rsrc::ResourceFile&);
 
+  static ResourceManager& the();
+
   const rsrc::Resource* GetSegmentZero() const;
 
   Handle GetResource(ResType, ResId);

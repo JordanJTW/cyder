@@ -16,11 +16,20 @@ std::string GetUniqueId(ResType theType, ResId theId) {
   return absl::StrCat("Resource[", OSTypeName(theType), ":", theId, "]");
 }
 
+static ResourceManager* s_instance;
+
 }  // namespace
 
 ResourceManager::ResourceManager(memory::MemoryManager& memory_manager,
                                  rsrc::ResourceFile& resource_file)
-    : memory_manager_(memory_manager), resource_file_(resource_file) {}
+    : memory_manager_(memory_manager), resource_file_(resource_file) {
+  s_instance = this;
+}
+
+// static
+ResourceManager& ResourceManager::the() {
+  return *s_instance;
+}
 
 const Resource* ResourceManager::GetSegmentZero() const {
   return resource_file_.FindByTypeAndId('CODE', 0);
