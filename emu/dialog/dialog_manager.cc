@@ -3,7 +3,9 @@
 #include "core/status_helpers.h"
 #include "emu/graphics/font/basic_font.h"
 #include "emu/graphics/grafport_types.tdef.h"
+#include "emu/graphics/pict_v1.h"
 #include "emu/graphics/quickdraw.h"
+#include "emu/memory/memory_helpers.h"
 #include "emu/memory/memory_manager.h"
 #include "emu/memory/memory_map.h"
 #include "emu/rsrc/resource_manager.h"
@@ -154,6 +156,31 @@ absl::Status DrawDialogWindow(WindowPtr window_ptr) {
             DrawString(graphics::Screen(), text, global_box.left,
                        global_box.top);
             break;
+          }
+          case ItemType::picItem: {
+            reader.SkipNext(1);
+            Integer resource_id = TRY(reader.Next<Integer>());
+            Handle handle =
+                ResourceManager::the().GetResource('PICT', resource_id);
+            auto pict_data = MemoryManager::the().GetRegionForHandle(handle);
+
+            auto pict_frame = TRY(graphics::GetPICTFrame(pict_data));
+
+            size_t picture_size =
+                PixelWidthToBytes(pict_frame.right) * pict_frame.bottom;
+            uint8_t picture[picture_size];
+            std::memset(picture, 0, picture_size);
+
+            RETURN_IF_ERROR(
+                graphics::ParsePICTv1(pict_data, /*output=*/picture));
+
+            RETURN_IF_ERROR(WithType<GrafPort>(
+                TRY(port::GetThePort()), [&](const GrafPort& port) {
+                  graphics::Screen().CopyBits(
+                      picture, pict_frame, pict_frame,
+                      port::LocalToGlobal(port, header.box));
+                  return absl::OkStatus();
+                }));
           }
           default:
             LOG(WARNING) << "Unsupported ItemType: "
