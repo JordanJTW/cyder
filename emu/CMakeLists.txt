@@ -4,6 +4,7 @@ include(../gen/typegen/typegen.cmake)
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 
+add_subdirectory(dialog)
 add_subdirectory(graphics)
 add_subdirectory(memory)
 add_subdirectory(rsrc)
@@ -30,6 +31,7 @@ target_link_libraries(
   MEMORY_LIB
   MUSASHI_LIB
   PICT_LIB
+  DIALOG_LIB
   RSRC_LIB
   RESOURCE_MANAGER
   SCREEN_LIB

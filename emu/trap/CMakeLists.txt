@@ -5,6 +5,7 @@ add_library(TRAP_LIB OBJECT trap_manager.cc)
 target_link_libraries(
   TRAP_LIB
   CORE_LIB
+  DIALOG_LIB
   GRAPHICS_LIB
   MEMORY_LIB
   MUSASHI_LIB

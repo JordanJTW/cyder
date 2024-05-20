@@ -70,6 +70,8 @@ class WindowManager {
 
   absl::Status ShowWindow(WindowPtr window);
 
+  void AddWindowToListAndActivate(WindowPtr window_storage);
+
  private:
   // Reorders the window linked list so that |window_pt| comes first
   void MoveToFront(Ptr window_ptr);

@@ -79,6 +79,9 @@ class MemoryReader final {
   // Return whether or not there is still memory to be read.
   bool HasNext() const;
 
+  // Returns the current `offset` being read from.
+  size_t offset() const { return offset_; }
+
  private:
   const MemoryRegion region_;
   size_t offset_;

@@ -14,6 +14,7 @@
 #include "absl/time/time.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
+#include "emu/dialog/dialog_manager.h"
 #include "emu/graphics/font/basic_font.h"
 #include "emu/graphics/grafport_types.tdef.h"
 #include "emu/graphics/graphics_helpers.h"
@@ -1798,8 +1799,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::IsDialogEvent: {
       auto the_event = TRY(PopRef<EventRecord>());
       LOG_TRAP() << "IsDialogEvent(theEvent: " << the_event << ")";
-      // FIXME: Return True if in a Dialog once they are implemented
-      return TrapReturn<bool>(false);
+      return TrapReturn<bool>(TRY(dialog::IsDialogEvent(std::move(the_event))));
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-417.html
     case Trap::ParamText: {
@@ -1814,40 +1814,79 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-402.html
     case Trap::GetNewDialog: {
-      auto behind_window = TRY(Pop<Ptr>());
-      auto dialog_storage = TRY(Pop<Ptr>());
-      auto dialog_id = TRY(Pop<Integer>());
+      WindowPtr behind = TRY(Pop<WindowPtr>());
+      Ptr d_storage = TRY(Pop<Ptr>());
+      Integer dialog_id = TRY(Pop<Integer>());
 
       LOG_TRAP() << "GetNewDialog(dialogId: " << dialog_id << ", dStorage: 0x"
-                 << std::hex << dialog_storage << ", behind: 0x"
-                 << behind_window << ")";
+                 << std::hex << d_storage << ", behind: 0x" << behind << ")";
 
-      auto dialog_handle = resource_manager_.GetResource('DLOG', dialog_id);
-      auto dialog_resource =
-          TRY(memory_manager_.ReadTypeFromHandle<DLOG>(dialog_handle));
-      LOG(INFO) << "DLOG: { " << dialog_resource << " }";
+      dialog::DialogPtr dialog_ptr =
+          TRY(dialog::GetNewDialog(dialog_id, d_storage, behind));
 
-      auto item_list_handle =
-          resource_manager_.GetResource('DITL', dialog_resource.item_list_id);
+      return TrapReturn<dialog::DialogPtr>(dialog_ptr);
+    }
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-408.html
+    case Trap::GetDialogItem: {
+      Var<Rect> box = TRY(PopVar<Rect>());
+      Var<Handle> item = TRY(PopVar<Handle>());
+      Var<Integer> item_type = TRY(PopVar<Integer>());
+      Integer item_no = TRY(Pop<Integer>());
+      dialog::DialogPtr the_dialog = TRY(Pop<dialog::DialogPtr>());
 
-      core::MemoryReader item_list(
-          memory_manager_.GetRegionForHandle(item_list_handle));
+      LOG_TRAP() << "GetDialogItem(theDialog: 0x" << std::hex << the_dialog
+                 << ", itemNo: " << std::dec << item_no
+                 << ", VAR itemType: " << item_type << ", VAR item: " << item
+                 << ", VAR box: " << box << ")";
 
-      // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-438.html
-      uint16_t item_count = TRY(item_list.Next<uint16_t>());
-      for (uint16_t i = 0; i <= item_count; ++i) {
-        item_list.SkipNext(4);  // reserved
-        LOG(INFO) << "Item #" << (i + 1);
-        LOG(INFO) << "Rect: { " << TRY(item_list.NextType<Rect>()) << " }";
-        LOG(INFO) << "Item Type: " << (int)TRY(item_list.Next<uint8_t>());
-        // Requires escaping due to carriage return ('\r') escape codes
-        LOG(INFO) << "Text: "
-                  << absl::CEscape(
-                         TRY(item_list.NextType<absl::string_view>()));
-        item_list.AlignTo(2);
-      }
+      return dialog::GetDialogItem(the_dialog, item_no, std::move(item_type),
+                                   std::move(item), std::move(box));
+    }
+      // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-409.html
+    case Trap::SetDialogItem: {
+      Rect box = TRY(PopRef<Rect>());
+      Handle item = TRY(Pop<Handle>());
+      Integer item_type = TRY(Pop<Integer>());
+      Integer item_no = TRY(Pop<Integer>());
+      dialog::DialogPtr the_dialog = TRY(Pop<dialog::DialogPtr>());
 
-      return absl::UnimplementedError("WIP: partial implementation");
+      LOG_TRAP() << "SetDialogItem(theDialog: 0x" << std::hex << the_dialog
+                 << ", itemNo: " << std::dec << item_no
+                 << ", itemType: " << item_type << ", item: 0x" << std::hex
+                 << item << ", box: " << box << ")";
+
+      return dialog::SetDialogItem(the_dialog, item_no, item_type, item,
+                                   std::move(box));
+    }
+    // Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-426.html
+    case Trap::ModalDialog: {
+      Var<Integer> item_hit = TRY(PopVar<Integer>());
+      Ptr filter_proc = TRY(Pop<Ptr>());
+
+      LOG_TRAP() << "ModalDialog(filterProc: 0x" << std::hex << filter_proc
+                 << ", VAR itemHit: " << item_hit << ")";
+
+      return dialog::ModalDialog(filter_proc, std::move(item_hit));
+    }
+    // Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-428.html
+    case Trap::DialogSelect: {
+      Ptr var_item_hit = TRY(Pop<Ptr>());
+      Ptr var_the_dialog = TRY(Pop<Ptr>());
+      EventRecord event_record = TRY(PopRef<EventRecord>());
+
+      LOG_TRAP() << "DialogSelect(eventRecord: " << event_record
+                 << ", VAR theDialog: 0x" << std::hex << var_the_dialog
+                 << ", VAR itemHit: 0x" << var_item_hit << ")";
+
+      return TrapReturn<bool>(false);
+    }
+    // Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-406.html
+    case Trap::DisposeDialog: {
+      auto the_dialog = TRY(Pop<dialog::DialogPtr>());
+      LOG_TRAP() << "DisposeDialog(theDialog: 0x" << std::hex << the_dialog
+                 << ")";
+      window_manager_.DisposeWindow(the_dialog);
+      return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-396.html
     case Trap::StopAlert: {

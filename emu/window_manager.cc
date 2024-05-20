@@ -202,12 +202,19 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
   return window_storage;
 }
 
+void WindowManager::AddWindowToListAndActivate(WindowPtr window_storage) {
+  window_list_.push_front(window_storage);
+  // Is every new window supposed to become active?
+  MoveToFront(window_storage);
+}
+
 void WindowManager::DisposeWindow(Ptr window_ptr) {
   auto window_record =
       MUST(ReadType<WindowRecord>(memory::kSystemMemory, window_ptr));
 
   RepaintDesktopOverWindow(window_record);
   window_list_.remove(window_ptr);
+  event_manager_.QueueWindowActivate(window_list_.front());
   InvalidateWindows();
 }
 

@@ -154,3 +154,19 @@ struct FontInfo {
   widMax:  Integer;
   leading: Integer;
 }
+
+// Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-388.html#HEADING388-0
+struct DialogRecord {
+  window_record: WindowRecord;
+  items: Handle;
+  text_handle: Handle;    // Current editable text item number
+  edit_field: Integer;    // Editable text item number (minus 1)
+  edit_open: Integer;     // Reserved. Used internally.
+  default_item: Integer;  // Default button item number
+}
+
+struct ItemHeader {
+  item: Handle;
+  box: Rect;
+  type_and_disabled: u8;
+}
