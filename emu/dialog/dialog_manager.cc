@@ -181,6 +181,7 @@ absl::Status DrawDialogWindow(WindowPtr window_ptr) {
                       port::LocalToGlobal(port, header.box));
                   return absl::OkStatus();
                 }));
+            break;
           }
           default:
             LOG(WARNING) << "Unsupported ItemType: "
