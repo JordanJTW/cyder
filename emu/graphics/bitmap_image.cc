@@ -20,7 +20,11 @@ inline uint8_t RotateByteRight(uint8_t byte, uint16_t shift) {
   return (byte >> shift) | (byte << (CHAR_BIT - shift));
 }
 
+BitmapImage* s_instance;
+
 }  // namespace
+
+uint8_t kBlackPattern[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 BitmapImage::BitmapImage(int width, int height)
     : width_(width),
@@ -29,6 +33,10 @@ BitmapImage::BitmapImage(int width, int height)
       bitmap_(absl::make_unique<uint8_t[]>(bitmap_size_)) {
   std::memset(bitmap_.get(), 0, bitmap_size_);
   clip_rect_ = NewRect(0, 0, width, height);
+
+  if (s_instance == nullptr) {
+    s_instance = this;
+  }
 }
 
 BitmapImage::~BitmapImage() = default;
@@ -317,6 +325,10 @@ void BitmapImage::SaveBitmap(const std::string& path) const {
     }
     icon << "\n";
   }
+}
+
+BitmapImage& Screen() {
+  return *s_instance;
 }
 
 }  // namespace graphics

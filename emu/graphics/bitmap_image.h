@@ -12,6 +12,8 @@
 namespace cyder {
 namespace graphics {
 
+extern uint8_t kBlackPattern[8];
+
 // Represents a bitmap (1 bit-per-pixel) image.
 // All coordinates are mapped from the upper-left hand corner at (0, 0).
 class BitmapImage {
@@ -73,6 +75,8 @@ class BitmapImage {
 
   Rect clip_rect_;
 };
+
+BitmapImage& Screen();
 
 // RAII class to temporarily override the clip rect then restore it
 class TempClipRect final {
