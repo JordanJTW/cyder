@@ -183,6 +183,22 @@ absl::Status DrawDialogWindow(WindowPtr window_ptr) {
                 }));
             break;
           }
+          case iconItem: {
+            reader.SkipNext(1);
+            Integer resource_id = TRY(reader.Next<Integer>());
+            Handle handle =
+                ResourceManager::the().GetResource('ICON', resource_id);
+            Ptr icon = TRY(memory::kSystemMemory.Read<Handle>(handle));
+            RETURN_IF_ERROR(WithType<GrafPort>(
+                TRY(port::GetThePort()), [&](const GrafPort& port) {
+                  graphics::Screen().CopyBits(
+                      memory::kSystemMemory.raw_ptr() + icon,
+                      NewRect(0, 0, 32, 32), NewRect(0, 0, 32, 32),
+                      port::LocalToGlobal(port, header.box));
+                  return absl::OkStatus();
+                }));
+            break;
+          }
           default:
             LOG(WARNING) << "Unsupported ItemType: "
                          << ItemType_Name(item_type);
