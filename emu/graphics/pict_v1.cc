@@ -40,7 +40,7 @@ absl::Status UnpackBits(core::MemoryReader& src,
   while (unpacked_index < dst_size) {
     auto flag = TRY(src.Next<int8_t>());
     packed_index++;
-    if (flag == 0x80) {
+    if (static_cast<uint8_t>(flag) == 0x80) {
       dest[unpacked_index++] = flag;
     } else if (flag < 0) {
       auto repeat = TRY(src.Next<uint8_t>());
