@@ -18,6 +18,10 @@ class MemoryManager {
  public:
   static constexpr size_t kHeapHandleOffset{4096};
 
+  MemoryManager();
+
+  static MemoryManager& the();
+
   Ptr Allocate(uint32_t size);
   Handle AllocateHandle(uint32_t size, std::string tag);
   Handle AllocateHandleForRegion(const core::MemoryRegion& region,

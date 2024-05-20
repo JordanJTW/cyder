@@ -13,7 +13,22 @@
 namespace cyder {
 namespace memory {
 
+namespace {
+
+MemoryManager* s_instance;
+
+}  // namespace
+
 extern core::MemoryRegion kSystemMemory;
+
+MemoryManager::MemoryManager() {
+  s_instance = this;
+}
+
+// static
+MemoryManager& MemoryManager::the() {
+  return *s_instance;
+}
 
 Ptr MemoryManager::Allocate(uint32_t size) {
   size_t ptr = kHeapStart + heap_offset_;
