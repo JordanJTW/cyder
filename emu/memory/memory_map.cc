@@ -39,7 +39,7 @@ constexpr GlobalVars kWhitelistReadGlobalVars[] = {
     GlobalVars::AppParmHandle, GlobalVars::WMgrPort, GlobalVars::Time,
     // Low-memory global constants (read-only)
     GlobalVars::MinusOne, GlobalVars::OneOne, GlobalVars::Lo3Bytes,
-    // Low-memory communal scratch space (read/write) 
+    // Low-memory communal scratch space (read/write)
     GlobalVars::FPState, GlobalVars::TempRect, GlobalVars::IconBitmap,
     // `TST.W HpChk` appears in a few programs and may be related to
     // MPW which reuses this location for its own purposes?
@@ -48,6 +48,8 @@ constexpr GlobalVars kWhitelistReadGlobalVars[] = {
     // fairly consistently read while reading `CurApName`... it seems like
     // `CurApName` may actually extend to 34 bytes and not 32?
     GlobalVars::SaveSegHandle,
+    // Gets the current volume level (always 0)
+    GlobalVars::SdVolume,
     // Used to check if an old 64k ROM (-1) or newer ROM (positive value)
     GlobalVars::ROM85};
 
@@ -302,10 +304,9 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
 std::string MemoryMapToStr() {
   std::stringstream ss;
   ss << std::hex;
-  ss << "Heap: [0x" << kHeapStart << ", 0x" << kHeapEnd << "] "
-     << "Stack: [0x" << kStackEnd << ", 0x" << kStackStart << "] "
-     << "A5 World: 0x" << a5_world << " (+" << above_a5_size << ", -"
-     << below_a5_size << ")";
+  ss << "Heap: [0x" << kHeapStart << ", 0x" << kHeapEnd << "] " << "Stack: [0x"
+     << kStackEnd << ", 0x" << kStackStart << "] " << "A5 World: 0x" << a5_world
+     << " (+" << above_a5_size << ", -" << below_a5_size << ")";
   return ss.str();
 }
 

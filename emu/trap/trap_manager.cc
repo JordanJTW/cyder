@@ -544,6 +544,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       return TrapReturn<bool>(event.what != 0);
     }
+    // Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-77.html
+    case Trap::GetKeys: {
+      Ptr var_the_keys = TRY(Pop<Ptr>());
+      LOG(WARNING) << "Unimplemented GetKeys(VAR theKeys: 0x" << std::hex
+                   << var_the_keys << ")";
+      return absl::OkStatus();
+    }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-80.html
     case Trap::TickCount: {
       return TrapReturn<uint32_t>(event_manager_.NowTicks());
@@ -787,6 +794,34 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       return WithPort([&](const GrafPort& port) {
         screen_.FillRect(port::LocalToGlobal(port, rect), pattern.bytes);
+        return absl::OkStatus();
+      });
+    }
+    // Link:https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-111.html
+    case Trap::FillOval: {
+      auto pattern = TRY(PopRef<Pattern>());
+      auto rect = TRY(PopRef<Rect>());
+      LOG_TRAP() << "FillOval(rect: " << rect << ", pat: " << pattern << ")";
+
+      return WithPort([&](const GrafPort& port) {
+        screen_.FillEllipse(port::LocalToGlobal(port, rect), pattern.bytes);
+        return absl::OkStatus();
+      });
+    }
+    // Link: https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-107.html
+    case Trap::InverRoundRect: {
+      auto oval_height = TRY(Pop<Integer>());
+      auto oval_width = TRY(Pop<Integer>());
+      auto rect = TRY(PopRef<Rect>());
+      LOG_TRAP() << "InverRoundRect(rect: " << rect
+                 << ", ovalWidth: " << oval_width
+                 << ", ovalHeight: " << oval_height << ")";
+
+      return WithPort([&](const GrafPort& port) {
+        // FIXME: Use a proper rounded rectangle here.
+        screen_.FillRect(port::LocalToGlobal(port, rect),
+                         graphics::kBlackPattern,
+                         graphics::BitmapImage::FillMode::NotXOr);
         return absl::OkStatus();
       });
     }
