@@ -287,7 +287,8 @@ absl::Status InitTrapManager(MemoryManager& memory_manager,
 
   if (system_file != nullptr) {
     if (auto* version = system_file->FindByTypeAndId('STR ', 0)) {
-      LOG(INFO) << TRY(ReadType<absl::string_view>(version->GetData(), 0));
+      LOG(INFO) << "System: "
+                << TRY(ReadType<absl::string_view>(version->GetData(), 0));
     }
 
     if (auto* pack4 = system_file->FindByTypeAndId('PACK', 4)) {

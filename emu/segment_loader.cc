@@ -16,6 +16,10 @@ extern core::MemoryRegion kSystemMemory;
 
 namespace {
 
+constexpr bool kEnableLogging = false;
+
+#define LOG_SEG(level) LOG_IF(level, kEnableLogging)
+
 // Link: https://macgui.com/news/article.php?t=523
 absl::Status WriteAppParams(memory::MemoryManager& memory_manager,
                             size_t a5_world_offset) {
@@ -93,7 +97,8 @@ absl::StatusOr<Ptr> SegmentLoader::Load(uint16_t segment_id) {
   uint16_t offset_in_table = TRY(resource_data.Read<uint16_t>(0));
   uint16_t table_entry_count = TRY(resource_data.Read<uint16_t>(2));
 
-  LOG(INFO) << "Load Segment " << segment_id << " count: " << table_entry_count;
+  LOG_SEG(INFO) << "Load Segment " << segment_id
+                << " count: " << table_entry_count;
 
   uint32_t segment_table_offset = memory::GetA5WorldPosition() +
                                   table_header_.table_offset + offset_in_table;
@@ -106,9 +111,9 @@ absl::StatusOr<Ptr> SegmentLoader::Load(uint16_t segment_id) {
     absolute_address =
         resource_data.base_offset() + segment_header_size + routine_offset;
 
-    LOG(INFO) << "Update entry #" << i << " for Segment " << segment_id
-              << " relative offset: " << std::hex << routine_offset
-              << " to absolute: " << absolute_address;
+    LOG_SEG(INFO) << "Update entry #" << i << " for Segment " << segment_id
+                  << " relative offset: " << std::hex << routine_offset
+                  << " to absolute: " << absolute_address;
 
     SegmentTableEntry entry;
     entry.segment_id = segment_id;

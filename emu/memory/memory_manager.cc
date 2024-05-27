@@ -17,6 +17,10 @@ namespace {
 
 MemoryManager* s_instance;
 
+constexpr bool kEnableLogging = false;
+
+#define LOG_MEM(level) LOG_IF(level, kEnableLogging)
+
 }  // namespace
 
 extern core::MemoryRegion kSystemMemory;
@@ -32,10 +36,10 @@ MemoryManager& MemoryManager::the() {
 
 Ptr MemoryManager::Allocate(uint32_t size) {
   size_t ptr = kHeapStart + heap_offset_;
-  LOG(INFO) << "Allocate " << size << " bytes at 0x" << std::hex << ptr;
   heap_offset_ += size;
-  LOG(INFO) << "Memory used: " << heap_offset_ << " / "
-            << (kHeapEnd - kHeapStart);
+  LOG_MEM(INFO) << "Allocate " << size << "b at 0x" << std::hex << ptr
+                << "(" << std::dec << heap_offset_ << " / "
+                << (kHeapEnd - kHeapStart);
   CHECK_LT(heap_offset_, kHeapEnd);
   return ptr;
 }
@@ -44,13 +48,13 @@ Handle MemoryManager::AllocateHandle(uint32_t size, std::string tag) {
   Ptr block = Allocate(size);
   Handle handle = kHeapStart + handle_offset_;
 
-  LOG(INFO) << "Handle " << (handle_offset_ / sizeof(Handle)) << " ["
+  LOG_MEM(INFO) << "Handle " << (handle_offset_ / sizeof(Handle)) << " ["
             << std::hex << handle << "] for '" << tag << "'";
 
   CHECK_LT(handle_offset_, kHeapHandleOffset);
 
   handle_offset_ += sizeof(Handle);
-  LOG(INFO) << "Handles used: " << handle_offset_ / sizeof(Handle);
+  LOG_MEM(INFO) << "Handles used: " << handle_offset_ / sizeof(Handle);
 
   CHECK(kSystemMemory.Write<uint32_t>(handle, block).ok());
 

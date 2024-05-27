@@ -252,8 +252,6 @@ void CheckWriteAccess(uint32_t address, uint32_t value) {
 
   // Application Heap
   if (within_region(kHeapStart, kHeapEnd)) {
-    LOG(WARNING) << "Write to application heap: 0x" << std::hex << address
-                 << " = 0x" << value;
     return;
   }
 

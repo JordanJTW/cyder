@@ -591,8 +591,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::InsertMenu: {
       auto before_id = TRY(Pop<uint16_t>());
       auto the_menu = TRY(Pop<Handle>());
-      LOG(INFO) << "InsertMenu(beforeId: " << before_id << ", theMenu: 0x"
-                << std::hex << the_menu << ")";
+      LOG_TRAP() << "InsertMenu(beforeId: " << before_id << ", theMenu: 0x"
+                 << std::hex << the_menu << ")";
 
       core::MemoryReader reader(memory_manager_.GetRegionForHandle(the_menu));
 
@@ -610,7 +610,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-127.html
     case Trap::SetMenuBar: {
       auto menu_list_handle = TRY(Pop<Handle>());
-      LOG(INFO) << "SetMenuBar(menuList: 0x" << menu_list_handle << ")";
+      LOG_TRAP() << "SetMenuBar(menuList: 0x" << menu_list_handle << ")";
 
       core::MemoryReader menu_bar_reader(
           memory_manager_.GetRegionForHandle(menu_list_handle));
@@ -620,8 +620,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       // FIXME: The MENUs should not need to be loaded _again_ (see GetNewMBar)
       for (int i = 0; i < menu_count; ++i) {
         auto id = TRY(menu_bar_reader.Next<uint16_t>());
-        LOG(INFO) << "Menu Resource ID: " << id;
-
         Handle menu_handle = resource_manager_.GetResource('MENU', id);
 
         core::MemoryReader reader(
@@ -861,9 +859,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto oval_height = TRY(Pop<uint16_t>());
       auto oval_width = TRY(Pop<uint16_t>());
       auto rect = TRY(PopRef<Rect>());
-      LOG(INFO) << "FrameRoundRect(rect: " << rect
-                << ", ovalWidth: " << oval_width
-                << ", ovalHeight: " << oval_height << ")";
+      LOG_TRAP() << "FrameRoundRect(rect: " << rect
+                 << ", ovalWidth: " << oval_width
+                 << ", ovalHeight: " << oval_height << ")";
 
       return WithPort([&](const GrafPort& port) {
         if (port.region_save) {
@@ -1494,7 +1492,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto resource_region =
           memory_manager_.GetRegionForHandle(resource_handle);
       auto resource = TRY(ReadType<WIND>(resource_region, /*offset=*/0));
-      LOG(INFO) << "WIND: " << resource;
 
       window_storage = TRY(window_manager_.NewWindow(
           window_storage, resource.initial_rect, resource.title,
@@ -2066,9 +2063,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto init = TRY(Pop<uint32_t>());
       auto synth = TRY(Pop<uint16_t>());
       auto chan_var = TRY(Pop<Ptr>());
-      LOG(INFO) << "SndNewChannel(VAR chan: 0x" << std::hex << chan_var
-                << ", synth: " << std::dec << synth << ", init: " << init
-                << ", userRoutine: 0x" << std::hex << user_routine << ")";
+      LOG_TRAP() << "SndNewChannel(VAR chan: 0x" << std::hex << chan_var
+                 << ", synth: " << std::dec << synth << ", init: " << init
+                 << ", userRoutine: 0x" << std::hex << user_routine << ")";
       return TrapReturn<uint16_t>(-204 /*resProblem*/);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Sound/Sound-35.html
@@ -2076,16 +2073,16 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto async = TRY(Pop<uint16_t>());
       auto snd_hdl = TRY(Pop<Handle>());
       auto chan = TRY(Pop<Ptr>());
-      LOG(INFO) << "SndPlay(chan: 0x" << std::hex << chan << ", sndHdl: 0x"
-                << snd_hdl << ", async: " << (async ? "True" : "False") << ")";
+      LOG_TRAP() << "SndPlay(chan: 0x" << std::hex << chan << ", sndHdl: 0x"
+                 << snd_hdl << ", async: " << (async ? "True" : "False") << ")";
       return TrapReturn<uint16_t>(-201 /*notEnoughHardwareErr*/);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Sound/Sound-98.html
     case Trap::SndDisposeChannel: {
       auto quiet_now = TRY(Pop<uint16_t>());
       auto chan = TRY(Pop<Ptr>());
-      LOG(INFO) << "SndDisposeChannel(chan: 0x" << std::hex << chan
-                << ", quietNow: " << (quiet_now ? "True" : "False") << ")";
+      LOG_TRAP() << "SndDisposeChannel(chan: 0x" << std::hex << chan
+                 << ", quietNow: " << (quiet_now ? "True" : "False") << ")";
       return TrapReturn<uint16_t>(0 /*noErr*/);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Sound/Sound-90.html
@@ -2112,13 +2109,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
           auto orig_name = TRY(PopRef<absl::string_view>());
           auto prompt = TRY(PopRef<absl::string_view>());
           auto where = TRY(PopType<Point>());
-          LOG(INFO) << "_Pack3 SFPutFile(where: " << where << ", prompt: '"
-                    << prompt << "', origName: '" << orig_name
-                    << "', dlgHook: 0x" << std::hex << dlg_hook
-                    << ", VAR reply: 0x" << reply << ")";
+          LOG_TRAP() << "_Pack3 SFPutFile(where: " << where << ", prompt: '"
+                     << prompt << "', origName: '" << orig_name
+                     << "', dlgHook: 0x" << std::hex << dlg_hook
+                     << ", VAR reply: 0x" << reply << ")";
 
           SFReply reply_value;
-          reply_value.good = false;
+          reply_value.good = true;
           return WriteType<SFReply>(std::move(reply_value),
                                     memory::kSystemMemory, reply.ptr);
         }
@@ -2152,12 +2149,12 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
             }
           }
 
-          LOG(INFO) << "_Pack3 SFGetFile(where: " << where << ", prompt: '"
-                    << prompt << "', file_filter_proc: 0x" << std::hex
-                    << file_filter_proc << ", numTypes: " << std::dec
-                    << num_types << ", typeList: [" << type_list_str.str()
-                    << "]" << ", dlgHook: 0x" << std::hex << dlg_hook
-                    << ", VAR reply: 0x" << reply << ")";
+          LOG_TRAP() << "_Pack3 SFGetFile(where: " << where << ", prompt: '"
+                     << prompt << "', file_filter_proc: 0x" << std::hex
+                     << file_filter_proc << ", numTypes: " << std::dec
+                     << num_types << ", typeList: [" << type_list_str.str()
+                     << "]" << ", dlgHook: 0x" << std::hex << dlg_hook
+                     << ", VAR reply: 0x" << reply << ")";
           SFReply reply_value;
           reply_value.good = false;
           return WriteType<SFReply>(std::move(reply_value),

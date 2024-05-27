@@ -15,6 +15,10 @@ namespace cyder {
 namespace graphics {
 namespace {
 
+constexpr bool kEnableLogging = false;
+
+#define LOG_PICT(level) LOG_IF(level, kEnableLogging)
+
 Rect RelativeTo(Rect container, Rect target) {
   uint16_t offset_x = container.left;
   uint16_t offset_y = container.top;
@@ -66,7 +70,7 @@ absl::StatusOr<Rect> GetPICTFrame(const core::MemoryRegion& region) {
 
   /*pict_size=*/TRY(reader.Next<uint16_t>());
   auto frame = TRY(reader.NextType<Rect>());
-  LOG(INFO) << "PICT Frame: { " << frame << " }";
+  LOG_PICT(INFO) << "PICT Frame: { " << frame << " }";
 
   return NormalizeRect(frame);
 }
@@ -87,21 +91,21 @@ absl::Status ParsePICTv1(const core::MemoryRegion& region, uint8_t* output) {
       // clipRgn
       case 0x01: {
         auto region = TRY(reader.NextType<Region>());
-        LOG(INFO) << "ClipRegion(region: { " << region << "})";
+        LOG_PICT(INFO) << "ClipRegion(region: { " << region << "})";
         break;
       }
 
       // picVersion
       case 0x11: {
         auto version = TRY(reader.Next<uint8_t>());
-        LOG(INFO) << "PICT version: " << (int)version;
+        LOG_PICT(INFO) << "PICT version: " << (int)version;
         break;
       }
 
       // shortComment
       case 0xa0: {
         auto kind = TRY(reader.Next<uint16_t>());
-        LOG(INFO) << "shortComment kind: " << kind;
+        LOG_PICT(INFO) << "shortComment kind: " << kind;
         break;
       }
 
@@ -116,9 +120,9 @@ absl::Status ParsePICTv1(const core::MemoryRegion& region, uint8_t* output) {
         dstRect = RelativeTo(pict_rect, dstRect);
         bounds = NormalizeRect(bounds);
 
-        LOG(INFO) << "BitsRect(rowBytes: " << row_bytes << ", bounds: { "
-                  << bounds << "}, srcRect: {" << srcRect << "}, dstRect: { "
-                  << dstRect << " }, mode: " << mode << ")";
+        LOG_PICT(INFO) << "BitsRect(rowBytes: " << row_bytes
+                       << ", bounds: " << bounds << ", srcRect: " << srcRect
+                       << ", dstRect: " << dstRect << ", mode: " << mode << ")";
 
         size_t height = bounds.bottom - bounds.top;
 
@@ -143,9 +147,9 @@ absl::Status ParsePICTv1(const core::MemoryRegion& region, uint8_t* output) {
         dstRect = RelativeTo(pict_rect, dstRect);
         bounds = NormalizeRect(bounds);
 
-        LOG(INFO) << "PackedBitsRect(rowBytes: " << row_bytes << ", bounds: { "
-                  << bounds << "}, srcRect: {" << srcRect << "}, dstRect: { "
-                  << dstRect << " }, mode: " << mode << ")";
+        LOG_PICT(INFO) << "PackedBitsRect(rowBytes: " << row_bytes
+                       << ", bounds: " << bounds << ", srcRect: " << srcRect
+                       << ", dstRect: " << dstRect << ", mode: " << mode << ")";
 
         uint8_t unpacked_bytes[row_bytes];
         size_t height = bounds.bottom - bounds.top;
@@ -160,7 +164,7 @@ absl::Status ParsePICTv1(const core::MemoryRegion& region, uint8_t* output) {
       }
 
       case 0xFF: {
-        LOG(INFO) << "EndOfPicture";
+        LOG_PICT(INFO) << "EndOfPicture";
         return absl::OkStatus();
       }
 

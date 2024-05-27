@@ -43,7 +43,6 @@ Handle ResourceManager::GetResource(ResType theType, ResId theId) {
 
   const auto& cached_handle_pair = resource_to_handle_.find(unique_id);
   if (cached_handle_pair != resource_to_handle_.cend()) {
-    LOG(INFO) << "Returning cached handle for " << unique_id;
     return cached_handle_pair->second;
   }
 
