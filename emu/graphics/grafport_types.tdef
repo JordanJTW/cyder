@@ -170,3 +170,11 @@ struct ItemHeader {
   box: Rect;
   type_and_disabled: u8;
 }
+struct SFReply {
+  good: Boolean;      // FALSE if ignore command
+  copy: Boolean;      // not used
+  f_type: OSType;     // file type or not used
+  v_ref_num: Integer; // volume reference number
+  version: Integer;   // file's version number
+  file_name: str;     // STRING[63]
+}

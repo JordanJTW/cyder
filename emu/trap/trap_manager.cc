@@ -2095,6 +2095,82 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       return absl::OkStatus();
     }
 
+    // ===========================  _Pack#  =============================
+
+    // Link:
+    // http://www.bitsavers.org/pdf/apple/mac/Inside_Macintosh_Vol_2_1984.pdf
+    case Trap::Pack3: {
+      // IMV2(25): The macros for calling the Standard File Package routines
+      // push one of the following routine selectors onto the stack and then
+      // invoke Pack3:
+      auto selector = TRY(Pop<Integer>());
+      switch (selector) {
+        case 1:  // IMV2(26): SFPutFile
+        {
+          Ptr var_reply = TRY(Pop<Ptr>());
+          Ptr dlg_hook = TRY(Pop<Ptr>());
+          auto orig_name = TRY(PopRef<absl::string_view>());
+          auto prompt = TRY(PopRef<absl::string_view>());
+          auto where = TRY(PopType<Point>());
+          LOG(INFO) << "_Pack3 SFPutFile(where: " << where << ", prompt: '"
+                    << prompt << "', origName: '" << orig_name
+                    << "', dlgHook: 0x" << std::hex << dlg_hook
+                    << ", VAR reply: 0x" << var_reply << ")";
+
+          SFReply reply;
+          reply.good = false;
+          return WriteType<SFReply>(std::move(reply), memory::kSystemMemory,
+                                    var_reply);
+        }
+        case 2:  // IMV2(30): SFGetFile
+        {
+          Ptr var_reply = TRY(Pop<Ptr>());
+          Ptr dlg_hook = TRY(Pop<Ptr>());
+          Ptr type_list_ptr = TRY(Pop<Ptr>());
+          int16_t num_types = TRY(Pop<int16_t>());
+          Ptr file_filter_proc = TRY(Pop<Ptr>());
+          auto prompt = TRY(PopRef<absl::string_view>());
+          auto where = TRY(PopType<Point>());
+
+          using OSType = uint32_t;
+          OSType type_list[4];  // IMV2(31): This array is declared for a
+                                // reasonable maximum number of types (four).
+                                // If you need to specify more than four
+                                // types, declare your own array type with the
+                                // desired number of entries (and use the @
+                                // operator to pass a pointer to it).
+          std::stringstream type_list_str;
+
+          // IMV2(31): Pass -1 for numTypes to display all types of files;
+          // otherwise, pass the number of file types you want to display.
+          if (num_types != -1) {
+            for (int i = 0; i < num_types; ++i) {
+              type_list[i] =
+                  TRY(memory::kSystemMemory.Read<uint32_t>(type_list_ptr));
+              type_list_str << OSTypeName(type_list[i]) << ", ";
+              type_list_ptr += sizeof(uint32_t);
+            }
+          }
+
+          LOG(INFO) << "_Pack3 SFGetFile(where: " << where << ", prompt: '"
+                    << prompt << "', file_filter_proc: 0x" << std::hex
+                    << file_filter_proc << ", numTypes: " << std::dec
+                    << num_types << ", typeList: [" << type_list_str.str()
+                    << "]" << ", dlgHook: 0x" << std::hex << dlg_hook
+                    << ", VAR reply: 0x" << var_reply << ")";
+          SFReply reply;
+          reply.good = false;
+          return WriteType<SFReply>(std::move(reply), memory::kSystemMemory,
+                                    var_reply);
+        }
+        case 3:  // IMV2(30): SFPPutFile
+          return absl::UnimplementedError("_Pack3 SFPPutFile is unimplemented");
+        case 4:  // SFPGetFile
+          return absl::UnimplementedError("_Pack3 SFPGetFile is unimplemented");
+      }
+      LOG(FATAL) << "Unknown _Pack3 routine selector: " << selector;
+    }
+
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unimplemented Toolbox trap: '", GetTrapName(trap), "'"));
