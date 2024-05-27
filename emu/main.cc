@@ -280,19 +280,17 @@ absl::Status InitializeVM(size_t pc) {
 }
 
 absl::Status InitTrapManager(MemoryManager& memory_manager,
-                             TrapManager& trap_manager) {
+                             TrapManager& trap_manager,
+                             cyder::rsrc::ResourceFile* system_file) {
   on_emulated_subroutine = std::bind(&TrapManager::DispatchEmulatedSubroutine,
                                      &trap_manager, std::placeholders::_1);
 
-  auto system_path = absl::GetFlag(FLAGS_system_file);
-  if (!system_path.empty()) {
-    auto system = TRY(ResourceFile::Load(system_path));
-    if (auto* version = system->FindByTypeAndId('STR ', 0)) {
-      LOG(INFO) << "Using System: " << system_path;
+  if (system_file != nullptr) {
+    if (auto* version = system_file->FindByTypeAndId('STR ', 0)) {
       LOG(INFO) << TRY(ReadType<absl::string_view>(version->GetData(), 0));
     }
 
-    if (auto* pack4 = system->FindByTypeAndId('PACK', 4)) {
+    if (auto* pack4 = system_file->FindByTypeAndId('PACK', 4)) {
       LOG(INFO) << "Loading PACK4 into memory";
       Handle handle =
           memory_manager.AllocateHandleForRegion(pack4->GetData(), "PACK4");
@@ -300,7 +298,7 @@ absl::Status InitTrapManager(MemoryManager& memory_manager,
       trap_manager.SetTrapAddress(Trap::Pack4, address);
     }
 
-    if (auto* pack7 = system->FindByTypeAndId('PACK', 7)) {
+    if (auto* pack7 = system_file->FindByTypeAndId('PACK', 7)) {
       LOG(INFO) << "Loading PACK7 into memory";
       Handle handle =
           memory_manager.AllocateHandleForRegion(pack7->GetData(), "PACK7");
@@ -324,10 +322,16 @@ class EmulatorControlImpl : public cyder::EmulatorControl {
 absl::Status Main(const core::Args& args) {
   auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
 
+  auto system_path = absl::GetFlag(FLAGS_system_file);
+  std::unique_ptr<cyder::rsrc::ResourceFile> system_file;
+  if (!system_path.empty()) {
+    system_file = TRY(ResourceFile::Load(system_path));
+  }
+
   MemoryManager memory_manager;
   logger.SetMemoryManager(&memory_manager);
 
-  ResourceManager resource_manager(memory_manager, *file);
+  ResourceManager resource_manager(memory_manager, *file, system_file.get());
 
   auto segment_loader =
       TRY(SegmentLoader::Create(memory_manager, resource_manager));
@@ -372,7 +376,8 @@ absl::Status Main(const core::Args& args) {
   TrapManager trap_manager(memory_manager, resource_manager, segment_loader,
                            event_manager, menu_manager, window_manager, screen);
 
-  RETURN_IF_ERROR(InitTrapManager(memory_manager, trap_manager));
+  RETURN_IF_ERROR(
+      InitTrapManager(memory_manager, trap_manager, system_file.get()));
 
   SDL_Event event;
   bool should_exit = false;

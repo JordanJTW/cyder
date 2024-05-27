@@ -21,8 +21,11 @@ static ResourceManager* s_instance;
 }  // namespace
 
 ResourceManager::ResourceManager(memory::MemoryManager& memory_manager,
-                                 rsrc::ResourceFile& resource_file)
-    : memory_manager_(memory_manager), resource_file_(resource_file) {
+                                 rsrc::ResourceFile& resource_file,
+                                 rsrc::ResourceFile* system_file)
+    : memory_manager_(memory_manager),
+      resource_file_(resource_file),
+      system_file_(system_file) {
   s_instance = this;
 }
 
@@ -44,11 +47,15 @@ Handle ResourceManager::GetResource(ResType theType, ResId theId) {
     return cached_handle_pair->second;
   }
 
-  const Resource* const resource =
-      resource_file_.FindByTypeAndId(theType, theId);
+  const Resource* resource = resource_file_.FindByTypeAndId(theType, theId);
+
+  if (resource == nullptr && system_file_) {
+    resource = system_file_->FindByTypeAndId(theType, theId);
+  }
+
   // FIXME: Set ResError in D0 and call ResErrorProc
   // http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-35.html#MARKER-9-220
-  CHECK(resource) << "Resource not found";
+  CHECK(resource) << "Resource not found: " << unique_id;
 
   Handle handle =
       memory_manager_.AllocateHandleForRegion(resource->GetData(), unique_id);

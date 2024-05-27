@@ -18,7 +18,9 @@ namespace cyder {
 
 class ResourceManager {
  public:
-  ResourceManager(memory::MemoryManager&, rsrc::ResourceFile&);
+  ResourceManager(memory::MemoryManager&,
+                  rsrc::ResourceFile&,
+                  rsrc::ResourceFile*);
 
   static ResourceManager& the();
 
@@ -30,6 +32,7 @@ class ResourceManager {
  private:
   memory::MemoryManager& memory_manager_;
   rsrc::ResourceFile& resource_file_;
+  rsrc::ResourceFile* system_file_;
 
   std::map<std::string, uint32_t> resource_to_handle_;
 };
