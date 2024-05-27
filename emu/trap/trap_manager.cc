@@ -2107,7 +2107,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       switch (selector) {
         case 1:  // IMV2(26): SFPutFile
         {
-          Ptr var_reply = TRY(Pop<Ptr>());
+          Var<SFReply> reply = TRY(PopVar<SFReply>());
           Ptr dlg_hook = TRY(Pop<Ptr>());
           auto orig_name = TRY(PopRef<absl::string_view>());
           auto prompt = TRY(PopRef<absl::string_view>());
@@ -2115,16 +2115,16 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
           LOG(INFO) << "_Pack3 SFPutFile(where: " << where << ", prompt: '"
                     << prompt << "', origName: '" << orig_name
                     << "', dlgHook: 0x" << std::hex << dlg_hook
-                    << ", VAR reply: 0x" << var_reply << ")";
+                    << ", VAR reply: 0x" << reply << ")";
 
-          SFReply reply;
-          reply.good = false;
-          return WriteType<SFReply>(std::move(reply), memory::kSystemMemory,
-                                    var_reply);
+          SFReply reply_value;
+          reply_value.good = false;
+          return WriteType<SFReply>(std::move(reply_value),
+                                    memory::kSystemMemory, reply.ptr);
         }
         case 2:  // IMV2(30): SFGetFile
         {
-          Ptr var_reply = TRY(Pop<Ptr>());
+          Var<SFReply> reply = TRY(PopVar<SFReply>());
           Ptr dlg_hook = TRY(Pop<Ptr>());
           Ptr type_list_ptr = TRY(Pop<Ptr>());
           int16_t num_types = TRY(Pop<int16_t>());
@@ -2157,11 +2157,11 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                     << file_filter_proc << ", numTypes: " << std::dec
                     << num_types << ", typeList: [" << type_list_str.str()
                     << "]" << ", dlgHook: 0x" << std::hex << dlg_hook
-                    << ", VAR reply: 0x" << var_reply << ")";
-          SFReply reply;
-          reply.good = false;
-          return WriteType<SFReply>(std::move(reply), memory::kSystemMemory,
-                                    var_reply);
+                    << ", VAR reply: 0x" << reply << ")";
+          SFReply reply_value;
+          reply_value.good = false;
+          return WriteType<SFReply>(std::move(reply_value),
+                                    memory::kSystemMemory, reply.ptr);
         }
         case 3:  // IMV2(30): SFPPutFile
           return absl::UnimplementedError("_Pack3 SFPPutFile is unimplemented");
