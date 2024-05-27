@@ -49,6 +49,8 @@ Handle ResourceManager::GetResource(ResType theType, ResId theId) {
 
   const Resource* resource = resource_file_.FindByTypeAndId(theType, theId);
 
+  // If a System file was provided at start-up fallback to looking there.
+  // This falling back search behavior mirrors MacOS.
   if (resource == nullptr && system_file_) {
     resource = system_file_->FindByTypeAndId(theType, theId);
   }
