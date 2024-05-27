@@ -9,6 +9,7 @@
 #include <string>
 
 #include "core/memory_region.h"
+#include "emu/memory/memory_map.h"
 #include "gen/typegen/generated_types.tdef.h"
 
 namespace cyder {
@@ -27,6 +28,10 @@ class MemoryManager {
   Handle AllocateHandleForRegion(const core::MemoryRegion& region,
                                  std::string tag);
   bool Deallocate(Handle handle);
+
+  bool HasSpaceForAllocation(uint32_t size) const {
+    return heap_offset_ + size < kHeapEnd;
+  }
 
   std::string GetTag(Handle handle) const;
   Handle GetHandleThatContains(uint32_t address) const;

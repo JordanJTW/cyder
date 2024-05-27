@@ -279,10 +279,13 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
       // but the documentation says it should be in A0.
       uint32_t logical_size = m68k_get_reg(NULL, M68K_REG_D0);
       LOG_TRAP() << "NewPtr(logicalSize: " << logical_size << ")";
-      auto ptr = memory_manager_.Allocate(logical_size);
-      m68k_set_reg(M68K_REG_A0, ptr);
-      // FIXME: Set `memFullErr` if memory could not be allocated
-      m68k_set_reg(M68K_REG_D0, 0 /* noErr */);
+      if (memory_manager_.HasSpaceForAllocation(logical_size)) {
+        auto ptr = memory_manager_.Allocate(logical_size);
+        m68k_set_reg(M68K_REG_A0, ptr);
+        m68k_set_reg(M68K_REG_D0, 0 /* noErr */);
+      } else {
+        m68k_set_reg(M68K_REG_D0, -108 /* memFullErr */);
+      }
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-21.html
@@ -292,9 +295,13 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
       // but the documentation says it should be in A0.
       uint32_t logical_size = m68k_get_reg(NULL, M68K_REG_D0);
       LOG_TRAP() << "NewHandle(logicalSize: " << logical_size << ")";
-      auto handle = memory_manager_.AllocateHandle(logical_size, "NewHandle");
-      m68k_set_reg(M68K_REG_A0, handle);
-      m68k_set_reg(M68K_REG_D0, /*noErr*/ 0);
+      if (memory_manager_.HasSpaceForAllocation(logical_size)) {
+        auto handle = memory_manager_.AllocateHandle(logical_size, "NewHandle");
+        m68k_set_reg(M68K_REG_A0, handle);
+        m68k_set_reg(M68K_REG_D0, /*noErr*/ 0);
+      } else {
+        m68k_set_reg(M68K_REG_D0, -108 /* memFullErr */);
+      }
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-31.html
