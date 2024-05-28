@@ -33,8 +33,13 @@
 extern bool single_step;
 
 constexpr bool kVerboseLogTraps = false;
+constexpr bool kDummyTraps = false;
 
 #define LOG_TRAP() LOG_IF(INFO, kVerboseLogTraps) << "TRAP "
+
+#define LOG_DUMMY()                                \
+  LOG_IF(WARNING, kVerboseLogTraps || kDummyTraps) \
+      << COLOR(88) << "TRAP " << COLOR_RESET()
 
 namespace cyder {
 namespace trap {
@@ -417,9 +422,10 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
       uint16_t eventMask = arguments & 0xFFFF;
       uint16_t stopMask = (2 >> arguments) & 0xFFFF;
 
-      LOG_TRAP() << "FlushEvents(eventMask: 0x" << std::hex << std::setfill('0')
-                 << std::setw(4) << eventMask << ", stopMask: 0x"
-                 << std::setfill('0') << std::setw(4) << stopMask << ")";
+      LOG_DUMMY() << "FlushEvents(eventMask: 0x" << std::hex
+                  << std::setfill('0') << std::setw(4) << eventMask
+                  << ", stopMask: 0x" << std::setfill('0') << std::setw(4)
+                  << stopMask << ")";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-67.html
@@ -440,9 +446,9 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
     // Link: https://dev.os9.ca/techpubs/mac/Files/Files-232.html#HEADING232-0
     case Trap::Open: {
       Ptr ptr = m68k_get_reg(NULL, M68K_REG_A0);
-      LOG_TRAP() << "Open(ptr: 0x" << std::hex << ptr << ")";
-      LOG(INFO) << "IOParam: "
-                << TRY(ReadType<IOParam>(memory::kSystemMemory, ptr));
+      LOG_DUMMY() << "Open(ptr: 0x" << std::hex << ptr << ")";
+      IOParam param = TRY(ReadType<IOParam>(memory::kSystemMemory, ptr));
+      LOG(INFO) << "IOParam: " << param;
       return absl::OkStatus();
     }
 
@@ -554,8 +560,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-77.html
     case Trap::GetKeys: {
       Ptr var_the_keys = TRY(Pop<Ptr>());
-      LOG(WARNING) << "Unimplemented GetKeys(VAR theKeys: 0x" << std::hex
-                   << var_the_keys << ")";
+      LOG_DUMMY() << "GetKeys(VAR theKeys: 0x" << std::hex << var_the_keys
+                  << ")";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-80.html
@@ -641,8 +647,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::AppendResMenu: {
       auto the_type = TRY(Pop<ResType>());
       auto the_menu = TRY(Pop<Handle>());
-      LOG_TRAP() << "AppendResMenu(theMenu: 0x" << std::hex << the_menu
-                 << ", theType: " << OSTypeName(the_type) << ")";
+      LOG_DUMMY() << "AppendResMenu(theMenu: 0x" << std::hex << the_menu
+                  << ", theType: " << OSTypeName(the_type) << ")";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-130.html
@@ -697,23 +703,23 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-136.html
     case Trap::HiliteMenu: {
       auto menu_id = TRY(Pop<Integer>());
-      LOG_TRAP() << "HiliteMenu(menuId: " << menu_id << ")";
+      LOG_DUMMY() << "HiliteMenu(menuId: " << menu_id << ")";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-150.html
     case Trap::EnableItem: {
       auto item = TRY(Pop<int16_t>());
       auto the_menu_handle = TRY(Pop<Handle>());
-      LOG_TRAP() << "EnableItem(theMenu: 0x" << std::hex << the_menu_handle
-                 << ", item: " << std::dec << item << ")";
+      LOG_DUMMY() << "EnableItem(theMenu: 0x" << std::hex << the_menu_handle
+                  << ", item: " << std::dec << item << ")";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-151.html
     case Trap::DisableItem: {
       auto item = TRY(Pop<int16_t>());
       auto the_menu_handle = TRY(Pop<Handle>());
-      LOG_TRAP() << "DisableItem(theMenu: 0x" << std::hex << the_menu_handle
-                 << ", item: " << std::dec << item << ")";
+      LOG_DUMMY() << "DisableItem(theMenu: 0x" << std::hex << the_menu_handle
+                  << ", item: " << std::dec << item << ")";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-158.html
@@ -721,9 +727,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto checked = TRY(Pop<int16_t>());
       auto item = TRY(Pop<int16_t>());
       auto the_menu_handle = TRY(Pop<Handle>());
-      LOG_TRAP() << "CheckItem(theMenu: 0x" << std::hex << the_menu_handle
-                 << std::dec << ", item: " << item
-                 << ", checked: " << (checked != 0 ? "True" : "False");
+      LOG_DUMMY() << "CheckItem(theMenu: 0x" << std::hex << the_menu_handle
+                  << std::dec << ", item: " << item
+                  << ", checked: " << (checked != 0 ? "True" : "False");
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-141.html
@@ -777,7 +783,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-392.html
     case Trap::HideCursor: {
-      LOG_TRAP() << "HideCursor()";
+      LOG_DUMMY() << "HideCursor()";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-98.html
@@ -1111,7 +1117,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-385.html
     case Trap::SetCursor: {
       auto crsr = TRY(PopRef<Cursor>());
-      LOG_TRAP() << "SetCursor(crsr: " << crsr << ")";
+      LOG_DUMMY() << "SetCursor(crsr: " << crsr << ")";
       // TODO: Allow alternative cursors to be displayed with SDL2
       return absl::OkStatus();
     }
@@ -1126,24 +1132,24 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-43.html
     case Trap::GetClip: {
       auto rgn = TRY(Pop<Handle>());
-      LOG_TRAP() << "GetClip(rgn: 0x" << std::hex << rgn << ")";
+      LOG_DUMMY() << "GetClip(rgn: 0x" << std::hex << rgn << ")";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-44.html
     case Trap::SetClip: {
       auto rgn = TRY(Pop<Handle>());
-      LOG_TRAP() << "SetClip(rgn: 0x" << std::hex << rgn << ")";
+      LOG_DUMMY() << "SetClip(rgn: 0x" << std::hex << rgn << ")";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-45.html
     case Trap::ClipRect: {
       auto r = TRY(PopRef<Rect>());
-      LOG_TRAP() << "ClipRect(r: " << r << ")";
+      LOG_DUMMY() << "ClipRect(r: " << r << ")";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-132.html
     case Trap::NewRgn: {
-      LOG_TRAP() << "NewRgn()";
+      LOG_DUMMY() << "NewRgn()";
       return TrapReturn<Handle>(
           TRY(memory_manager_.NewHandleFor<Region>({}, "NewRgn")));
     }
@@ -1353,7 +1359,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-56.html
     case Trap::LoadResource: {
       auto handle = TRY(Pop<uint32_t>());
-      LOG_TRAP() << "LoadResource(theResource: 0x" << std::hex << handle << ")";
+      LOG_DUMMY() << "LoadResource(theResource: 0x" << std::hex << handle
+                  << ")";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-85.html
@@ -1375,7 +1382,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-60.html
     case Trap::GetResAttrs: {
       auto handle = TRY(Pop<uint32_t>());
-      LOG_TRAP() << "GetResAttrs(theResource: 0x" << std::hex << handle << ")";
+      LOG_DUMMY() << "GetResAttrs(theResource: 0x" << std::hex << handle << ")";
       // FIXME: Load the actual attributes from the resource...
       uint16_t attrs = 8;
       return TrapReturn<uint16_t>(attrs);
@@ -1383,15 +1390,15 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-63.html
     case Trap::ChangedResource: {
       auto the_resource = TRY(Pop<Handle>());
-      LOG_TRAP() << "ChangedResource(theResource: 0x" << std::hex
-                 << the_resource << ")";
+      LOG_DUMMY() << "ChangedResource(theResource: 0x" << std::hex
+                  << the_resource << ")";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/MoreToolbox/MoreToolbox-67.html
     case Trap::WriteResource: {
       auto the_resource = TRY(Pop<Handle>());
-      LOG_TRAP() << "WriteResource(theResource: 0x" << std::hex << the_resource
-                 << ")";
+      LOG_DUMMY() << "WriteResource(theResource: 0x" << std::hex << the_resource
+                  << ")";
       return absl::OkStatus();
     }
 
@@ -1690,14 +1697,14 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
     case Trap::BeginUpDate: {
       auto the_window = TRY(Pop<Ptr>());
-      LOG_TRAP() << "BeginUpdate(theWindow: 0x" << std::hex << the_window
-                 << ")";
+      LOG_DUMMY() << "BeginUpdate(theWindow: 0x" << std::hex << the_window
+                  << ")";
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
     case Trap::EndUpDate: {
       auto the_window = TRY(Pop<Ptr>());
-      LOG_TRAP() << "EndUpdate(theWindow: 0x" << std::hex << the_window << ")";
+      LOG_DUMMY() << "EndUpdate(theWindow: 0x" << std::hex << the_window << ")";
       return absl::OkStatus();
     }
 
@@ -1706,21 +1713,21 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Text/Text-149.html
     case Trap::TextFont: {
       auto font = TRY(Pop<Integer>());
-      LOG_TRAP() << "TextFont(font: " << font << ")";
+      LOG_DUMMY() << "TextFont(font: " << font << ")";
       // We only support one bitmap font but nice of it to ask... :P
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Text/Text-150.html
     case Trap::TextFace: {
       auto face = TRY(Pop<Integer>());
-      LOG_TRAP() << "TextFace(face: " << face << ")";
+      LOG_DUMMY() << "TextFace(face: " << face << ")";
       // We only support one bitmap font but nice of it to ask... :P
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Text/Text-152.html
     case Trap::TextSize: {
       auto size = TRY(Pop<Integer>());
-      LOG_TRAP() << "TextSize(size: " << size << ")";
+      LOG_DUMMY() << "TextSize(size: " << size << ")";
       // We only support one bitmap font but nice of it to ask... :P
       return absl::OkStatus();
     }
@@ -2063,9 +2070,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto init = TRY(Pop<uint32_t>());
       auto synth = TRY(Pop<uint16_t>());
       auto chan_var = TRY(Pop<Ptr>());
-      LOG_TRAP() << "SndNewChannel(VAR chan: 0x" << std::hex << chan_var
-                 << ", synth: " << std::dec << synth << ", init: " << init
-                 << ", userRoutine: 0x" << std::hex << user_routine << ")";
+      LOG_DUMMY() << "SndNewChannel(VAR chan: 0x" << std::hex << chan_var
+                  << ", synth: " << std::dec << synth << ", init: " << init
+                  << ", userRoutine: 0x" << std::hex << user_routine << ")";
       return TrapReturn<uint16_t>(-204 /*resProblem*/);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Sound/Sound-35.html
@@ -2073,23 +2080,48 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto async = TRY(Pop<uint16_t>());
       auto snd_hdl = TRY(Pop<Handle>());
       auto chan = TRY(Pop<Ptr>());
-      LOG_TRAP() << "SndPlay(chan: 0x" << std::hex << chan << ", sndHdl: 0x"
-                 << snd_hdl << ", async: " << (async ? "True" : "False") << ")";
+      LOG_DUMMY() << "SndPlay(chan: 0x" << std::hex << chan << ", sndHdl: 0x"
+                  << snd_hdl << ", async: " << (async ? "True" : "False")
+                  << ")";
       return TrapReturn<uint16_t>(-201 /*notEnoughHardwareErr*/);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Sound/Sound-98.html
     case Trap::SndDisposeChannel: {
       auto quiet_now = TRY(Pop<uint16_t>());
       auto chan = TRY(Pop<Ptr>());
-      LOG_TRAP() << "SndDisposeChannel(chan: 0x" << std::hex << chan
-                 << ", quietNow: " << (quiet_now ? "True" : "False") << ")";
+      LOG_DUMMY() << "SndDisposeChannel(chan: 0x" << std::hex << chan
+                  << ", quietNow: " << (quiet_now ? "True" : "False") << ")";
       return TrapReturn<uint16_t>(0 /*noErr*/);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Sound/Sound-90.html
     case Trap::SysBeep: {
       uint16_t duration = TRY(Pop<Integer>());
-      LOG_TRAP() << "SysBeep(duration: " << duration << ")";
+      LOG_DUMMY() << "SysBeep(duration: " << duration << ")";
       return absl::OkStatus();
+    }
+
+    // ======================== Scrap Manager ========================
+
+    // Link: https://dev.os9.ca/techpubs/mac/MoreToolbox/MoreToolbox-135.html
+    case Trap::UnloadScrap: {
+      LOG_TRAP() << "UnloadScrap()";
+      return TrapReturn<uint32_t>(0 /*noErr*/);
+    }
+
+    // ======================  Control Manager  ========================
+
+    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-323.html
+    case Trap::GetNewControl: {
+      auto owner = TRY(Pop<Ptr>());  // WindowPtr
+      auto control_id = TRY(Pop<Integer>());
+
+      LOG_DUMMY() << "GetNewControl(controlId: " << control_id << ", owner: 0x"
+                  << std::hex << owner << ")";
+
+      auto control_resource =
+          TRY(resource_manager_.GetResourceType<CNTL>('CNTL', control_id));
+
+      return TrapReturn<Handle>(0);
     }
 
     // ===========================  _Pack#  =============================
