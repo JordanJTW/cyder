@@ -2100,30 +2100,6 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       return absl::OkStatus();
     }
 
-    // ======================== Scrap Manager ========================
-
-    // Link: https://dev.os9.ca/techpubs/mac/MoreToolbox/MoreToolbox-135.html
-    case Trap::UnloadScrap: {
-      LOG_TRAP() << "UnloadScrap()";
-      return TrapReturn<uint32_t>(0 /*noErr*/);
-    }
-
-    // ======================  Control Manager  ========================
-
-    // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-323.html
-    case Trap::GetNewControl: {
-      auto owner = TRY(Pop<Ptr>());  // WindowPtr
-      auto control_id = TRY(Pop<Integer>());
-
-      LOG_DUMMY() << "GetNewControl(controlId: " << control_id << ", owner: 0x"
-                  << std::hex << owner << ")";
-
-      auto control_resource =
-          TRY(resource_manager_.GetResourceType<CNTL>('CNTL', control_id));
-
-      return TrapReturn<Handle>(0);
-    }
-
     // ===========================  _Pack#  =============================
 
     // Link:
