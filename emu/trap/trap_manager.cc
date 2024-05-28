@@ -741,6 +741,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto menu = TRY(memory_manager_.ReadTypeFromHandle<MenuResource>(handle));
       return TrapReturn<Handle>(handle);
     }
+    // Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-139.html
+    case Trap::SysEdit: {
+      auto edit_cmd = TRY(Pop<Integer>());
+      LOG_TRAP() << "SystemEdit(editCmd: " << edit_cmd << ")";
+      // Always return false since Cyder does not support desk accessories :^)
+      return TrapReturn<bool>(false);
+    }
 
     // =================  Process Manager  ====================
 
