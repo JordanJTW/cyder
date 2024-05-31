@@ -104,3 +104,32 @@ struct FileParamType {
   ioFlCrDat: LongInt; // date and time of creation 
   ioFlMdDat: LongInt; // date and time of last modification 
 }
+
+
+struct HVolumeParamType {
+  header:  ParamBlockHeader;
+  filler2:          LongInt;      // reserved
+  ioVolIndex:       Integer;      // volume index
+  ioVCrDate:        LongInt;      // date and time of initialization
+  ioVLsMod:         LongInt;      // date and time of last modification
+  ioVAtrb:          Integer;      // volume attributes
+  ioVNmFls:         Integer;      // number of files in root directory
+  ioVBitMap:        Integer;      // first block of volume bitmap
+  ioVAllocPtr:      Integer;      // first block of next new file
+  ioVNmAlBlks:      Integer;      // number of allocation blocks
+  ioVAlBlkSiz:      LongInt;      // size of allocation blocks
+  ioVClpSiz:        LongInt;      // default clump size
+  ioAlBlSt:         Integer;      // first block in volume map
+  ioVNxtCNID:       LongInt;      // next unused node ID
+  ioVFrBlk:         Integer;      // number of unused allocation blocks
+  ioVSigWord:       Integer;      // volume signature
+  ioVDrvInfo:       Integer;      // drive number
+  ioVDRefNum:       Integer;      // driver reference number
+  ioVFSID:          Integer;      // file-system identifier
+  ioVBkUp:          LongInt;      // date and time of last backup
+  ioVSeqNum:        Integer;      // used internally
+  ioVWrCnt:         LongInt;      // volume write count
+  ioVFilCnt:        LongInt;      // number of files on volume
+  ioVDirCnt:        LongInt;      // number of directories on volume
+  // ioVFndrInfo:      ARRAY[1..8] OF LongInt {information used by the Finder}
+}

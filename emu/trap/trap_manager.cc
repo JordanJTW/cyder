@@ -451,6 +451,54 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
 
     // =====================  File Manager  ========================
 
+    // Link: https://dev.os9.ca/techpubs/mac/Files/Files-178.html
+    case Trap::GetVolInfo: {
+      Ptr ptr = m68k_get_reg(NULL, M68K_REG_A0);
+
+      return WithType<HVolumeParamType>(ptr, [](HVolumeParamType& param) {
+        LOG_DUMMY() << "GetVolInfoSync(paramBlock: " << param << ")";
+
+        param.header.ioResult = 0 /*noErr*/;
+        // This is the only information needed to make MacPaint happy :^)
+        param.ioVFrBlk = 16;       // The number of unused allocation blocks
+        param.ioVAlBlkSiz = 1024;  // The size of allocation blocks
+
+        auto filename = TRY(ReadType<absl::string_view>(
+            memory::kSystemMemory, param.header.ioNamePtr));
+
+        LOG(INFO) << "GetVolInfo\n<-- ioResult: " << std::dec
+                  << param.header.ioResult << "\n<-> ioNamePtr: 0x" << std::hex
+                  << param.header.ioNamePtr << " [" << filename << "]"
+                  << std::dec << "\n<-> ioVRefNum: " << param.header.ioVRefNum
+                  << "\n--> ioVolIndex: " << param.ioVolIndex
+                  << "\n<-- ioVCrDate: " << param.ioVCrDate
+                  << "\n<-- ioVLsMod: " << param.ioVLsMod
+                  << "\n<-- ioVAtrb: " << param.ioVAtrb
+                  << "\n<-- ioVNmFls: " << param.ioVNmFls
+                  << "\n<-- ioVBitMap: " << param.ioVBitMap
+                  << "\n<-- ioVAllocPtr: " << param.ioVAllocPtr
+                  << "\n<-- ioVNmAlBlks: " << param.ioVNmAlBlks
+                  << "\n<-- ioVAlBlkSiz: " << param.ioVAlBlkSiz
+                  << "\n<-- ioVClpSiz: " << param.ioVClpSiz
+                  << "\n<-- ioAlBlSt: " << param.ioAlBlSt
+                  << "\n<-- ioVNxtCNID: " << param.ioVNxtCNID
+                  << "\n<-- ioVFrBlk: " << param.ioVFrBlk
+                  << "\n<-- ioVSigWord: " << param.ioVSigWord
+                  << "\n<-- ioVDrvInfo: " << param.ioVDrvInfo
+                  << "\n<-- ioVDRefNum: " << param.ioVDRefNum
+                  << "\n<-- ioVFSID: " << param.ioVFSID
+                  << "\n<-- ioVBkUp: " << param.ioVBkUp
+                  << "\n<-- ioVSeqNum: " << param.ioVSeqNum
+                  << "\n<-- ioVWrCnt: " << param.ioVWrCnt
+                  << "\n<-- ioVFilCnt: " << param.ioVFilCnt
+                  << "\n<-- ioVDirCnt: " << param.ioVDirCnt
+                  << "\n<-- ioVFndrInfo: [1..8]";
+
+        m68k_set_reg(M68K_REG_D0, param.header.ioResult);
+        return absl::OkStatus();
+      });
+    }
+
     // Link: https://dev.os9.ca/techpubs/mac/Files/Files-234.html
     case Trap::Create: {
       Ptr ptr = m68k_get_reg(NULL, M68K_REG_A0);
