@@ -8,6 +8,7 @@ type Handle: Ptr;
 type GrafPtr: Ptr;
 
 type Integer: u16;
+type LongInt: u32;
 type ResourceId: Integer;
 
 // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-183.html
@@ -41,24 +42,65 @@ struct DateTimeRec {
   dayOfWeek: Integer;
 }
 
+type QElemPtr: Ptr;
+type ProcPtr: Ptr;
+type OSErr: Integer;
+type StringPtr: Ptr;
+
+struct ParamBlockHeader {
+  qLink: QElemPtr;        // next queue entry 
+  qType: Integer;         // queue type
+  ioTrap: Integer;        // routine trap
+  ioCmdAddr: Ptr;         // routine address
+  ioCompletion: ProcPtr;  // pointer to completion routine
+  ioResult: Integer;      // result code
+  ioNamePtr: StringPtr;   // pointer to path name
+  ioVRefNum: Integer;     // volume specification
+}
+
 // Link:
-// https://dev.os9.ca/techpubs/mac/Files/Files-301A.html#HEADING301-362
-struct IOParam {
-  qLink: Ptr;  // QElemPtr
-  qType: u8;  // short
-  ioTrap: u8;  // short
-  ioCmdAddr: Ptr;
-  ioCompletion: Ptr;  // ProcPtr
-  ioResult: u16;  // OSErr
-  ioNamePtr: Ptr;  // StringPtr
-  ioVRefNum: u8;  // short
-  ioRefNum: u8;  // short
+// https://dev.os9.ca/techpubs/mac/Files/Files-117.html#HEADING117-0
+struct IOParamType {
+  header: ParamBlockHeader;
+  ioRefNum: Integer;  // short
   ioVersNum: u8;  // char
   ioPermssn: u8;  // char
   ioMisc: Ptr;
   ioBuffer: Ptr;
   ioReqCount: u32;  // long
   ioActCount: u32;  // long
-  ioPosMode: u8;  // short
+  ioPosMode: Integer;  // short
   ioPosOffset: u32;  // long
+}
+
+type SignedByte: u8;
+
+// Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-488.html
+struct FInfo {
+  fdType: OSType;
+  fdCreator: OSType;
+  fdFlags: Integer;
+  fdLocationX: Integer;
+  fdLocationY: Integer;
+  fdFldr: Integer;
+}
+
+struct FileParamType {
+  header: ParamBlockHeader;
+  ioFRefNum: Integer; // file reference number
+  ioFVersNum: SignedByte; // file version number(unused) 
+  filler1: SignedByte; //  reserved 
+  ioFDirIndex: Integer; // directory index 
+  ioFlAttrib: SignedByte; // file attributes 
+  ioFlVersNum: SignedByte; // file version number(unused) 
+  ioFlFndrInfo: FInfo; // information used by the Finder 
+  ioDirID: LongInt; // directory ID or file ID 
+  ioFlStBlk: Integer; // first alloc.blk.of data fork 
+  ioFlLgLen: LongInt; // logical EOF of data fork 
+  ioFlPyLen: LongInt; // physical EOF of data fork 
+  ioFlRStBlk: Integer; // first alloc.blk.of resource fork 
+  ioFlRLgLen: LongInt; // logical EOF of resource fork 
+  ioFlRPyLen: LongInt; // physical EOF of resource fork 
+  ioFlCrDat: LongInt; // date and time of creation 
+  ioFlMdDat: LongInt; // date and time of last modification 
 }

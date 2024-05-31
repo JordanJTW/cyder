@@ -35,6 +35,9 @@ extern bool single_step;
 constexpr bool kVerboseLogTraps = false;
 constexpr bool kDummyTraps = false;
 
+char save_buffer[2048];
+int f_offset = 0;
+
 #define LOG_TRAP() LOG_IF(INFO, kVerboseLogTraps) << "TRAP "
 
 #define LOG_DUMMY()                                \
@@ -443,13 +446,222 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
 
     // =====================  File Manager  ========================
 
-    // Link: https://dev.os9.ca/techpubs/mac/Files/Files-232.html#HEADING232-0
+    // Link: https://dev.os9.ca/techpubs/mac/Files/Files-234.html
+    case Trap::Create: {
+      Ptr ptr = m68k_get_reg(NULL, M68K_REG_A0);
+
+      return WithType<FileParamType>(ptr, [](FileParamType& param) {
+        LOG_DUMMY() << "CreateSync(paramBlock: " << param << ")";
+
+        param.header.ioResult = 0 /*noErr*/;
+
+        auto filename = TRY(ReadType<absl::string_view>(
+            memory::kSystemMemory, param.header.ioNamePtr));
+
+        LOG(INFO) << "Create\n--> ioCompletion: 0x" << std::hex
+                  << param.header.ioCompletion << "\n<-- ioResult: " << std::dec
+                  << param.header.ioResult << "\n--> ioNamePtr: 0x" << std::hex
+                  << param.header.ioNamePtr << " [" << filename << "]"
+                  << std::dec << "\n--> ioVRefNum: " << param.header.ioVRefNum
+                  << "\n--> ioDirId: " << param.ioDirID;
+
+        m68k_set_reg(M68K_REG_D0, param.header.ioResult);
+        return absl::OkStatus();
+      });
+    }
+    // Link: https://dev.os9.ca/techpubs/mac/Files/Files-232.html
     case Trap::Open: {
       Ptr ptr = m68k_get_reg(NULL, M68K_REG_A0);
-      LOG_DUMMY() << "Open(ptr: 0x" << std::hex << ptr << ")";
-      IOParam param = TRY(ReadType<IOParam>(memory::kSystemMemory, ptr));
-      LOG(INFO) << "IOParam: " << param;
-      return absl::OkStatus();
+
+      return WithType<IOParamType>(ptr, [](IOParamType& param) {
+        LOG_DUMMY() << "OpenSync(paramBlock: " << param << ")";
+
+        absl::string_view filename = TRY(ReadType<absl::string_view>(
+            memory::kSystemMemory, param.header.ioNamePtr));
+
+        param.ioRefNum = 0;
+        param.header.ioResult = 0;
+
+        // Documentation shows that ioDirID should also be an input parameter
+        // but that is only part of the HFileParam Record and the other fields
+        // more closely match the IOParam Record so we will ignore it for now.
+        LOG(INFO) << "Open\n<-- ioResult: " << param.header.ioResult
+                  << "\n--> ioNamePtr: 0x" << std::hex << param.header.ioNamePtr
+                  << " [" << filename << "]\n--> ioVRefNum: " << std::dec
+                  << param.header.ioVRefNum
+                  << "\n--> ioRefNum: " << static_cast<int>(param.ioRefNum)
+                  << "\n--> ioPermsission: "
+                  << static_cast<int>(param.ioPermssn);
+
+        m68k_set_reg(M68K_REG_D0, param.header.ioResult);
+        return absl::OkStatus();
+      });
+    }
+    // Link: https://dev.os9.ca/techpubs/mac/Files/Files-240.html
+    case Trap::GetFileInfo: {
+      Ptr ptr = m68k_get_reg(NULL, M68K_REG_A0);
+
+      return WithType<FileParamType>(ptr, [](FileParamType& param) {
+        LOG_DUMMY() << "GetFileInfoSync(paramBlock: " << param << ")";
+
+        auto filename = TRY(ReadType<absl::string_view>(
+            memory::kSystemMemory, param.header.ioNamePtr));
+
+        param.header.ioResult = 0 /*noErr*/;
+
+        LOG(INFO) << "GetFileInfo\n<-- ioResult: " << param.header.ioResult
+                  << "\n<-> ioNamePtr: 0x" << std::hex << param.header.ioNamePtr
+                  << " [" << filename << "]\n--> ioVRefNum: " << std::dec
+                  << param.header.ioVRefNum
+                  << "\n<-- ioFRefNum: " << param.ioFRefNum
+                  << "\n--> ioFDirIndex: " << param.ioFDirIndex
+                  << "\n<-- ioFlAttrib: " << static_cast<int>(param.ioFlAttrib)
+                  << "\n<-- ioFlFndrInfo: " << param.ioFlFndrInfo
+                  << "\n<-> ioDirID: " << param.ioDirID
+                  << "\n<-- ioFlStBlk: " << param.ioFlStBlk
+                  << "\n<-- ioFlLgLen: " << param.ioFlLgLen
+                  << "\n<-- ioFlPyLen: " << param.ioFlPyLen
+                  << "\n<-- ioFlRStBlk: " << param.ioFlRStBlk
+                  << "\n<-- ioFlRLgLen: " << param.ioFlRLgLen
+                  << "\n<-- ioFlRPyLen: " << param.ioFlRPyLen
+                  << "\n<-- ioFlCrDat: " << param.ioFlCrDat
+                  << "\n<-- ioFlMdDat: " << param.ioFlMdDat;
+
+        m68k_set_reg(M68K_REG_D0, param.header.ioResult);
+        return absl::OkStatus();
+      });
+    }
+    // Link: https://dev.os9.ca/techpubs/mac/Files/Files-241.html
+    case Trap::SetFileInfo: {
+      Ptr ptr = m68k_get_reg(NULL, M68K_REG_A0);
+      return WithType<FileParamType>(ptr, [](FileParamType& param) {
+        LOG_DUMMY() << "SetFileInfoSync(paramBlock: " << param << ")";
+
+        auto filename = TRY(ReadType<absl::string_view>(
+            memory::kSystemMemory, param.header.ioNamePtr));
+
+        param.header.ioResult = 0 /*noErr*/;
+
+        LOG(INFO) << "SetFileInfo\n<-- ioResult: " << param.header.ioResult
+                  << "\n--> ioNamePtr: 0x" << std::hex << param.header.ioNamePtr
+                  << " [" << filename << "]\n--> ioVRefNum: " << std::dec
+                  << param.header.ioVRefNum
+                  << "\n--> ioFlFndrInfo: " << param.ioFlFndrInfo
+                  << "\n--> ioDirID: " << param.ioDirID
+                  << "\n--> ioFlCrDat: " << param.ioFlCrDat
+                  << "\n--> ioFlMdDat: " << param.ioFlMdDat;
+
+        m68k_set_reg(M68K_REG_D0, param.header.ioResult);
+        return absl::OkStatus();
+      });
+    }
+    // Link: https://dev.os9.ca/techpubs/mac/Files/Files-149.html
+    case Trap::SetEOF: {
+      Ptr ptr = m68k_get_reg(NULL, M68K_REG_A0);
+
+      return WithType<IOParamType>(ptr, [](IOParamType& param) {
+        LOG_DUMMY() << "SetEofSync(paramBlock: " << param << ")";
+
+        param.header.ioResult = 0 /*noErr*/;
+
+        LOG(INFO) << "SetEOF\n<-- ioResult: " << param.header.ioResult
+                  << "\n--> ioRefNum: " << static_cast<int>(param.ioRefNum)
+                  << "\n--> ioMisc: 0x" << std::hex << param.ioMisc;
+
+        m68k_set_reg(M68K_REG_D0, param.header.ioResult);
+        return absl::OkStatus();
+      });
+    }
+    // Link: https://dev.os9.ca/techpubs/mac/Files/Files-151.html
+    case Trap::Allocate: {
+      Ptr ptr = m68k_get_reg(NULL, M68K_REG_A0);
+
+      return WithType<IOParamType>(ptr, [](IOParamType& param) {
+        LOG_DUMMY() << "AllocateSync(paramBlock: " << param << ")";
+
+        param.header.ioResult = 0 /*noErr*/;
+        param.ioActCount = param.ioReqCount;
+
+        LOG(INFO) << "Allocate\n<-- ioResult: " << param.header.ioResult
+                  << "\n--> ioRefNum: " << static_cast<int>(param.ioRefNum)
+                  << "\n--> ioReqCount: " << std::dec << param.ioReqCount
+                  << "\n<-- ioActCount: " << param.ioActCount;
+
+        m68k_set_reg(M68K_REG_D0, param.header.ioResult);
+        return absl::OkStatus();
+      });
+    }
+    // Link: https://dev.os9.ca/techpubs/mac/Files/Files-141.html
+    case Trap::Read: {
+      Ptr ptr = m68k_get_reg(NULL, M68K_REG_A0);
+
+      return WithType<IOParamType>(ptr, [](IOParamType& param) {
+        LOG_DUMMY() << "ReadSync(paramBlock: " << param << ")";
+
+        LOG(INFO) << "Read\n<-- ioResult: " << param.header.ioResult
+                  << "\n--> ioRefNum: " << static_cast<int>(param.ioRefNum)
+                  << "\n--> ioBuffer: 0x" << std::hex << param.ioBuffer
+                  << "\n--> ioReqCount: " << std::dec << param.ioReqCount
+                  << "\n<-- ioActCount: " << param.ioActCount
+                  << "\n--> ioPosMode: " << static_cast<int>(param.ioPosMode)
+                  << "\n<-> ioPosOffset: " << param.ioPosOffset;
+
+        for (size_t i = 0; i < param.ioReqCount; ++i) {
+          RETURN_IF_ERROR(memory::kSystemMemory.Write<uint8_t>(
+              param.ioBuffer + i, save_buffer[i + f_offset]));
+        }
+        f_offset += param.ioReqCount;
+
+        param.ioActCount = param.ioReqCount;
+        param.header.ioResult = 0 /*noErr*/;
+
+        m68k_set_reg(M68K_REG_D0, param.header.ioResult);
+        return absl::OkStatus();
+      });
+    }
+    // Link: https://dev.os9.ca/techpubs/mac/Files/Files-142.html
+    case Trap::Write: {
+      Ptr ptr = m68k_get_reg(NULL, M68K_REG_A0);
+
+      return WithType<IOParamType>(ptr, [](IOParamType& param) {
+        LOG_DUMMY() << "WriteSync(paramBlock: " << param << ")";
+
+        param.ioActCount = param.ioReqCount;
+        param.header.ioResult = 0 /*noErr*/;
+
+        LOG(INFO) << "Write\n<-- ioResult: " << param.header.ioResult
+                  << "\n--> ioRefNum: " << static_cast<int>(param.ioRefNum)
+                  << "\n--> ioBuffer: 0x" << std::hex << param.ioBuffer
+                  << "\n--> ioReqCount: " << std::dec << param.ioReqCount
+                  << "\n<-- ioActCount: " << param.ioActCount
+                  << "\n--> ioPosMode: " << static_cast<int>(param.ioPosMode)
+                  << "\n<-> ioPosOffset: " << param.ioPosOffset;
+
+        for (size_t i = 0; i < param.ioReqCount; ++i) {
+          save_buffer[i + f_offset] =
+              TRY(memory::kSystemMemory.Read<uint8_t>(param.ioBuffer + i));
+        }
+        f_offset += param.ioReqCount;
+
+        m68k_set_reg(M68K_REG_D0, param.header.ioResult);
+        return absl::OkStatus();
+      });
+    }
+    // Link: https://dev.os9.ca/techpubs/mac/Files/Files-141.html
+    case Trap::Close: {
+      Ptr ptr = m68k_get_reg(NULL, M68K_REG_A0);
+
+      return WithType<IOParamType>(ptr, [](IOParamType& param) {
+        LOG_DUMMY() << "CloseSync(paramBlock: " << param << ")";
+
+        param.header.ioResult = 0 /*noErr*/;
+
+        LOG(INFO) << "Close\n<-- ioResult: " << param.header.ioResult
+                  << "\n--> ioRefNum: " << static_cast<int>(param.ioRefNum);
+
+        m68k_set_reg(M68K_REG_D0, param.header.ioResult);
+        return absl::OkStatus();
+      });
     }
 
     // =====================  OS Utilities  =======================

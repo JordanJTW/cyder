@@ -63,6 +63,10 @@ absl::Status WriteU24(uint24_t value,
 }
 
 std::string OSTypeName(uint32_t os_type) {
+  if (os_type == 0) {
+    return "Nil";
+  }
+
   char type_name[4];
   // The type value is actually a 4 byte string so we must reverse it
   // back to big endian for the text to appear correctly

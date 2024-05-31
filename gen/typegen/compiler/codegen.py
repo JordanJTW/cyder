@@ -252,7 +252,7 @@ class CodeGenerator:
       line_end = ' << ", "' if index + 1 != len(members) else ''
       stream_value = f'obj.{member.id}'
 
-      if member.type.id == 'u8':
+      if member.type.base_type_id == 'u8':
         if member.type.has_user_size:
           # Handle special case of a byte array by printing its size
           stream_value = f'"u8[{member.type.size}]"'
@@ -260,11 +260,11 @@ class CodeGenerator:
           # Ensure `u8` is not printed as a char (prints invisible/random chars
           # or is interpreted as an \0 i.e. null-terminator).
           stream_value = f'int({stream_value})'
-      elif member.type.id == 'Boolean':
+      elif member.type.base_type_id == 'Boolean':
         stream_value = f'({stream_value} ? "True" : "False")'
-      elif member.type.id == 'OSType':
+      elif member.type.base_type_id == 'OSType':
         stream_value = f'OSTypeName({stream_value})'
-      elif 'Handle' in member.type.id or member.type.id == 'Ptr':
+      elif 'Handle' in member.type.id or 'Ptr' in member.type.id:
         stream_value = f'std::hex << "0x" << {stream_value} << std::dec'
       elif member.type.id == 'str':
         stream_value = f'\"\\"\" << {stream_value} << \"\\"\"'

@@ -11,6 +11,7 @@ from compiler.type_parser import AssignExpression, StructExpression, LabelExpres
 class CheckedTypeExpression:
   id: str
   size: int
+  base_type_id: str
   is_dynamic: bool
   is_struct: bool
   has_user_size: bool = False
@@ -47,19 +48,19 @@ class TypeChecker:
     def check_type_exists(expr: LabelExpression):
       if size := _STATIC_TYPE_SIZES.get(expr.label, None):
         return CheckedTypeExpression(
-            expr.label, size, is_dynamic=False, is_struct=False)
+            expr.label, size, base_type_id=expr.label, is_dynamic=False, is_struct=False)
 
       if expr.label == 'str':
         return CheckedTypeExpression(
-            expr.label, size=1, is_dynamic=True, is_struct=True)
+            expr.label, size=1, base_type_id='str', is_dynamic=True, is_struct=True)
 
       if ref := global_types.get(expr.label, None):
         if isinstance(ref, CheckedAssignExpression):
           return CheckedTypeExpression(
-              expr.label, ref.type.size, ref.type.is_dynamic, ref.type.is_struct)
+              expr.label, ref.type.size, ref.type.base_type_id, ref.type.is_dynamic, ref.type.is_struct)
         elif isinstance(ref, CheckedStructExpression):
           return CheckedTypeExpression(
-              expr.label, ref.size, ref.is_dynamic, is_struct=True)
+              expr.label, ref.size, expr.label, ref.is_dynamic, is_struct=True)
 
       raise ParserException(f'unknown type "{expr.label}"', expr.span)
 
