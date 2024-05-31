@@ -2324,6 +2324,14 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       return absl::OkStatus();
     }
 
+    // ======================== Scrap Manager ========================
+
+    // Link: https://dev.os9.ca/techpubs/mac/MoreToolbox/MoreToolbox-135.html
+    case Trap::UnloadScrap: {
+      LOG_TRAP() << "UnloadScrap()";
+      return TrapReturn<uint32_t>(0 /*noErr*/);
+    }
+
     // ===========================  _Pack#  =============================
 
     // Link:
