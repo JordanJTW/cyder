@@ -45,6 +45,8 @@ class MemoryManager {
   bool SetApplLimit(Ptr last_addr);
   uint32_t GetFreeMemorySize() const;
 
+  Handle RecoverHandle(Ptr ptr);
+
   template <typename Type>
   absl::StatusOr<Type> ReadTypeFromHandle(Handle handle) const {
     auto memory_region = GetRegionForHandle(handle);

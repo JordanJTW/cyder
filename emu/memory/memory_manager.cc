@@ -159,5 +159,12 @@ uint32_t MemoryManager::GetFreeMemorySize() const {
   return kHeapEnd - heap_offset_;
 }
 
+Handle MemoryManager::RecoverHandle(Ptr ptr) {
+  Handle handle = kHeapStart + handle_offset_;
+  CHECK(kSystemMemory.Write<uint32_t>(handle, ptr).ok());
+  handle_offset_ += sizeof(Handle);
+  return handle;
+}
+
 }  // namespace memory
 }  // namespace cyder

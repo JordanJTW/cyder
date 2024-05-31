@@ -312,6 +312,11 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
       }
       return absl::OkStatus();
     }
+    // Link: https://dev.os9.ca/techpubs/mac/Memory/Memory-97.html
+    case Trap::RecoverHandle: {
+      uint32_t ptr = m68k_get_reg(NULL, M68K_REG_A0);
+      m68k_set_reg(M68K_REG_A0, memory_manager_.RecoverHandle(ptr));
+    }
     // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-31.html
     case Trap::HLock:
     // Link: http://0.0.0.0:8000/docs/mac/Memory/Memory-32.html
