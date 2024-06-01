@@ -129,6 +129,7 @@ absl::Status DrawDialogWindow(WindowPtr window_ptr) {
   core::MemoryRegion item_memory =
       MemoryManager::the().GetRegionForHandle(dialog_record.items);
 
+  graphics::BitmapImage screen = graphics::ThePortImage();
   return IterateItems(
       item_memory,
       [&](Integer item_no, size_t offset) -> absl::StatusOr<IterationControl> {
@@ -143,9 +144,8 @@ absl::Status DrawDialogWindow(WindowPtr window_ptr) {
 
             GrafPort port = dialog_record.window_record.port;
             Rect global_box = port::LocalToGlobal(port, header.box);
-            graphics::Screen().FrameRect(global_box, port.pen_pattern.bytes);
-            DrawString(graphics::Screen(), text, global_box.left,
-                       global_box.top);
+            screen.FrameRect(global_box, port.pen_pattern.bytes);
+            DrawString(screen, text, global_box.left, global_box.top);
             break;
           }
           case ItemType::statText: {
@@ -153,8 +153,7 @@ absl::Status DrawDialogWindow(WindowPtr window_ptr) {
 
             GrafPort port = dialog_record.window_record.port;
             Rect global_box = port::LocalToGlobal(port, header.box);
-            DrawString(graphics::Screen(), text, global_box.left,
-                       global_box.top);
+            DrawString(screen, text, global_box.left, global_box.top);
             break;
           }
           case ItemType::picItem: {
@@ -176,9 +175,8 @@ absl::Status DrawDialogWindow(WindowPtr window_ptr) {
 
             RETURN_IF_ERROR(WithType<GrafPort>(
                 TRY(port::GetThePort()), [&](const GrafPort& port) {
-                  graphics::Screen().CopyBits(
-                      picture, pict_frame, pict_frame,
-                      port::LocalToGlobal(port, header.box));
+                  screen.CopyBits(picture, pict_frame, pict_frame,
+                                  port::LocalToGlobal(port, header.box));
                   return absl::OkStatus();
                 }));
             break;
@@ -191,10 +189,9 @@ absl::Status DrawDialogWindow(WindowPtr window_ptr) {
             Ptr icon = TRY(memory::kSystemMemory.Read<Handle>(handle));
             RETURN_IF_ERROR(WithType<GrafPort>(
                 TRY(port::GetThePort()), [&](const GrafPort& port) {
-                  graphics::Screen().CopyBits(
-                      memory::kSystemMemory.raw_ptr() + icon,
-                      NewRect(0, 0, 32, 32), NewRect(0, 0, 32, 32),
-                      port::LocalToGlobal(port, header.box));
+                  screen.CopyBits(memory::kSystemMemory.raw_ptr() + icon,
+                                  NewRect(0, 0, 32, 32), NewRect(0, 0, 32, 32),
+                                  port::LocalToGlobal(port, header.box));
                   return absl::OkStatus();
                 }));
             break;

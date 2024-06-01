@@ -76,6 +76,7 @@ class MemoryRegion final {
   size_t size() const { return size_; }
 
   const uint8_t* const raw_ptr() const { return data_; }
+  uint8_t* const raw_mutable_ptr() const { return data_; }
 
  private:
   MemoryRegion(std::string name,

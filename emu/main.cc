@@ -343,7 +343,12 @@ absl::Status Main(const core::Args& args) {
 
   RETURN_IF_ERROR(InitializeVM(pc));
 
-  BitmapImage screen(kScreenWidth, kScreenHeight);
+  BitMap bitmap;
+  bitmap.bounds = NewRect(0, 0, kScreenWidth, kScreenHeight);
+  bitmap.row_bytes = cyder::PixelWidthToBytes(kScreenWidth);
+  bitmap.base_addr = memory_manager.Allocate(bitmap.row_bytes * kScreenHeight);
+
+  BitmapImage screen(bitmap);
 
   MenuManager menu_manager(screen);
 
@@ -375,7 +380,7 @@ absl::Status Main(const core::Args& args) {
   EventManager event_manager(&emulator_control);
   WindowManager window_manager(event_manager, screen, memory_manager);
   TrapManager trap_manager(memory_manager, resource_manager, segment_loader,
-                           event_manager, menu_manager, window_manager, screen);
+                           event_manager, menu_manager, window_manager, bitmap);
 
   RETURN_IF_ERROR(
       InitTrapManager(memory_manager, trap_manager, system_file.get()));

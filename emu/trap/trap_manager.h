@@ -26,7 +26,7 @@ class TrapManager {
               EventManager& event_manager,
               MenuManager& menu_manager,
               WindowManager& window_manager,
-              graphics::BitmapImage& screen);
+              BitMap& screen_bits);
 
   absl::Status DispatchEmulatedSubroutine(uint32_t address);
 
@@ -48,7 +48,7 @@ class TrapManager {
   EventManager& event_manager_;
   MenuManager& menu_manager_;
   WindowManager& window_manager_;
-  graphics::BitmapImage& screen_;
+  BitMap screen_bits_;
 
   std::map<uint16_t, uint32_t> patch_trap_addresses_;
 };

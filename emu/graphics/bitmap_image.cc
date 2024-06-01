@@ -9,6 +9,8 @@
 #include "core/logging.h"
 #include "emu/graphics/copybits.h"
 #include "emu/graphics/graphics_helpers.h"
+#include "emu/graphics/quickdraw.h"
+#include "emu/memory/memory_map.h"
 
 namespace cyder {
 namespace graphics {
@@ -20,8 +22,6 @@ inline uint8_t RotateByteRight(uint8_t byte, uint16_t shift) {
   return (byte >> shift) | (byte << (CHAR_BIT - shift));
 }
 
-BitmapImage* s_instance;
-
 }  // namespace
 
 uint8_t kBlackPattern[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -30,13 +30,20 @@ BitmapImage::BitmapImage(int width, int height)
     : width_(width),
       height_(height),
       bitmap_size_(PixelWidthToBytes(width) * height),
-      bitmap_(absl::make_unique<uint8_t[]>(bitmap_size_)) {
-  std::memset(bitmap_.get(), 0, bitmap_size_);
+      bitmap_storage_(absl::make_unique<uint8_t[]>(bitmap_size_)),
+      bitmap_(bitmap_storage_.get()) {
+  std::memset(bitmap_, 0, bitmap_size_);
   clip_rect_ = NewRect(0, 0, width, height);
+}
 
-  if (s_instance == nullptr) {
-    s_instance = this;
-  }
+BitmapImage::BitmapImage(BitMap bitmap)
+    : width_(RectWidth(bitmap.bounds)),
+      height_(RectHeight(bitmap.bounds)),
+      bitmap_size_(bitmap.row_bytes * height_),
+      bitmap_storage_(nullptr),
+      bitmap_(memory::kSystemMemory.raw_mutable_ptr() + bitmap.base_addr) {
+  clip_rect_ = NewRect(0, 0, width_, height_);
+  CHECK(bitmap.base_addr) << "Bad BitMap:  " << bitmap;
 }
 
 BitmapImage::~BitmapImage() = default;
@@ -189,7 +196,7 @@ void BitmapImage::FillRow(int row,
     LOG_IF(INFO, kVerbose) << "Full bytes: " << full_bytes;
     switch (mode) {
       case FillMode::Copy:
-        std::memset(bitmap_.get() + start_byte, pattern, full_bytes);
+        std::memset(bitmap_ + start_byte, pattern, full_bytes);
         break;
       case FillMode::XOr:
         for (int i = 0; i < full_bytes; ++i) {
@@ -253,7 +260,7 @@ void BitmapImage::CopyBits(const uint8_t* src,
 
     bitarray_copy(src + src_row_offset,
                   /*src_offset=*/src_rect.left + clip_offset.left,
-                  /*src_length=*/clipped_width, bitmap_.get() + dst_row_offset,
+                  /*src_length=*/clipped_width, bitmap_ + dst_row_offset,
                   /*dst_offset=*/dst_rect.left + clip_offset.left);
   }
 }
@@ -327,8 +334,10 @@ void BitmapImage::SaveBitmap(const std::string& path) const {
   }
 }
 
-BitmapImage& Screen() {
-  return *s_instance;
+BitmapImage ThePortImage() {
+  Ptr the_port = MUST(port::GetThePort());
+  auto current_port = MUST(ReadType<GrafPort>(memory::kSystemMemory, the_port));
+  return BitmapImage(current_port.port_bits);
 }
 
 }  // namespace graphics

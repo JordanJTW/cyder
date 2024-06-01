@@ -18,6 +18,9 @@ extern uint8_t kBlackPattern[8];
 // All coordinates are mapped from the upper-left hand corner at (0, 0).
 class BitmapImage {
  public:
+  // Constructs a BitmapImage pointing to `bitmap` in emulated memory
+  BitmapImage(BitMap bitmap);
+  // Allocates internal storage for a Bitmap with `width` and `height`
   BitmapImage(int width, int height);
   ~BitmapImage();
 
@@ -65,18 +68,21 @@ class BitmapImage {
   int height() const { return height_; }
   int width() const { return width_; }
 
-  const uint8_t* const bits() const { return bitmap_.get(); }
+  const uint8_t* const bits() const { return bitmap_; }
 
  private:
   const int width_;
   const int height_;
   const int bitmap_size_;
-  const std::unique_ptr<uint8_t[]> bitmap_;
+  const std::unique_ptr<uint8_t[]> bitmap_storage_;
+
+  uint8_t* const bitmap_;
 
   Rect clip_rect_;
 };
 
-BitmapImage& Screen();
+// Creates a BitmapImage tied to the BitMap of the current Port
+BitmapImage ThePortImage();
 
 // RAII class to temporarily override the clip rect then restore it
 class TempClipRect final {

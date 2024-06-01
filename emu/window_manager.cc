@@ -124,6 +124,7 @@ absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
   // |portRect| has an origin of (0, 0) in local coordinates.
   //
   // See "Imaging with QuickDraw" Figure 2-4 for more details
+  port.port_bits = globals.screen_bits;
   port.port_bits.bounds = OffsetRect(globals.screen_bits.bounds,
                                      -bounds_rect.left, -bounds_rect.top);
   port.port_rect = port_frame;
@@ -178,6 +179,7 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
       WindowRecord, window_storage,
       WindowRecordFields::port + GrafPortFields::visible_region,
       WindowRecordFields::port + GrafPortFields::port_rect,
+      WindowRecordFields::port + GrafPortFields::port_bits,
       WindowRecordFields::window_kind, WindowRecordFields::structure_region);
 
   const WindowRecord record = TRY(
