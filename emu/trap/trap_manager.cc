@@ -1058,6 +1058,23 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_DUMMY() << "HideCursor()";
       return absl::OkStatus();
     }
+    // Link: https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-40.html
+    case Trap::SetOrigin: {
+      Point origin = TRY(PopType<Point>());
+      LOG_TRAP() << "SetOrigin(h,v: " << origin << ")";
+      return WithPort([&](GrafPort& port) {
+        // Normalize the portRect and portBits.bounds as if the origin was (0,0)
+        Rect normalizedPortRect = NormalizeRect(port.port_rect);
+        Rect normalizedBounds = OffsetRect(
+            port.port_bits.bounds, -port.port_rect.left, -port.port_rect.top);
+
+        // Recalculate both with the new origin
+        port.port_rect = OffsetRect(normalizedPortRect, origin.x, origin.y);
+        port.port_bits.bounds =
+            OffsetRect(normalizedBounds, origin.x, origin.y);
+        return absl::OkStatus();
+      });
+    }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-98.html
     case Trap::PaintRect: {
       auto rect = TRY(PopRef<Rect>());
@@ -1695,6 +1712,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       qd_globals.screen_bits.bounds = screen_bounds;
       qd_globals.grey = {
           .bytes = {0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55}};
+      qd_globals.white = {.bytes = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}};
 
       // `globalPtr` accounts for the size of `thePort` so must be added here
       size_t qd_ptr = global_ptr - QDGlobals::fixed_size + sizeof(Ptr);
