@@ -217,7 +217,7 @@ void WindowManager::DisposeWindow(Ptr window_ptr) {
 
   RepaintDesktopOverWindow(window_record);
   window_list_.remove(window_ptr);
-  event_manager_.QueueWindowActivate(window_list_.front());
+  event_manager_.QueueWindowActivate(window_list_.front(), ActivateState::ON);
   InvalidateWindows();
 }
 
@@ -296,7 +296,7 @@ void WindowManager::SelectWindow(Ptr target_ptr) {
   // 3. Generate the activate events to deactivate the previously active
   //    window and activate the specified window
   // FIXME: Handle deacitvating the previously active window?
-  event_manager_.QueueWindowActivate(target_ptr);
+  event_manager_.QueueWindowActivate(target_ptr, ActivateState::ON);
   // 4. Ensure that the windows are invalidated and redrawn
   InvalidateWindows();
 }

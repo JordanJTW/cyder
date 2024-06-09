@@ -22,6 +22,9 @@ enum EventType {
   kWindowActivate = 8,  // activate / deactivate window
 };
 
+// Whether a window is being made active (ON) or deactive (OFF).
+enum ActivateState { ON, OFF };
+
 constexpr Integer kMouseMove = 255;  // Custom `EventType` for native
 
 class EmulatorControl {
@@ -37,7 +40,7 @@ class EventManager final {
 
   static EventManager& the();
 
-  void QueueWindowActivate(Ptr window);
+  void QueueWindowActivate(Ptr window, ActivateState state);
   void QueueWindowUpdate(Ptr window);
   void QueueMouseDown(int x, int y);
   void QueueMouseUp(int x, int y);

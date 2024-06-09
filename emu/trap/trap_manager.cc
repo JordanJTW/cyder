@@ -1802,7 +1802,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
           resource.reference_constant));
 
       // Focus (activate) and update the most recently created window
-      event_manager_.QueueWindowActivate(window_storage);
+      event_manager_.QueueWindowActivate(window_storage, ActivateState::ON);
       event_manager_.QueueWindowUpdate(window_storage);
 
       return TrapReturn<Ptr>(window_storage);
@@ -1831,7 +1831,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
           window_definition_id, behind_window, reference_constant));
 
       // Focus (activate) and update the most recently created window
-      event_manager_.QueueWindowActivate(window_storage);
+      event_manager_.QueueWindowActivate(window_storage, ActivateState::ON);
       event_manager_.QueueWindowUpdate(window_storage);
 
       return TrapReturn<Ptr>(window_storage);

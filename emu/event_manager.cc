@@ -28,11 +28,16 @@ EventManager& EventManager::the() {
   return *s_instance;
 }
 
-void EventManager::QueueWindowActivate(Ptr window) {
+void EventManager::QueueWindowActivate(Ptr window, ActivateState state) {
   EventRecord record;
   record.what = kWindowActivate;
   record.when = NowTicks();
   record.message = window;
+  // For activate events, the value of bit 0 is 1 if the window pointed to by
+  // the event message should be activated, and the value is 0 if the window
+  // should be deactivated.
+  // Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-37.html#MARKER-9-85
+  record.modifiers = state == ActivateState::ON ? 1 : 0;
   activate_events_.push_back(std::move(record));
 }
 

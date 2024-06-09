@@ -27,7 +27,7 @@ TEST(EventManagerTests, Priority) {
 
   event_manager.QueueWindowUpdate(kFakeWindowPtr);
   event_manager.QueueMouseDown(0, 0);
-  event_manager.QueueWindowActivate(kFakeWindowPtr);
+  event_manager.QueueWindowActivate(kFakeWindowPtr, ActivateState::ON);
   event_manager.QueueKeyDown();
 
   EXPECT_EQ(event_manager.GetNextEvent(kEventEventMask).what, kWindowActivate);
@@ -93,6 +93,18 @@ TEST(EventManagerTests, EventTicks) {
   auto first = event_manager.GetNextEvent(kEventEventMask);
   auto second = event_manager.GetNextEvent(kEventEventMask);
   EXPECT_LT(first.when, second.when);
+}
+
+TEST(EventManagerTests, WindowActivate) {
+  EventManager event_manager(/*emulator_control=*/nullptr);
+
+  event_manager.QueueWindowActivate(kFakeWindowPtr, ActivateState::ON);
+  event_manager.QueueWindowActivate(kFakeWindowPtr, ActivateState::OFF);
+
+  auto first = event_manager.GetNextEvent(kEventEventMask);
+  EXPECT_EQ(first.modifiers, 1 /*activated*/);
+  auto second = event_manager.GetNextEvent(kEventEventMask);
+  EXPECT_EQ(second.modifiers, 0 /*deactivated*/);
 }
 
 }  // namespace cyder
