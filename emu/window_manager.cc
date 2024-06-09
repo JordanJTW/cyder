@@ -177,6 +177,7 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
 
   RESTRICT_FIELD_ACCESS(
       WindowRecord, window_storage,
+      WindowRecordFields::port + GrafPortFields::port_bits,
       WindowRecordFields::port + GrafPortFields::visible_region,
       WindowRecordFields::port + GrafPortFields::port_rect,
       WindowRecordFields::port + GrafPortFields::port_bits,

@@ -1725,7 +1725,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
           WriteType<QDGlobals>(qd_globals, memory::kSystemMemory, qd_ptr));
 
       RESTRICT_FIELD_ACCESS(QDGlobals, qd_ptr, QDGlobalsFields::random_seed,
-                            QDGlobalsFields::screen_bits + BitMapFields::bounds,
+                            QDGlobalsFields::screen_bits,
                             QDGlobalsFields::the_port);
 
       return absl::OkStatus();
