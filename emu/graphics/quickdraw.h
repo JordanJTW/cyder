@@ -5,9 +5,17 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "emu/graphics/bitmap_image.h"
 #include "emu/graphics/grafport_types.tdef.h"
 
 namespace cyder {
+namespace graphics {
+
+// Creates a BitmapImage tied to the BitMap of the current Port
+BitmapImage ThePortImage();
+
+}  // namespace graphics
+
 namespace port {
 
 absl::StatusOr<Ptr> GetQDGlobalsPtr();

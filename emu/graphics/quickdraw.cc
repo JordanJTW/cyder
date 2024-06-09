@@ -10,6 +10,17 @@
 #include "third_party/musashi/src/m68k.h"
 
 namespace cyder {
+namespace graphics {
+
+BitmapImage ThePortImage() {
+  Ptr the_port = MUST(port::GetThePort());
+  auto current_port = MUST(ReadType<GrafPort>(memory::kSystemMemory, the_port));
+  return BitmapImage(current_port.port_bits,
+                     memory::kSystemMemory.raw_mutable_ptr() +
+                         current_port.port_bits.base_addr);
+}
+}  // namespace graphics
+
 namespace port {
 
 absl::StatusOr<Ptr> GetQDGlobalsPtr() {

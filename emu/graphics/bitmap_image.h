@@ -19,7 +19,8 @@ extern uint8_t kBlackPattern[8];
 class BitmapImage {
  public:
   // Constructs a BitmapImage pointing to `bitmap` in emulated memory
-  BitmapImage(BitMap bitmap);
+  // `memory_ptr` should be a ptr to the start of bitmap memory (on host)
+  BitmapImage(BitMap bitmap, uint8_t* memory_ptr);
   // Allocates internal storage for a Bitmap with `width` and `height`
   BitmapImage(int width, int height);
   ~BitmapImage();
@@ -80,9 +81,6 @@ class BitmapImage {
 
   Rect clip_rect_;
 };
-
-// Creates a BitmapImage tied to the BitMap of the current Port
-BitmapImage ThePortImage();
 
 // RAII class to temporarily override the clip rect then restore it
 class TempClipRect final {

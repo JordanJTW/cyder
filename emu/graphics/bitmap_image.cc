@@ -9,8 +9,6 @@
 #include "core/logging.h"
 #include "emu/graphics/copybits.h"
 #include "emu/graphics/graphics_helpers.h"
-#include "emu/graphics/quickdraw.h"
-#include "emu/memory/memory_map.h"
 
 namespace cyder {
 namespace graphics {
@@ -36,12 +34,12 @@ BitmapImage::BitmapImage(int width, int height)
   clip_rect_ = NewRect(0, 0, width, height);
 }
 
-BitmapImage::BitmapImage(BitMap bitmap)
+BitmapImage::BitmapImage(BitMap bitmap, uint8_t* memory_ptr)
     : width_(RectWidth(bitmap.bounds)),
       height_(RectHeight(bitmap.bounds)),
       bitmap_size_(bitmap.row_bytes * height_),
       bitmap_storage_(nullptr),
-      bitmap_(memory::kSystemMemory.raw_mutable_ptr() + bitmap.base_addr) {
+      bitmap_(memory_ptr) {
   clip_rect_ = NewRect(0, 0, width_, height_);
   CHECK(bitmap.base_addr) << "Bad BitMap:  " << bitmap;
 }
@@ -332,12 +330,6 @@ void BitmapImage::SaveBitmap(const std::string& path) const {
     }
     icon << "\n";
   }
-}
-
-BitmapImage ThePortImage() {
-  Ptr the_port = MUST(port::GetThePort());
-  auto current_port = MUST(ReadType<GrafPort>(memory::kSystemMemory, the_port));
-  return BitmapImage(current_port.port_bits);
 }
 
 }  // namespace graphics

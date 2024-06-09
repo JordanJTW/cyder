@@ -9,4 +9,4 @@ add_library(PICT_LIB OBJECT pict_v1.cc)
 target_link_libraries(PICT_LIB CORE_LIB GRAFPORT_TYPES)
 
 add_library(GRAPHICS_LIB OBJECT quickdraw.cc)
-target_link_libraries(GRAPHICS_LIB CORE_LIB GRAFPORT_TYPES MEMORY_LIB)
+target_link_libraries(GRAPHICS_LIB CORE_LIB GRAFPORT_TYPES MEMORY_LIB SCREEN_LIB)

@@ -348,7 +348,8 @@ absl::Status Main(const core::Args& args) {
   bitmap.row_bytes = cyder::PixelWidthToBytes(kScreenWidth);
   bitmap.base_addr = memory_manager.Allocate(bitmap.row_bytes * kScreenHeight);
 
-  BitmapImage screen(bitmap);
+  BitmapImage screen(bitmap,
+                     kSystemMemory.raw_mutable_ptr() + bitmap.base_addr);
 
   MenuManager menu_manager(screen);
 
