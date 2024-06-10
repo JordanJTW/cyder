@@ -105,15 +105,6 @@ inline int16_t RectHeight(const Rect& rect) {
   return rect.bottom - rect.top;
 }
 
-inline void InitGrafPort(GrafPort& port) {
-  port.fill_pattern = {
-      .bytes = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
-  port.back_pattern = {
-      .bytes = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
-  port.pen_pattern = port.fill_pattern;
-  port.pattern_mode = 8 /*patCopy*/;
-}
-
 inline graphics::BitmapImage::FillMode ConvertMode(int16_t mode) {
   using Mode = graphics::BitmapImage::FillMode;
   // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-59.html#MARKER-9-7

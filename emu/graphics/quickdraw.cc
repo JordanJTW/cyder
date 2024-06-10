@@ -70,5 +70,18 @@ Rect LocalToGlobal(const GrafPort& port, const Rect& rect) {
                     -port.port_bits.bounds.top);
 }
 
+void InitPort(GrafPort& port) {
+  port.fill_pattern = {
+      .bytes = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
+  port.back_pattern = {
+      .bytes = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
+  port.pen_pattern = port.fill_pattern;
+  port.pattern_mode = 8 /*patCopy*/;
+
+  QDGlobals globals = MUST(GetQDGlobals());
+  port.port_bits = globals.screen_bits;
+  port.port_rect = port.port_bits.bounds;
+}
+
 }  // namespace port
 }  // namespace cyder

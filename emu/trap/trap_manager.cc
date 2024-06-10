@@ -1057,7 +1057,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "OpenPort(port: 0x" << std::hex << the_port << ")";
       RETURN_IF_ERROR(port::SetThePort(the_port));
       return WithType<GrafPort>(the_port, [](GrafPort& port) {
-        InitGrafPort(port);
+        port::InitPort(port);
         return absl::OkStatus();
       });
     }
@@ -1741,8 +1741,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       GrafPort port;
       // TODO: Verify that "whole screen" in the docs includes the menu bar?
-      port.port_bits = screen_bits_;
-      InitGrafPort(port);
+      port::InitPort(port);
 
       auto ptr = memory_manager_.Allocate(GrafPort::fixed_size);
       RETURN_IF_ERROR(WriteType<GrafPort>(port, memory::kSystemMemory, ptr));

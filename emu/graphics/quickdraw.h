@@ -29,5 +29,7 @@ absl::StatusOr<Rect> ConvertLocalToGlobal(Rect rect);
 
 Rect LocalToGlobal(const GrafPort& port, const Rect& rect);
 
+void InitPort(GrafPort& port);
+
 }  // namespace port
 }  // namespace cyder

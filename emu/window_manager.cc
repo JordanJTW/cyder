@@ -94,8 +94,6 @@ absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
     int16_t window_definition_id,
     Ptr behind_window,
     uint32_t reference_constant) {
-  auto port_frame = NormalizeRect(bounds_rect);
-
   // Returns a handle to a newly created Region defined by `rect`:
   auto create_rect_region =
       [&](Rect rect, const std::string& name) -> absl::StatusOr<Handle> {
@@ -117,6 +115,7 @@ absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
 
   // FIXME: Fill in the rest of the WindowRecord (including GrafPort!)
   GrafPort port;
+  port::InitPort(port);
   // The |portBits.bounds| links the local and global coordinate systems
   // by offseting the screen bounds so that |portRect| appears at (0, 0).
   // For instance, if the window is meant to be drawn at (60, 60) global
@@ -124,13 +123,12 @@ absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
   // |portRect| has an origin of (0, 0) in local coordinates.
   //
   // See "Imaging with QuickDraw" Figure 2-4 for more details
-  port.port_bits = globals.screen_bits;
   port.port_bits.bounds = OffsetRect(globals.screen_bits.bounds,
                                      -bounds_rect.left, -bounds_rect.top);
-  port.port_rect = port_frame;
+  port.port_rect = NormalizeRect(bounds_rect);
   // FIXME: This assumes the entire window is visible at creation
-  port.visible_region = TRY(create_rect_region(port_frame, "VisibleRegion"));
-  InitGrafPort(port);
+  port.visible_region =
+      TRY(create_rect_region(port.port_rect, "VisibleRegion"));
 
   WindowRecord record;
   record.port = std::move(port);
