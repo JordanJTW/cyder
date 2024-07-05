@@ -28,7 +28,11 @@
 #include "gen/global_names.h"
 #include "gen/trap_names.h"
 #include "gen/typegen/typegen_prelude.h"
+#include "third_party/abseil-cpp/absl/flags/declare.h"
+#include "third_party/abseil-cpp/absl/flags/flag.h"
 #include "third_party/musashi/src/m68k.h"
+
+ABSL_DECLARE_FLAG(/*type=*/bool, exit_on_idle);
 
 extern bool single_step;
 
@@ -65,6 +69,16 @@ absl::Status HandleLoadSegmentTrap(SegmentLoader& segment_loader,
 
 absl::Status WithPort(std::function<absl::Status(GrafPort& the_port)> cb) {
   return WithType<GrafPort>(TRY(port::GetThePort()), std::move(cb));
+}
+
+void SaveScreenShotAndExit() {
+  auto globals = MUST(port::GetQDGlobals());
+  graphics::BitmapImage(
+      globals.screen_bits,
+      memory::kSystemMemory.raw_mutable_ptr() + globals.screen_bits.base_addr)
+      .SaveBitmap("/tmp/screenshot.bmp");
+  LOG(INFO) << "Saved screenshot to: /tmp/screenshot.bmp";
+  exit(0);
 }
 
 }  // namespace
@@ -533,7 +547,7 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
             memory::kSystemMemory, param.header.ioNamePtr));
 
         param.ioRefNum = 0;
-        param.header.ioResult = 0;
+        param.header.ioResult = 0 /*noErr*/;
 
         // Documentation shows that ioDirID should also be an input parameter
         // but that is only part of the HFileParam Record and the other fields
@@ -784,6 +798,11 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
                  << ", sleep: " << std::dec << sleep << ", mouseRgn: 0x"
                  << std::hex << mouse_region << ")";
 
+      if (absl::GetFlag(FLAGS_exit_on_idle) &&
+          !event_manager_.has_window_events()) {
+        SaveScreenShotAndExit();
+      }
+
       auto event = event_manager_.GetNextEvent(event_mask);
 
       RETURN_IF_ERROR(WriteType<EventRecord>(
@@ -810,6 +829,11 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       LOG_TRAP() << "GetNextEvent(eventMask: " << std::bitset<16>(event_mask)
                  << ", VAR theEvent: 0x" << std::hex << the_event_var << ")";
+
+      if (absl::GetFlag(FLAGS_exit_on_idle) &&
+          !event_manager_.has_window_events()) {
+        SaveScreenShotAndExit();
+      }
 
       auto event = event_manager_.GetNextEvent(event_mask);
 

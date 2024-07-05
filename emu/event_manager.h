@@ -57,6 +57,10 @@ class EventManager final {
 
   void RegisterNativeListener(std::function<void(EventRecord)> listener);
 
+  bool has_window_events() const {
+    return !activate_events_.empty() || !update_events_.empty();
+  }
+
  private:
   void QueueOrDispatchInputEvent(EventRecord record);
 

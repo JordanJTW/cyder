@@ -45,6 +45,11 @@ ABSL_FLAG(bool,
           /*default_value=*/false,
           "Runs Cyder without a window");
 
+ABSL_FLAG(bool,
+          exit_on_idle,
+          /*default_value=*/false,
+          "Save a screenshot and exit once idle (use with --headless)");
+
 #define SHOW_WINDOW
 
 constexpr bool memory_write_log = false;
