@@ -332,6 +332,7 @@ absl::StatusOr<bool> IsDialogEvent(const EventRecord event_record) {
   return window_record.window_kind == kDialogKind;
 }
 
+// Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-426.html
 absl::Status ModalDialog(Ptr filter_proc, Var<Integer> item_hit) {
   CHECK(filter_proc == 0) << "Custom `filter_proc` not yet supported.";
 
@@ -342,7 +343,6 @@ absl::Status ModalDialog(Ptr filter_proc, Var<Integer> item_hit) {
 
     switch (event.what) {
       case kWindowUpdate:
-        LOG(INFO) << "Update: " << std::hex << event.message;
         RETURN_IF_ERROR(DrawDialogWindow(event.message));
         break;
     }
