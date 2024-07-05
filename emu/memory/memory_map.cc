@@ -62,10 +62,12 @@ constexpr GlobalVars kWhitelistWriteGlobalVars[] = {
     // TODO: Why would you want to write to the MemoryManager error code?
     GlobalVars::MemErr, GlobalVars::PaintWhite};
 
-#define RETURN_IF_WHITELISTED(address, whitelist)                \
-  if (std::find(std::begin(whitelist), std::end(whitelist),      \
-                GetGlobalVar(address)) != std::end(whitelist)) { \
-    return;                                                      \
+#define RETURN_IF_WHITELISTED(address, whitelist)                       \
+  if (auto iter = std::find(std::begin(whitelist), std::end(whitelist), \
+                            GetGlobalVar(address));                     \
+      iter != std::end(whitelist)) {                                    \
+    LOG(INFO) << "Access global: " << GetGlobalVarName(address);        \
+    return;                                                             \
   }
 
 bool ShouldLogAccess(const RegionEntry& entry, uint32_t address) {
@@ -106,11 +108,15 @@ void CheckReadAccess(uint32_t address) {
   };
 
   for (const auto& entry : log_read_regions) {
-    if (within_region(entry.start, entry.end) &&
-        ShouldLogAccess(entry, address)) {
-      LOG(FATAL) << "Read within protected region \"" << entry.name << "\": 0x"
-                 << std::hex << address << " (0x" << (address - entry.start)
-                 << ")";
+    if (within_region(entry.start, entry.end)) {
+      if (ShouldLogAccess(entry, address))
+        LOG(FATAL) << "Read within protected region \"" << entry.name
+                   << "\": 0x" << std::hex << address << " (0x"
+                   << (address - entry.start) << ")";
+      else
+        LOG(WARNING) << "Read within unprotected region \"" << entry.name
+                     << "\": 0x" << std::hex << address << " (0x"
+                     << (address - entry.start) << ")";
     }
   }
 
