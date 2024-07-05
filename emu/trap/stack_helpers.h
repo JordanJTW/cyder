@@ -55,7 +55,10 @@ absl::StatusOr<T> PopType() {
 // Pops pointer to `T` off of the stack and returns the dereferenced value
 template <typename T>
 absl::StatusOr<T> PopRef() {
-  auto ptr = TRY(Pop<Ptr>());
+  // AND-ing here accounts for non 32-bit clean systems where the OS stored
+  // flags in the upper byte of a pointer.
+  // TODO: Allow for 32-bit clean behavior and handle this more consistently
+  auto ptr = TRY(Pop<Ptr>()) & 0x00FFFFFF;
   return ReadType<T>(memory::kSystemMemory, ptr);
 }
 
