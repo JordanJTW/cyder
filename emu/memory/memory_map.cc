@@ -51,7 +51,8 @@ constexpr GlobalVars kWhitelistReadGlobalVars[] = {
     // Gets the current volume level (always 0)
     GlobalVars::SdVolume,
     // Used to check if an old 64k ROM (-1) or newer ROM (positive value)
-    GlobalVars::ROM85};
+    GlobalVars::ROM85, GlobalVars::ScreenRow, GlobalVars::DoubleTime,
+    GlobalVars::MonkeyLives};
 
 constexpr GlobalVars kWhitelistWriteGlobalVars[] = {
     GlobalVars::FPState, GlobalVars::TempRect, GlobalVars::IconBitmap,

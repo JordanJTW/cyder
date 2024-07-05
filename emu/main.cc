@@ -245,6 +245,16 @@ absl::Status InitializeVM(size_t pc) {
   // TODO: Store the application name here as a Pascal string
   RETURN_IF_ERROR(kSystemMemory.Write<uint8_t>(GlobalVars::CurApName, 0));
 
+  // This value was arbitraily chosen based on testing what felt natural.
+  RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(GlobalVars::DoubleTime, 16));
+  // According to documentation "monkey lives if nonzero" but that is not the
+  // behavior observed with MacPaint. In MacPaint a value of zero causes
+  // "About MacPaint" to never display the dialog due to a MonkeyLives gaurd...
+  // I am really not sure what's going on here but can not argue with success...
+  // Experimenting in Basillisk II & minivmac yields a constant of 0xFFB8.
+  RETURN_IF_ERROR(
+      kSystemMemory.Write<uint16_t>(GlobalVars::MonkeyLives, 0xFFB8));
+
   // Write low-memory constants:
   RETURN_IF_ERROR(
       kSystemMemory.Write<uint32_t>(GlobalVars::MinusOne, 0xFFFFFFFF));
@@ -354,6 +364,9 @@ absl::Status Main(const core::Args& args) {
   bitmap.bounds = NewRect(0, 0, kScreenWidth, kScreenHeight);
   bitmap.row_bytes = cyder::PixelWidthToBytes(kScreenWidth);
   bitmap.base_addr = memory_manager.Allocate(bitmap.row_bytes * kScreenHeight);
+
+  RETURN_IF_ERROR(
+      kSystemMemory.Write<uint16_t>(GlobalVars::ScreenRow, bitmap.row_bytes));
 
   BitmapImage screen(bitmap,
                      kSystemMemory.raw_mutable_ptr() + bitmap.base_addr);
