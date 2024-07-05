@@ -133,3 +133,18 @@ struct HVolumeParamType {
   ioVDirCnt:        LongInt;      // number of directories on volume
   // ioVFndrInfo:      ARRAY[1..8] OF LongInt {information used by the Finder}
 }
+
+type Boolean: u8;
+
+// Link: https://dev.os9.ca/techpubs/mac/OSUtilities/OSUtilities-15.html
+struct SysEnvRecord {
+  environsVersion:  Integer;
+  machineType:      Integer;
+  systemVersion:    Integer;
+  processor:        Integer;
+  hasFPU:           Boolean;
+  hasColorQD:       Boolean;
+  keyBoardType:     Integer;
+  atDrvrVersNum:    Integer;
+  sysVRefNum:       Integer;
+}

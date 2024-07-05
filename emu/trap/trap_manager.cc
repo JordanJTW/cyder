@@ -745,6 +745,25 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
       return absl::OkStatus();
     }
 
+    // ======================== Gestalt Manager ========================
+
+    // Link: https://dev.os9.ca/techpubs/mac/OSUtilities/OSUtilities-19.html
+    case Trap::SysEnvirons: {
+      Integer version_requested = m68k_get_reg(NULL, M68K_REG_D0);
+      Ptr var_the_world = m68k_get_reg(NULL, M68K_REG_A0);
+      LOG_TRAP() << "SysEnvirons(versionRequested: " << version_requested
+                 << ", VAR theWorld: 0x" << std::hex << var_the_world << ")";
+
+      RESTRICT_FIELD_ACCESS(SysEnvRecord, var_the_world,
+                            SysEnvRecordFields::hasColorQD);
+
+      return WithType<SysEnvRecord>(var_the_world, [](SysEnvRecord& record) {
+        record.hasColorQD = 0;
+        m68k_set_reg(M68K_REG_D0, 0 /*noErr*/);
+        return absl::OkStatus();
+      });
+    }
+
     default:
       return absl::UnimplementedError(
           absl::StrCat("Unimplemented system trap: '", GetTrapName(trap), "'"));
