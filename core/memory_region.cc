@@ -17,7 +17,8 @@ MemoryRegion::MemoryRegion(void* const data, size_t size)
                    reinterpret_cast<uint8_t* const>(data),
                    size,
                    /*maximum_size=*/size,
-                   /*base_offset=*/0) {}
+                   /*base_offset=*/0,
+                   std::make_shared<SharedData>()) {}
 
 absl::StatusOr<MemoryRegion> MemoryRegion::Create(size_t offset) const {
   return Create(/*name=*/"", offset);
@@ -35,7 +36,8 @@ absl::StatusOr<MemoryRegion> MemoryRegion::Create(std::string name,
   CHECK_SAFE_ACCESS(offset, size);
 
   return MemoryRegion(std::move(name), data_ + offset, size,
-                      maximum_size_ - offset, base_offset_ + offset);
+                      maximum_size_ - offset, base_offset_ + offset,
+                      shared_data_);
 }
 
 absl::Status MemoryRegion::ReadRaw(void* dest,
@@ -44,6 +46,9 @@ absl::Status MemoryRegion::ReadRaw(void* dest,
   CHECK_SAFE_ACCESS(offset, length);
 
   memcpy(dest, data_ + offset, length);
+  if (shared_data_->watcher) {
+    shared_data_->watcher->OnRead(base_offset_ + offset, length);
+  }
   return absl::OkStatus();
 }
 
@@ -53,7 +58,14 @@ absl::Status MemoryRegion::WriteRaw(const void* src,
   CHECK_SAFE_ACCESS(offset, length);
 
   memcpy(data_ + offset, src, length);
+  if (shared_data_->watcher) {
+    shared_data_->watcher->OnWrite(base_offset_ + offset, length);
+  }
   return absl::OkStatus();
+}
+
+void MemoryRegion::SetWatcher(MemoryWatcher* watcher) {
+  shared_data_->watcher = watcher;
 }
 
 absl::Status MemoryRegion::CheckSafeAccess(const std::string& access_type,
@@ -77,12 +89,14 @@ MemoryRegion::MemoryRegion(std::string name,
                            uint8_t* const data,
                            size_t size,
                            size_t maximum_size,
-                           size_t base_offset)
+                           size_t base_offset,
+                           std::shared_ptr<SharedData> shared_data)
     : name_(std::move(name)),
       data_(data),
       size_(size),
       maximum_size_(maximum_size),
-      base_offset_(base_offset) {}
+      base_offset_(base_offset),
+      shared_data_(shared_data) {}
 
 std::ostream& operator<<(std::ostream& os, const MemoryRegion& region) {
   constexpr size_t bytes_per_line = 16;

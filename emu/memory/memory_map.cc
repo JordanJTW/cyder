@@ -84,6 +84,19 @@ bool ShouldLogAccess(const RegionEntry& entry, uint32_t address) {
 uint8_t kSystemMemoryRaw[kSystemMemorySize];
 core::MemoryRegion kSystemMemory(&kSystemMemoryRaw, kSystemMemorySize);
 
+class InitializedWatcher : public core::MemoryWatcher {
+  void OnWrite(size_t offset, size_t size) override {
+    for (int i = 0; i < size; ++i) {
+      kHasInitializedMemory[offset + i] = true;
+    }
+  }
+};
+
+void InstallMemoryWatcher() {
+  static core::MemoryWatcher* watcher = new InitializedWatcher();
+  kSystemMemory.SetWatcher(watcher);
+}
+
 uint32_t GetA5WorldPosition() {
   return a5_world;
 }
@@ -114,9 +127,9 @@ void CheckReadAccess(uint32_t address) {
                    << "\": 0x" << std::hex << address << " (0x"
                    << (address - entry.start) << ")";
       else
-        LOG(WARNING) << "Read within unprotected region \"" << entry.name
-                     << "\": 0x" << std::hex << address << " (0x"
-                     << (address - entry.start) << ")";
+        LOG(INFO) << "Read within unprotected region \"" << entry.name
+                  << "\": 0x" << std::hex << address << " (0x"
+                  << (address - entry.start) << ")";
     }
   }
 

@@ -101,6 +101,8 @@ const size_t kInterruptVectorTableStart = 0x0000;
 void CheckReadAccess(uint32_t address);
 void CheckWriteAccess(uint32_t address, uint32_t value);
 
+void InstallMemoryWatcher();
+
 // Sets the bounds of the A5 world when bounds checking.
 absl::Status SetA5WorldBounds(uint32_t above_a5, uint32_t below_a5);
 uint32_t GetA5WorldPosition();

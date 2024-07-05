@@ -353,6 +353,7 @@ absl::Status Main(const core::Args& args) {
 
   MemoryManager memory_manager;
   logger.SetMemoryManager(&memory_manager);
+  cyder::memory::InstallMemoryWatcher();
 
   ResourceManager resource_manager(memory_manager, *file, system_file.get());
 

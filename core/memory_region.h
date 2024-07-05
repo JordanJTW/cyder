@@ -13,6 +13,13 @@
 
 namespace core {
 
+// Allows watching for reads/writes with-in a MemoryRegion (and sub-regions)
+class MemoryWatcher {
+ public:
+  virtual void OnRead(size_t offset, size_t size) {}
+  virtual void OnWrite(size_t offset, size_t size) {}
+};
+
 // Represents a region of memory and allows safe access. Each MemoryRegion is a
 // subset of its parent and allows `offset`s to be relative to each region.
 class MemoryRegion final {
@@ -43,14 +50,9 @@ class MemoryRegion final {
 
   template <typename Type>
   absl::StatusOr<Type> Read(size_t offset) const {
-    return betoh<Type>(TRY(ReadRaw<Type>(offset)));
-  }
-
-  template <typename Type>
-  absl::StatusOr<Type> ReadRaw(size_t offset) const {
     Type value;
     RETURN_IF_ERROR(ReadRaw(&value, offset, sizeof(Type)));
-    return std::move(value);
+    return betoh<Type>(value);
   }
 
   // Copies `length` bytes from `offset` to `dest`. Returns
@@ -59,16 +61,16 @@ class MemoryRegion final {
 
   template <typename Type>
   absl::Status Write(size_t offset, Type data) {
-    return WriteRaw<Type>(offset, htobe<Type>(data));
-  }
-
-  template <typename Type>
-  absl::Status WriteRaw(size_t offset, Type data) {
-    return WriteRaw(&data, offset, sizeof(Type));
+    const Type endian = htobe<Type>(data);
+    return WriteRaw(&endian, offset, sizeof(Type));
   }
 
   // Writes `length` bytes from `src` to `offset`
   absl::Status WriteRaw(const void* src, size_t offset, size_t length);
+
+  // Sets `watcher` to track reads/writes to the MemoryRegion.
+  // NOTE: This will track access across all regions associated with a "base".
+  void SetWatcher(MemoryWatcher* watcher);
 
   // The offset of this region within "base"
   size_t base_offset() const { return base_offset_; }
@@ -79,11 +81,16 @@ class MemoryRegion final {
   uint8_t* const raw_mutable_ptr() const { return data_; }
 
  private:
+  struct SharedData {
+    MemoryWatcher* watcher;
+  };
+
   MemoryRegion(std::string name,
                uint8_t* const data,
                size_t size,
                size_t maximum_size,
-               size_t base_offset);
+               size_t base_offset,
+               std::shared_ptr<SharedData> shared_data);
 
   absl::Status CheckSafeAccess(const std::string& access_type,
                                size_t offset,
@@ -95,6 +102,8 @@ class MemoryRegion final {
 
   const size_t maximum_size_;
   const size_t base_offset_;
+
+  std::shared_ptr<SharedData> shared_data_;
 };
 
 std::ostream& operator<<(std::ostream&, const MemoryRegion&);
