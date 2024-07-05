@@ -11,6 +11,9 @@
 namespace cyder {
 namespace graphics {
 
+// Creates a BitmapImage tied to the BitMap of `the_port`
+BitmapImage PortImageFor(Ptr the_port);
+
 // Creates a BitmapImage tied to the BitMap of the current Port
 BitmapImage ThePortImage();
 

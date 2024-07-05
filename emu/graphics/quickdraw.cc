@@ -12,13 +12,18 @@
 namespace cyder {
 namespace graphics {
 
-BitmapImage ThePortImage() {
-  Ptr the_port = MUST(port::GetThePort());
+BitmapImage PortImageFor(Ptr the_port) {
   auto current_port = MUST(ReadType<GrafPort>(memory::kSystemMemory, the_port));
   return BitmapImage(current_port.port_bits,
                      memory::kSystemMemory.raw_mutable_ptr() +
                          current_port.port_bits.base_addr);
 }
+
+BitmapImage ThePortImage() {
+  Ptr the_port = MUST(port::GetThePort());
+  return PortImageFor(the_port);
+}
+
 }  // namespace graphics
 
 namespace port {

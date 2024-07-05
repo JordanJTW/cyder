@@ -808,13 +808,12 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       RETURN_IF_ERROR(WriteType<EventRecord>(
           std::move(event), memory::kSystemMemory, the_event_var));
 
-      if (event.what == 6 /*updateEvt*/) {
+      if (event.what == kWindowUpdate) {
         RETURN_IF_ERROR(
             WithType<WindowRecord>(event.message, [&](WindowRecord& window) {
               Ptr wm_port_ptr =
                   TRY(memory::kSystemMemory.Read<Handle>(GlobalVars::WMgrPort));
-              RETURN_IF_ERROR(port::SetThePort(wm_port_ptr));
-              graphics::BitmapImage image = graphics::ThePortImage();
+              graphics::BitmapImage image = graphics::PortImageFor(wm_port_ptr);
               DrawWindowFrame(window, image);
               return absl::OkStatus();
             }));
@@ -840,13 +839,12 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       RETURN_IF_ERROR(WriteType<EventRecord>(
           std::move(event), memory::kSystemMemory, the_event_var));
 
-      if (event.what == 6 /*updateEvt*/) {
+      if (event.what == kWindowUpdate) {
         RETURN_IF_ERROR(
             WithType<WindowRecord>(event.message, [&](WindowRecord& window) {
               Ptr wm_port_ptr =
                   TRY(memory::kSystemMemory.Read<Handle>(GlobalVars::WMgrPort));
-              RETURN_IF_ERROR(port::SetThePort(wm_port_ptr));
-              graphics::BitmapImage image = graphics::ThePortImage();
+              graphics::BitmapImage image = graphics::PortImageFor(wm_port_ptr);
               DrawWindowFrame(window, image);
               return absl::OkStatus();
             }));
