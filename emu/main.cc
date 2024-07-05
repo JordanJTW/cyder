@@ -40,6 +40,13 @@ ABSL_FLAG(std::string,
           /*default_value=*/"",
           "A Macintosh System (1-5) resource file to pull from");
 
+ABSL_FLAG(bool,
+          headless,
+          /*default_value=*/false,
+          "Runs Cyder without a window");
+
+#define SHOW_WINDOW
+
 constexpr bool memory_write_log = false;
 
 constexpr size_t break_on_line = 0;
@@ -364,16 +371,18 @@ absl::Status Main(const core::Args& args) {
   int window_width = int(kScreenWidth * kScaleFactor);
   int window_height = int(kScreenHeight * kScaleFactor);
 
-  SDL_Window* window = SDL_CreateWindow(
-      "Cyder", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width,
-      window_height, SDL_WINDOW_ALLOW_HIGHDPI);
+  SDL_Window* window = nullptr;
+  SDL_Renderer* renderer = nullptr;
 
-  CHECK(window) << "Failing to create window: " << SDL_GetError();
+  if (!absl::GetFlag(FLAGS_headless)) {
+    window = SDL_CreateWindow("Cyder", SDL_WINDOWPOS_UNDEFINED,
+                              SDL_WINDOWPOS_UNDEFINED, window_width,
+                              window_height, SDL_WINDOW_ALLOW_HIGHDPI);
+    CHECK(window) << "Failing to create window: " << SDL_GetError();
 
-  SDL_Renderer* renderer =
-      SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
-
-  CHECK(renderer) << "Failing to create renderer: " << SDL_GetError();
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+    CHECK(renderer) << "Failing to create renderer: " << SDL_GetError();
+  }
 
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
 
@@ -389,21 +398,20 @@ absl::Status Main(const core::Args& args) {
   SDL_Event event;
   bool should_exit = false;
   while (!should_exit) {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-    SDL_RenderClear(renderer);
-
     RETURN_IF_ERROR(UpdateGlobalTime());
     if (!single_step) {
       m68k_execute(100000);
     }
 
-    SDL_Texture* texture =
-        SDL_CreateTextureFromSurface(renderer, MakeSurface(screen));
-    CHECK(texture) << "Failed to create texture: " << SDL_GetError();
+    if (renderer != nullptr) {
+      SDL_Texture* texture =
+          SDL_CreateTextureFromSurface(renderer, MakeSurface(screen));
+      CHECK(texture) << "Failed to create texture: " << SDL_GetError();
 
-    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
-    SDL_RenderPresent(renderer);
-    SDL_DestroyTexture(texture);
+      SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+      SDL_RenderPresent(renderer);
+      SDL_DestroyTexture(texture);
+    }
 
     while (SDL_PollEvent(&event)) {
       switch (event.type) {
@@ -416,7 +424,9 @@ absl::Status Main(const core::Args& args) {
           }
           break;
         case SDL_MOUSEBUTTONDOWN:
-          SDL_SetWindowGrab(window, SDL_TRUE);
+          if (window) {
+            SDL_SetWindowGrab(window, SDL_TRUE);
+          }
           event_manager.QueueMouseDown(event.button.x / kScaleFactor,
                                        event.button.y / kScaleFactor);
           break;
@@ -425,7 +435,9 @@ absl::Status Main(const core::Args& args) {
                                     event.motion.y / kScaleFactor);
           break;
         case SDL_MOUSEBUTTONUP:
-          SDL_SetWindowGrab(window, SDL_FALSE);
+          if (window) {
+            SDL_SetWindowGrab(window, SDL_FALSE);
+          }
           event_manager.QueueMouseUp(event.button.x / kScaleFactor,
                                      event.button.y / kScaleFactor);
           break;
@@ -434,11 +446,15 @@ absl::Status Main(const core::Args& args) {
           break;
       }
     }
-    PrintFrameTiming();
+    if (!absl::GetFlag(FLAGS_headless)) {
+      PrintFrameTiming();
+    }
   }
 
-  SDL_DestroyRenderer(renderer);
-  SDL_DestroyWindow(window);
+  if (!absl::GetFlag(FLAGS_headless)) {
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+  }
   SDL_Quit();
   return absl::OkStatus();
 }
