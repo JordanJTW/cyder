@@ -822,7 +822,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         SaveScreenShotAndExit();
       }
 
-      auto event = event_manager_.GetNextEvent(event_mask);
+      EventRecord event = event_manager_.GetNextEvent(event_mask);
 
       RETURN_IF_ERROR(WriteType<EventRecord>(
           std::move(event), memory::kSystemMemory, the_event_var));

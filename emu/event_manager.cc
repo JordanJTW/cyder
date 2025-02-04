@@ -144,8 +144,9 @@ EventRecord EventManager::GetNextEvent(uint16_t event_mask) {
     auto event_iter = std::find_if(input_events_.begin(), input_events_.end(),
                                    is_event_enabled);
     if (event_iter != input_events_.end()) {
+      EventRecord record = *event_iter;
       input_events_.erase(event_iter);
-      return *event_iter;
+      return record;
     }
   }
 
