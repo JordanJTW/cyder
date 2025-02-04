@@ -3,6 +3,7 @@
 
 #include <SDL.h>
 
+#include "absl/strings/str_cat.h"
 #include "core/logging.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"

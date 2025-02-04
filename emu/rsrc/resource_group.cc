@@ -6,6 +6,7 @@
 #include <cstring>
 #include <iomanip>
 
+#include "absl/strings/str_cat.h"
 #include "core/endian_helpers.h"
 #include "core/status_helpers.h"
 

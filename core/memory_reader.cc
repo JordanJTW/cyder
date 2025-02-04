@@ -5,6 +5,7 @@
 
 #include <cstdint>
 
+#include "absl/strings/str_cat.h"
 #include "absl/status/status.h"
 
 namespace core {

@@ -10,6 +10,7 @@
 
 #include "absl/flags/flag.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"

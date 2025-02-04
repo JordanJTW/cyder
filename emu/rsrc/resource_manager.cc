@@ -3,6 +3,7 @@
 
 #include "emu/rsrc/resource_manager.h"
 
+#include "absl/strings/str_cat.h"
 #include "emu/memory/memory_map.h"
 #include "gen/global_names.h"
 #include "gen/typegen/typegen_prelude.h"

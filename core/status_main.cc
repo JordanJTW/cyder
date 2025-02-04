@@ -4,6 +4,7 @@
 #include "status_main.h"
 
 #include "absl/flags/parse.h"
+#include "absl/strings/str_cat.h"
 #include "core/logging.h"
 
 namespace core {

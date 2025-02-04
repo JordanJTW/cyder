@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <fstream>
 
+#include "absl/strings/str_cat.h"
 #include "core/logging.h"
 #include "core/status_helpers.h"
 #include "emu/graphics/copybits.h"

@@ -7,6 +7,7 @@
 #include <string>
 
 #include "absl/flags/flag.h"
+#include "absl/strings/str_cat.h"
 #include "core/logging.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"

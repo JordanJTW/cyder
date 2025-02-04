@@ -7,6 +7,8 @@
 #include <cctype>
 #include <iomanip>
 
+#include "absl/strings/str_cat.h"
+
 #define CHECK_SAFE_ACCESS(offset, size) \
   RETURN_IF_ERROR(CheckSafeAccess(__func__, offset, size))
 

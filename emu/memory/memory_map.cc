@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <sstream>
 
+#include "absl/strings/str_cat.h"
 #include "core/logging.h"
 #include "gen/global_names.h"
 

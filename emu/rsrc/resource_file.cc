@@ -14,6 +14,7 @@
 #include <map>
 
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "core/endian_helpers.h"
 #include "core/logging.h"
 #include "core/memory_region.h"
