@@ -1,14 +1,9 @@
 // Copyright (c) 2022, Jordan Werthman
 // SPDX-License-Identifier: BSD-2-Clause
 
+@include("gen/typegen/base_types.tdef")
 
-// FIXME: Make these intrinsic types?
-type Ptr: u32;
-type Handle: Ptr;
 type GrafPtr: Ptr;
-
-type Integer: u16;
-type LongInt: u32;
 type ResourceId: Integer;
 
 // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-183.html

@@ -17,6 +17,10 @@ class Token:
     END_CURLY_BRACKET = auto()
     START_SQUARE_BRACKET = auto()
     END_SQUARE_BRACKET = auto()
+    START_PARENTHESIS = auto()
+    END_PARENTHESIS = auto()
+    AT = auto()
+    STRING = auto()
     END_OF_FILE = auto()
     GARBAGE = auto()
 
@@ -36,14 +40,13 @@ class Token:
 
   @property
   def label(self) -> str:
-    assert self.type == Token.Type.IDENTIFIER, 'label is only valid for IDENTIFIER'
-    assert self._label != None, 'label must not be None'
-    return self._label
+    assert self._str != None, 'str must not be None'
+    return self._str
 
-  def __init__(self, type: Type, span: Tuple, label: Optional[str] = None, number: Optional[int] = None):
+  def __init__(self, type: Type, span: Tuple, str: Optional[str] = None, number: Optional[int] = None):
     self._type = type
     self._span = span
-    self._label = label
+    self._str = str
     self._number = number
 
   def __str__(self) -> str:
@@ -55,6 +58,18 @@ class Token:
 
     return f'Token(\n  type: {self._type}\n  span: {self._span}\n)'
 
+
+CHAR_TO_TOKEN_TYPE = {
+  ':': Token.Type.COLON,
+  ';': Token.Type.SEMICOLON,
+  '{': Token.Type.START_CURLY_BRACKET,
+  '}': Token.Type.END_CURLY_BRACKET,
+  '[': Token.Type.START_SQUARE_BRACKET,
+  ']': Token.Type.END_SQUARE_BRACKET,
+  '(': Token.Type.START_PARENTHESIS,
+  ')': Token.Type.END_PARENTHESIS,
+  '@': Token.Type.AT,
+}
 
 class Tokenizer:
   def __init__(self, contents: str):
@@ -81,7 +96,7 @@ class Tokenizer:
     if name == 'struct':
       return Token(Token.Type.STRUCT, span)
 
-    return Token(Token.Type.IDENTIFIER, span, label=name)
+    return Token(Token.Type.IDENTIFIER, span, str=name)
 
   def _consume_comment(self):
     # Consume '//'
@@ -117,6 +132,7 @@ class Tokenizer:
 
     return Token(Token.Type.NUMBER, (start_index, self._index), number=int(number))
 
+
   def generate_tokens(self):
     tokens: List[Token] = []
     errors: List[Tuple] = []
@@ -141,40 +157,32 @@ class Tokenizer:
 
       char_span = (self._index, self._index + 1)
 
-      if self._current == ':':
-        tokens.append(Token(Token.Type.COLON, char_span))
+      if token_type := CHAR_TO_TOKEN_TYPE.get(self._current, None):
+        tokens.append(Token(token_type, char_span))
         self._advance()
         continue
 
-      if self._current == ';':
-        tokens.append(Token(Token.Type.SEMICOLON, char_span))
+      if self._current == '"':
+        # Ignore initial '"'
         self._advance()
-        continue
+        text = ""
+        start_index = self._index
+        while not self._is_eof():
+          if self._current == '"':
+            # Ignore final '"'
+            self._advance()
+            break
 
-      if self._current == '{':
-        tokens.append(Token(Token.Type.START_CURLY_BRACKET, char_span))
-        self._advance()
-        continue
-
-      if self._current == '}':
-        tokens.append(Token(Token.Type.END_CURLY_BRACKET, char_span))
-        self._advance()
-        continue
-
-      if self._current == '[':
-        tokens.append(Token(Token.Type.START_SQUARE_BRACKET, char_span))
-        self._advance()
-        continue
-
-      if self._current == ']':
-        tokens.append(Token(Token.Type.END_SQUARE_BRACKET, char_span))
-        self._advance()
+          text += self._current
+          self._advance()
+        
+        tokens.append(Token(Token.Type.STRING, (start_index, self._index), str=text))
         continue
 
       if self._current == '/':
         if self._contents[self._index + 1] != '/':
           tokens.append(
-            Token(Token.Type.GARBAGE, char_span, label=self._current))
+            Token(Token.Type.GARBAGE, char_span, str=self._current))
           errors.append(('Should this be // for a comment?', char_span))
           self._advance()
           continue
@@ -182,7 +190,7 @@ class Tokenizer:
         self._consume_comment()
         continue
 
-      tokens.append(Token(Token.Type.GARBAGE, char_span, label=self._current))
+      tokens.append(Token(Token.Type.GARBAGE, char_span, str=self._current))
       errors.append(('Unknown character found in file', char_span))
       self._advance()
 

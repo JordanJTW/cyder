@@ -1,6 +1,8 @@
 // Copyright (c) 2022, Jordan Werthman
 // SPDX-License-Identifier: BSD-2-Clause
 
+@include("gen/typegen/include_test.tdef")
+
 struct Integers {
   byte: u8;
   uword: u16;
@@ -22,4 +24,8 @@ struct ByteWidth {
 
 struct RawBytes {
   bytes: u8[20];
+}
+
+struct TestIncludeStruct {
+  test: StructToInclude;
 }

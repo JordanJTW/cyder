@@ -1,0 +1,3 @@
+struct StructToInclude {
+    value: u32;
+}

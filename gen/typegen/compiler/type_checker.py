@@ -40,7 +40,7 @@ _STATIC_TYPE_SIZES = {'u8': 1, 'u16': 2, 'u24': 3,
 
 class TypeChecker:
   @staticmethod
-  def check(expressions: List[ParsedExpression]):
+  def check(external_expressions: List[CheckedExpression], expressions: List[ParsedExpression]):
     global_id_spans: Mapping[str, Tuple[int, int]] = {}
     global_types: Mapping[str, CheckedExpression] = {}
     errors: List[Tuple[str, Tuple[int, int]]] = []
@@ -54,7 +54,14 @@ class TypeChecker:
         return CheckedTypeExpression(
             expr.label, size=1, base_type_id='str', is_dynamic=True, is_struct=True)
 
-      if ref := global_types.get(expr.label, None):
+      ref = global_types.get(expr.label, None)
+      if not ref:
+        for ext in external_expressions:
+          if ext.id == expr.label:
+            ref = ext
+            break
+    
+      if ref:
         if isinstance(ref, CheckedAssignExpression):
           return CheckedTypeExpression(
               expr.label, ref.type.size, ref.type.base_type_id, ref.type.is_dynamic, ref.type.is_struct)

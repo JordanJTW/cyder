@@ -135,10 +135,14 @@ class CodeGenerator:
     for include in includes:
       file.write(f'#include {include}\n')
 
-  def _generate_header(self, output_path):
+  def _generate_header(self, include_paths, output_path):
     with open(f'{output_path}.h', 'w') as header:
       header.write('#pragma once\n\n')
       self._write_includes(header, _HEADER_INCLUDES)
+      header.write('\n')
+
+      for path in include_paths:
+        header.write(f'#include "{path}"\n')
       header.write('\n')
 
       self._generate_type_decls(header)
@@ -276,12 +280,16 @@ class CodeGenerator:
     for expr in self._struct_expressions:
       self._write_struct_stream(file, expr.id, expr.members)
 
-  def _generate_source(self, output_path):
+  def _generate_source(self, include_paths, output_path):
     with open(f'{output_path}.cc', 'w') as source:
       source.write(f'#include "{Path(output_path).name}.h"\n')
       source.write('\n')
 
       self._write_includes(source, _SOURCE_INCLUDES)
+      source.write('\n')
+
+      for path in include_paths:
+        source.write(f'#include "{path}"\n')
       source.write('\n')
 
       for expr in self._struct_expressions:
@@ -291,7 +299,9 @@ class CodeGenerator:
 
       self._generate_struct_stream(source)
 
-  def generate(self, output_path):
-    self._generate_header(output_path)
-    self._generate_source(output_path)
+  def generate(self, include_paths, output_path):
+    generated_include_paths = [f'{path}.h' for path in include_paths]
+
+    self._generate_header(generated_include_paths, output_path)
+    self._generate_source(generated_include_paths, output_path)
     return self._errors

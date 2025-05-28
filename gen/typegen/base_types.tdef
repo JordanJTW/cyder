@@ -1,0 +1,5 @@
+type Ptr: u32;
+type Handle: Ptr;
+
+type Integer: u16;
+type LongInt: u32;
