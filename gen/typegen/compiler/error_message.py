@@ -32,7 +32,7 @@ def print_message_for_token(contents: str, span: Tuple, message: str):
       print(line_leader, contents[line_start:line_end])
       print(' ' * message_spacing, '^', message)
       return
-  
+
   raise Exception(f'Failed to find line for span: {span}')
 
 

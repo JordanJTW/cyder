@@ -75,7 +75,7 @@ class Parser:
       if label_expr.label not in _ALLOW_SIZE_POSTFIX:
         raise ParserException('[<size>] only allowed for types: [ ' +
                               ', '.join(_ALLOW_SIZE_POSTFIX) + ' ]', self._current.span)
-      
+
       size_token = self._expect_next_token(Token.Type.NUMBER, 'missing size')
 
       maybe_size = size_token.number
@@ -103,15 +103,16 @@ class Parser:
     expr_span = merge_span(start_span, type_expr.span)
 
     return AssignExpression(
-      LabelExpression(label_token.label, label_token.span),
-      type_expr, expr_span)
+        LabelExpression(label_token.label, label_token.span),
+        type_expr, expr_span)
 
   def _parse_struct(self):
     start_span = self._current.span
 
     assert (self._current.type == Token.Type.STRUCT)
 
-    label_token = self._expect_next_token(Token.Type.IDENTIFIER, 'missing struct label')
+    label_token = self._expect_next_token(
+        Token.Type.IDENTIFIER, 'missing struct label')
 
     self._expect_next_token(Token.Type.START_CURLY_BRACKET, 'missing "{"')
 
@@ -132,25 +133,25 @@ class Parser:
     self._advance()
 
     return StructExpression(
-      LabelExpression(label_token.label, label_token.span),
-      members, expr_span)
+        LabelExpression(label_token.label, label_token.span),
+        members, expr_span)
 
   def _parse_type(self):
     assert (self._current.type == Token.Type.TYPE)
     self._advance()
 
     return self._parse_assignement()
-  
 
   def _parse_macro(self, includes):
     assert (self._current.type == Token.Type.AT)
 
     token = self._expect_next_token(Token.Type.IDENTIFIER, 'missing macro')
-    
+
     if token.label == 'include':
       self._expect_next_token(Token.Type.START_PARENTHESIS, 'missing (')
 
-      include_token = self._expect_next_token(Token.Type.STRING, 'expected string path to include')
+      include_token = self._expect_next_token(
+          Token.Type.STRING, 'expected string path to include')
       includes.append(include_token.label)
 
       self._expect_next_token(Token.Type.END_PARENTHESIS, 'missing )')
@@ -180,12 +181,10 @@ class Parser:
 
         else:
           errors.append(
-            ('unknown start of expression', self._current.span))
+              ('unknown start of expression', self._current.span))
           self._advance()
 
       except ParserException as e:
         errors.append((e.message, e.span))
 
     return (expressions, includes, errors)
-  
-

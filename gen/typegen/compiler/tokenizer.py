@@ -60,16 +60,17 @@ class Token:
 
 
 CHAR_TO_TOKEN_TYPE = {
-  ':': Token.Type.COLON,
-  ';': Token.Type.SEMICOLON,
-  '{': Token.Type.START_CURLY_BRACKET,
-  '}': Token.Type.END_CURLY_BRACKET,
-  '[': Token.Type.START_SQUARE_BRACKET,
-  ']': Token.Type.END_SQUARE_BRACKET,
-  '(': Token.Type.START_PARENTHESIS,
-  ')': Token.Type.END_PARENTHESIS,
-  '@': Token.Type.AT,
+    ':': Token.Type.COLON,
+    ';': Token.Type.SEMICOLON,
+    '{': Token.Type.START_CURLY_BRACKET,
+    '}': Token.Type.END_CURLY_BRACKET,
+    '[': Token.Type.START_SQUARE_BRACKET,
+    ']': Token.Type.END_SQUARE_BRACKET,
+    '(': Token.Type.START_PARENTHESIS,
+    ')': Token.Type.END_PARENTHESIS,
+    '@': Token.Type.AT,
 }
+
 
 class Tokenizer:
   def __init__(self, contents: str):
@@ -132,7 +133,6 @@ class Tokenizer:
 
     return Token(Token.Type.NUMBER, (start_index, self._index), number=int(number))
 
-
   def generate_tokens(self):
     tokens: List[Token] = []
     errors: List[Tuple] = []
@@ -175,14 +175,15 @@ class Tokenizer:
 
           text += self._current
           self._advance()
-        
-        tokens.append(Token(Token.Type.STRING, (start_index, self._index), str=text))
+
+        tokens.append(
+            Token(Token.Type.STRING, (start_index, self._index), str=text))
         continue
 
       if self._current == '/':
         if self._contents[self._index + 1] != '/':
           tokens.append(
-            Token(Token.Type.GARBAGE, char_span, str=self._current))
+              Token(Token.Type.GARBAGE, char_span, str=self._current))
           errors.append(('Should this be // for a comment?', char_span))
           self._advance()
           continue

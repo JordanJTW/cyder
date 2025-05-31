@@ -33,7 +33,7 @@ def write(file, contents: str, indent: int = 0):
   if contents.startswith('\n'):
     contents = contents[1:]
   file.write(textwrap.indent(
-    textwrap.dedent(contents), ' ' * indent))
+      textwrap.dedent(contents), ' ' * indent))
 
 
 class CodeGenerator:
@@ -50,12 +50,12 @@ class CodeGenerator:
 
   def _get_c_type(self, type: CheckedTypeExpression) -> str:
     builtin_types = {
-      'u8': 'uint8_t',
-      'u16': 'uint16_t',
-      'u24': 'uint24_t',
-      'u32': 'uint32_t',
-      'i16': 'int16_t',
-      'i32': 'int32_t',
+        'u8': 'uint8_t',
+        'u16': 'uint16_t',
+        'u24': 'uint24_t',
+        'u32': 'uint32_t',
+        'i16': 'int16_t',
+        'i32': 'int32_t',
     }
 
     for struct in self._struct_expressions:
@@ -91,7 +91,7 @@ class CodeGenerator:
 
     if not expr.is_dynamic:
       write(
-        file, f"""\nconst static size_t fixed_size = {expr.size};""", indent=2)
+          file, f"""\nconst static size_t fixed_size = {expr.size};""", indent=2)
 
     write(file, """
 
@@ -179,7 +179,7 @@ class CodeGenerator:
       if isinstance(member.type, CheckedTypeExpression):
         if member.type.id == 'str':
           file.write(
-            f'  obj.{member.id} = TRY(ReadType<std::string>(region, {offset_str}));\n')
+              f'  obj.{member.id} = TRY(ReadType<std::string>(region, {offset_str}));\n')
           offset_variables.append(f'{member.id}.size() + 1')
         else:
           c_type = self._get_c_type(member.type)
@@ -190,7 +190,7 @@ class CodeGenerator:
             offset_variables.append(f'{member.id}.size()')
           elif member.type.id == 'u24':
             file.write(
-              f'  obj.{member.id} = TRY(CopyU24(region, {offset_str}));\n')
+                f'  obj.{member.id} = TRY(CopyU24(region, {offset_str}));\n')
             offset = offset + 3
           elif member.type.id == 'u8' and member.type.has_user_size:
             file.write(
@@ -217,7 +217,7 @@ class CodeGenerator:
       is_string = type_expr.id == 'str'
       write(file, f"""
         RETURN_IF_ERROR(WriteType<{c_type}>({name}, region, total_offset));
-        total_offset += {('1 + ' if is_string else '') + f'{name}.size()' };
+        total_offset += {('1 + ' if is_string else '') + f'{name}.size()'};
       """, indent=indent)
     elif type_expr.id == 'u24':
       write(file, f"""
@@ -243,7 +243,7 @@ class CodeGenerator:
 
     for member in members:
       self._write_write_type_value(
-        file, member.type, f'obj.{member.id}', indent=2)
+          file, member.type, f'obj.{member.id}', indent=2)
     write(file, """
         return absl::OkStatus();
       }\n
@@ -251,7 +251,7 @@ class CodeGenerator:
 
   def _write_struct_stream(self, file, label, members):
     file.write(
-      f'std::ostream& operator<<(std::ostream& os, const {label}& obj) {{ return os << "{{ "')
+        f'std::ostream& operator<<(std::ostream& os, const {label}& obj) {{ return os << "{{ "')
     for index, member in enumerate(members):
       line_end = ' << ", "' if index + 1 != len(members) else ''
       stream_value = f'obj.{member.id}'

@@ -60,7 +60,7 @@ class TypeChecker:
           if ext.id == expr.label:
             ref = ext
             break
-    
+
       if ref:
         if isinstance(ref, CheckedAssignExpression):
           return CheckedTypeExpression(
@@ -76,7 +76,7 @@ class TypeChecker:
       #        global type id which will cause a false trigger here:
       if expr.id.label == expr.type.label:
         raise ParserException(
-          'type expressions can not reference themselves', expr.type.span)
+            'type expressions can not reference themselves', expr.type.span)
 
       checked_type = check_type_exists(expr.type)
 
@@ -99,9 +99,9 @@ class TypeChecker:
                         id_to_span: Mapping[str, Tuple[int, int]]):
       if current_span := id_to_span.get(id.label, None):
         errors.append(
-          (f'type with name "{id.label}" originally defined here', current_span))
+            (f'type with name "{id.label}" originally defined here', current_span))
         errors.append(
-          (f'type with name "{id.label}" already defined', current_span))
+            (f'type with name "{id.label}" already defined', current_span))
         return False
       return True
 
