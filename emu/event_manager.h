@@ -5,7 +5,7 @@
 
 #include <list>
 
-#include "emu/graphics/grafport_types.tdef.h"
+#include "emu/event_manager.tdef.h"
 
 namespace cyder {
 

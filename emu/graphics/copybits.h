@@ -10,6 +10,7 @@
 
 #include <climits>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 
 #define PREPARE_FIRST_COPY()                                                   \

@@ -1,0 +1,58 @@
+@include("gen/typegen/base_types.tdef")
+@include("emu/graphics/grafport_types.tdef")
+
+// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-296.html#HEADING296-96
+struct WindowRecord {
+  port: GrafPort;
+  window_kind: Integer;
+  is_visible: Boolean;
+  hilited: Boolean;
+  has_close: Boolean;
+  has_zoom: Boolean;
+  structure_region: RegionHandle;
+  content_region: RegionHandle;
+  update_region: RegionHandle;
+  window_definition_proc: Handle;
+  data_handle: Handle;
+  title_handle: Handle;
+  title_width: Integer;
+  control_list: Handle;
+  next_window: Ptr;
+  picture_handle: Handle;
+  reference_constant: u32;
+}
+
+// Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-388.html#HEADING388-0
+struct DialogRecord {
+  window_record: WindowRecord;
+  items: Handle;
+  text_handle: Handle;    // Current editable text item number
+  edit_field: Integer;    // Editable text item number (minus 1)
+  edit_open: Integer;     // Reserved. Used internally.
+  default_item: Integer;  // Default button item number
+}
+
+/// -------------------------- Resources --------------------------
+
+// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-293.html#MARKER-9-629
+struct WIND {
+  initial_rect: Rect;
+  window_definition_id: u16;
+  is_visible: u16;
+  has_close: u16;
+  reference_constant: u32;
+  title: str;
+  // Optional: position: u16;
+}
+
+// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-436.html#HEADING436-0
+struct DLOG {
+  initial_rect: Rect;
+  window_definition_id: u16;
+  is_visible: u16;
+  has_close: u16;
+  reference_constant: u32;
+  item_list_id: u16;
+  title: str;
+  // Optional: position: u16 (word aligned)
+}

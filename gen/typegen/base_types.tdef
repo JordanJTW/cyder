@@ -1,5 +1,8 @@
 type Ptr: u32;
 type Handle: Ptr;
 
+type Boolean: u8;
 type Integer: u16;
 type LongInt: u32;
+type Fixed: u32;
+

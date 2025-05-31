@@ -1,12 +1,8 @@
 // Copyright (c) 2022, Jordan Werthman
 // SPDX-License-Identifier: BSD-2-Clause
 
-type Integer: u16;
-type Ptr: u32;
-type Boolean: u8;
-type Fixed: u32;
+@include("gen/typegen/base_types.tdef")
 
-type Handle: Ptr;
 type RegionHandle: Handle;
 
 // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-57.html#HEADING57-39
@@ -94,75 +90,12 @@ struct QDGlobals {
   the_port: Ptr;
 }
 
-// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-296.html#HEADING296-96
-struct WindowRecord {
-  port: GrafPort;
-  window_kind: Integer;
-  is_visible: Boolean;
-  hilited: Boolean;
-  has_close: Boolean;
-  has_zoom: Boolean;
-  structure_region: RegionHandle;
-  content_region: RegionHandle;
-  update_region: RegionHandle;
-  window_definition_proc: Handle;
-  data_handle: Handle;
-  title_handle: Handle;
-  title_width: Integer;
-  control_list: Handle;
-  next_window: Ptr;
-  picture_handle: Handle;
-  reference_constant: u32;
-}
-
-// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-293.html#MARKER-9-629
-struct WIND {
-  initial_rect: Rect;
-  window_definition_id: u16;
-  is_visible: u16;
-  has_close: u16;
-  reference_constant: u32;
-  title: str;
-  // Optional: position: u16;
-}
-
-// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-45.html#MARKER-9-331
-struct EventRecord {
-  what: Integer;
-  message: u32;
-  when: u32;
-  where: Point;
-  modifiers: Integer;
-}
-
-// Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-436.html#HEADING436-0
-struct DLOG {
-  initial_rect: Rect;
-  window_definition_id: u16;
-  is_visible: u16;
-  has_close: u16;
-  reference_constant: u32;
-  item_list_id: u16;
-  title: str;
-  // Optional: position: u16 (word aligned)
-}
-
 // Link: http://0.0.0.0:8000/docs/mac/Text/Text-145.html#MARKER-9-250
 struct FontInfo {
   ascent:  Integer;
   descent: Integer;
   widMax:  Integer;
   leading: Integer;
-}
-
-// Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-388.html#HEADING388-0
-struct DialogRecord {
-  window_record: WindowRecord;
-  items: Handle;
-  text_handle: Handle;    // Current editable text item number
-  edit_field: Integer;    // Editable text item number (minus 1)
-  edit_open: Integer;     // Reserved. Used internally.
-  default_item: Integer;  // Default button item number
 }
 
 struct ItemHeader {

@@ -7,8 +7,8 @@
 
 #include "emu/event_manager.h"
 #include "emu/graphics/bitmap_image.h"
-#include "emu/graphics/grafport_types.tdef.h"
 #include "emu/memory/memory_manager.h"
+#include "emu/window_manager.tdef.h"
 #include "gen/typegen/generated_types.tdef.h"
 
 namespace cyder {
