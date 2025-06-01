@@ -9,13 +9,18 @@ import sys
 
 from compiler.codegen import CodeGenerator
 from compiler.error_message import print_errors
-from compiler.files import File, FileResolver
+from compiler.files import File, FileResolver, FileException
 from compiler.type_checker import TypeChecker
 
 
 def compile(filename, output_path, root_directory):
-  file_to_compile = File.open_file(filename)
-  sorted_files = FileResolver(root_directory).resolve(file_to_compile)
+  try:
+    file_to_compile = File.open_file(filename)
+    sorted_files = FileResolver(root_directory).resolve(file_to_compile)
+  except FileException as e:
+    print_errors(e.errors, e.contents)
+    exit(-1)
+
 
   global_checked_exprs = []
   root_file_exprs = []
