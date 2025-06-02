@@ -63,9 +63,8 @@ class Parser:
 
   # Parses: <identifier>(<[> <digits> <]>);
   def _parse_type_expression(self):
-    start_span = self._current.span
-
     self._expect_next_token(Token.Type.IDENTIFIER, 'missing type')
+    start_span = self._current.span
 
     label_expr = self._current
     self._advance()
@@ -148,13 +147,13 @@ class Parser:
     token = self._expect_next_token(Token.Type.IDENTIFIER, 'missing macro')
 
     if token.label == 'include':
-      self._expect_next_token(Token.Type.START_PARENTHESIS, 'missing (')
+      self._expect_next_token(Token.Type.START_PARENTHESIS, 'missing "("')
 
       include_token = self._expect_next_token(
           Token.Type.STRING, 'expected string path to include')
       includes.append(include_token.label)
 
-      self._expect_next_token(Token.Type.END_PARENTHESIS, 'missing )')
+      self._expect_next_token(Token.Type.END_PARENTHESIS, 'missing ")"')
       self._advance()
 
   def _expect_next_token(self, token_type, error_message):

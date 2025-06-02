@@ -99,9 +99,9 @@ class TypeChecker:
                         id_to_span: Mapping[str, Tuple[int, int]]):
       if current_span := id_to_span.get(id.label, None):
         errors.append(
-            (f'type with name "{id.label}" originally defined here', current_span))
+            (f'type with name "{id.label}" already defined', id.span))
         errors.append(
-            (f'type with name "{id.label}" already defined', current_span))
+            (f'type with name "{id.label}" originally defined here', current_span))
         return False
       return True
 
