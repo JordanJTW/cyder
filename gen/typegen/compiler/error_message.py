@@ -22,18 +22,26 @@ def print_message_for_token(contents: str, span: Tuple, message: str):
   """Prints `message` under the line from `contents` which contains `span`"""
   line_spans = calculate_line_spans(contents)
 
+  extracted_lines = []
   for line, line_span in enumerate(line_spans):
     (line_start, line_end) = line_span
     (span_start, span_end) = span
 
-    if line_start <= span_start and line_end >= span_end:
-      line_leader = f'Line {line + 1}:'
-      message_spacing = len(line_leader) + (span_start - line_start)
-      print(line_leader, contents[line_start:line_end])
-      print(' ' * message_spacing, '^', message)
-      return
+    if line_start >= span_end:
+      break
 
-  raise Exception(f'Failed to find line for span: {span}')
+    if line_end > span_start:
+      extracted_lines.append((line, line_start, contents[line_start:line_end]))
+
+  if len(extracted_lines) == 0:
+    raise Exception(f'Failed to find line(s) for span: {span}')
+
+  for (idx, _, line) in extracted_lines:
+    line_leader = f'Line {idx + 1}:'
+    print(line_leader, line)
+
+  message_spacing = len(line_leader) + (span[0] - extracted_lines[0][1])
+  print(' ' * message_spacing, '^', message)
 
 
 def print_errors(errors: List[Tuple], contents: str):
