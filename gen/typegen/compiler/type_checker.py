@@ -4,7 +4,7 @@
 from dataclasses import dataclass
 from typing import List, Mapping, Tuple, Union
 
-from compiler.type_parser import AssignExpression, StructExpression, LabelExpression, ParsedExpression, ParserException, TrapExpression
+from compiler.type_parser import AssignExpression, StructExpression, LabelExpression, ParsedExpression, ParserException, TrapExpression, EnumExpression
 
 
 @dataclass
@@ -162,6 +162,20 @@ class TypeChecker:
 
         global_types[expr.name.label] = CheckedTrapExpression(
             expr.name.label, checked_args, checked_return)
+        
+      elif isinstance(expr, EnumExpression):
+        if not check_id_unique(expr.name, global_id_spans):
+          continue
+
+        local_id_spans: Mapping[str, Tuple[int, int]] = {}
+        for value in expr.values:
+          check_id_unique(value.id, local_id_spans)
+          local_id_spans[value.id.label] = value.id.span
+
+          #TODO: Ensure enum values are also unique
+
+        global_id_spans[expr.name.label] = expr.name.span
+        global_types[expr.name.label] = expr
 
       else:
         errors.append(

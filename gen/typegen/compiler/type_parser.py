@@ -49,6 +49,20 @@ class TrapExpression:
   span: Tuple[int, int]
 
 
+@dataclass
+class EnumValueExpression:
+  id: LabelExpression
+  value: int
+  span: Tuple[int, int]
+
+
+@dataclass
+class EnumExpression:
+  name: LabelExpression
+  values: List[EnumValueExpression]
+  span: Tuple[int, int]
+
+
 ParsedExpression = Union[StructExpression, AssignExpression]
 
 _ALLOW_SIZE_POSTFIX = ['u8']
@@ -219,6 +233,41 @@ class Parser:
     else:
       raise ParserException('missing return value', span=self._current.span)
 
+  def _parse_enum(self):
+    assert self._current.type == Token.Type.ENUM
+
+    enum_start_span = self._current.span
+
+    enum_id = self._expect_next_token(
+        Token.Type.IDENTIFIER, 'missing enum <id> {')
+    self._expect_next_token(Token.Type.START_CURLY_BRACKET, 'missing "{"')
+
+    enum_values = []
+    while not self._is_eof():
+      if self._peek().type == Token.Type.END_CURLY_BRACKET:
+        break
+
+      name = self._expect_next_token(Token.Type.IDENTIFIER, 'missing name')
+      start_span = self._current.span
+      self._expect_next_token(Token.Type.COLON, 'missing ":"')
+      value = self._expect_next_token(Token.Type.NUMBER, 'missing value')
+      self._expect_next_token(Token.Type.SEMICOLON, 'missing ";"')
+      end_span = self._current.span
+
+      enum_values.append(EnumValueExpression(
+          LabelExpression(name.label, name.span),
+          value.number,
+          merge_span(start_span, end_span)))
+
+    self._expect_next_token(Token.Type.END_CURLY_BRACKET, 'missing "}"')
+    merged_span = merge_span(enum_start_span, self._current.span)
+    self._advance()
+
+    return EnumExpression(
+        LabelExpression(enum_id.label, span=enum_id.span),
+        enum_values,
+        merged_span)
+
   def _expect_next_token(self, token_type, error_message):
     self._advance()
     if self._current.type != token_type:
@@ -240,6 +289,9 @@ class Parser:
 
         elif self._current.type == Token.Type.TRAP:
           expressions.append(self._parse_trap())
+
+        elif self._current.type == Token.Type.ENUM:
+          expressions.append(self._parse_enum())
 
         elif self._current.type == Token.Type.AT:
           self._parse_macro(includes)

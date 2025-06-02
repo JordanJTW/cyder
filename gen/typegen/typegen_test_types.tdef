@@ -3,6 +3,11 @@
 
 @include("gen/typegen/include_test.tdef")
 
+enum MemError { 
+  kError: 100;
+  kOtherError: 101;
+}
+
 struct Integers {
   byte: u8;
   uword: u16;

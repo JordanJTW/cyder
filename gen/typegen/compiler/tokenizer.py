@@ -10,6 +10,7 @@ class Token:
     TYPE = auto()
     STRUCT = auto()
     TRAP = auto()
+    ENUM = auto()
     IDENTIFIER = auto()
     NUMBER = auto()
     COLON = auto()
@@ -102,6 +103,9 @@ class Tokenizer:
     
     if name == 'trap':
       return Token(Token.Type.TRAP, span)
+    
+    if name == 'enum':
+      return Token(Token.Type.ENUM, span)
 
     return Token(Token.Type.IDENTIFIER, span, str=name)
 

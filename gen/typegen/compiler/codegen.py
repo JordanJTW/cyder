@@ -5,6 +5,7 @@ import os
 import textwrap
 
 from compiler.type_checker import CheckedTypeExpression, CheckedStructExpression, CheckedAssignExpression, CheckedTrapExpression
+from compiler.type_parser import EnumExpression
 from pathlib import Path
 from typing import List
 
@@ -55,6 +56,10 @@ class CodeGenerator:
         expr for expr in expressions
         if isinstance(expr, CheckedTrapExpression)
     ]
+    self._enum_expressions: List[EnumExpression] = [
+        expr for expr in expressions
+        if isinstance(expr, EnumExpression)
+    ]
     self._errors: List[str] = []
 
   def _get_c_type(self, type: CheckedTypeExpression) -> str:
@@ -83,6 +88,13 @@ class CodeGenerator:
     for expr in self._type_expressions:
       c_type = self._get_c_type(expr.type)
       self._write_type(file, expr.id, c_type)
+
+  def _generate_enum_decls(self, file):
+    for expr in self._enum_expressions:
+      file.write(f'enum class {expr.name.label} {{\n')
+      for value in expr.values:
+        file.write(f'  {value.id.label} = {value.value},\n')
+      file.write('};\n')
 
   def _write_struct(self, file, expr: CheckedStructExpression):
     file.write(f'struct {expr.id} {{\n')
@@ -168,6 +180,9 @@ class CodeGenerator:
       header.write('\n')
 
       self._generate_type_decls(header)
+      header.write('\n')
+
+      self._generate_enum_decls(header)
       header.write('\n')
 
       self._generate_struct_decls(header)
