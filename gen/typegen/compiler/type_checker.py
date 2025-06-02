@@ -4,7 +4,7 @@
 from dataclasses import dataclass
 from typing import List, Mapping, Tuple, Union
 
-from compiler.type_parser import AssignExpression, StructExpression, LabelExpression, ParsedExpression, ParserException
+from compiler.type_parser import AssignExpression, StructExpression, LabelExpression, ParsedExpression, ParserException, TrapExpression
 
 
 @dataclass
@@ -29,6 +29,13 @@ class CheckedStructExpression:
   members: List[CheckedAssignExpression]
   size: int
   is_dynamic: bool
+
+
+@dataclass
+class CheckedTrapExpression:
+  name: str
+  arguments: List[CheckedAssignExpression]
+  ret: CheckedTypeExpression
 
 
 CheckedExpression = Union[CheckedStructExpression, CheckedAssignExpression]
@@ -115,7 +122,7 @@ class TypeChecker:
           if checked_assign:
             global_types[expr.id.label] = checked_assign
 
-      if isinstance(expr, StructExpression):
+      elif isinstance(expr, StructExpression):
         is_unique = check_id_unique(expr.id, global_id_spans)
 
         local_id_spans: Mapping[str, Tuple[int, int]] = {}
@@ -139,5 +146,25 @@ class TypeChecker:
           global_id_spans[expr.id.label] = expr.id.span
           global_types[expr.id.label] = CheckedStructExpression(
               expr.id.label, checked_members, fixed_size, is_dynamic)
+
+      elif isinstance(expr, TrapExpression):
+        local_id_spans: Mapping[str, Tuple[int, int]] = {}
+        checked_args: List[CheckedAssignExpression] = []
+
+        for arg in expr.arguments:
+          check_id_unique(arg.id, local_id_spans)
+          local_id_spans[arg.id.label] = arg.id.span
+
+          if checked_assign := check_assign_expr(arg):
+            checked_args.append(checked_assign)
+
+        checked_return = check_type_exists(expr.ret)
+
+        global_types[expr.name.label] = CheckedTrapExpression(
+            expr.name.label, checked_args, checked_return)
+
+      else:
+        errors.append(
+            (f'unknown expression {expr.__class__.__name__}', expr.span))
 
     return (global_types.values(), errors)

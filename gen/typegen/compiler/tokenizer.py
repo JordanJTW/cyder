@@ -9,6 +9,7 @@ class Token:
   class Type(Enum):
     TYPE = auto()
     STRUCT = auto()
+    TRAP = auto()
     IDENTIFIER = auto()
     NUMBER = auto()
     COLON = auto()
@@ -21,6 +22,7 @@ class Token:
     END_PARENTHESIS = auto()
     AT = auto()
     STRING = auto()
+    COMMA = auto()
     END_OF_FILE = auto()
     GARBAGE = auto()
 
@@ -69,6 +71,7 @@ CHAR_TO_TOKEN_TYPE = {
     '(': Token.Type.START_PARENTHESIS,
     ')': Token.Type.END_PARENTHESIS,
     '@': Token.Type.AT,
+    ',': Token.Type.COMMA,
 }
 
 
@@ -96,6 +99,9 @@ class Tokenizer:
 
     if name == 'struct':
       return Token(Token.Type.STRUCT, span)
+    
+    if name == 'trap':
+      return Token(Token.Type.TRAP, span)
 
     return Token(Token.Type.IDENTIFIER, span, str=name)
 

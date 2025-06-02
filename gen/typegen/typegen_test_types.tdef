@@ -29,3 +29,6 @@ struct RawBytes {
 struct TestIncludeStruct {
   test: StructToInclude;
 }
+
+trap TestTrap(arg: u8, arg2: u32): u8;
+trap AnotherTrap(hello: RawBytes): str;

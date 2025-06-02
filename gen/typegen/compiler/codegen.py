@@ -1,9 +1,10 @@
 # Copyright (c) 2022, Jordan Werthman
 # SPDX-License-Identifier: BSD-2-Clause
 
+import os
 import textwrap
 
-from compiler.type_checker import CheckedTypeExpression, CheckedStructExpression, CheckedAssignExpression
+from compiler.type_checker import CheckedTypeExpression, CheckedStructExpression, CheckedAssignExpression, CheckedTrapExpression
 from pathlib import Path
 from typing import List
 
@@ -36,6 +37,10 @@ def write(file, contents: str, indent: int = 0):
       textwrap.dedent(contents), ' ' * indent))
 
 
+def snake_to_camel(snake_str):
+  return ''.join(word.capitalize() for word in snake_str.split('_'))
+
+
 class CodeGenerator:
   def __init__(self, expressions):
     self._type_expressions: List[CheckedAssignExpression] = [
@@ -45,6 +50,10 @@ class CodeGenerator:
     self._struct_expressions: List[CheckedStructExpression] = [
         expr for expr in expressions
         if isinstance(expr, CheckedStructExpression)
+    ]
+    self._trap_expressions: List[CheckedTrapExpression] = [
+        expr for expr in expressions
+        if isinstance(expr, CheckedTrapExpression)
     ]
     self._errors: List[str] = []
 
@@ -135,6 +144,19 @@ class CodeGenerator:
     for include in includes:
       file.write(f'#include {include}\n')
 
+  def _generate_trap_interface(self, file, output_path):
+    file_name = os.path.splitext(os.path.basename(output_path))[0]
+    class_name = snake_to_camel(file_name) + "Trap"
+
+    file.write(
+        f'class {class_name} {{\n public:\n  virtual ~{class_name}() = 0;\n')
+    for trap in self._trap_expressions:
+      argument_string = ', '.join(
+          f'{self._get_c_type(a.type)} {a.id}' for a in trap.arguments)
+      file.write(
+          f'  virtual {self._get_c_type(trap.ret)} {trap.name}({argument_string}) = 0;\n')
+    file.write('};')
+
   def _generate_header(self, include_paths, output_path):
     with open(f'{output_path}.h', 'w') as header:
       header.write('#pragma once\n\n')
@@ -155,6 +177,9 @@ class CodeGenerator:
       header.write('\n')
 
       self._generate_struct_stream_decls(header)
+      header.write('\n')
+
+      self._generate_trap_interface(header, output_path)
 
   def _write_read_type(self, file, label, members: List[CheckedAssignExpression]):
     write(file, f"""

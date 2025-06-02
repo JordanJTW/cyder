@@ -41,6 +41,14 @@ class ParserException(Exception):
   span: Tuple[int, int]
 
 
+@dataclass
+class TrapExpression:
+  name: LabelExpression
+  arguments: List[AssignExpression]
+  ret: LabelExpression
+  span: Tuple[int, int]
+
+
 ParsedExpression = Union[StructExpression, AssignExpression]
 
 _ALLOW_SIZE_POSTFIX = ['u8']
@@ -57,6 +65,9 @@ class Parser:
   def _advance(self):
     self._index = self._index + 1
 
+  def _peek(self):
+    return self._tokens[self._index + 1]
+
   @property
   def _current(self) -> Token:
     return self._tokens[self._index]
@@ -67,26 +78,21 @@ class Parser:
     start_span = self._current.span
 
     label_expr = self._current
-    self._advance()
 
     maybe_size = None
-    if self._current.type == Token.Type.START_SQUARE_BRACKET:
+    if self._peek().type == Token.Type.START_SQUARE_BRACKET:
       if label_expr.label not in _ALLOW_SIZE_POSTFIX:
         raise ParserException('[<size>] only allowed for types: [ ' +
                               ', '.join(_ALLOW_SIZE_POSTFIX) + ' ]', self._current.span)
 
+      self._advance()
       size_token = self._expect_next_token(Token.Type.NUMBER, 'missing size')
 
       maybe_size = size_token.number
 
       self._expect_next_token(Token.Type.END_SQUARE_BRACKET, 'missing "]"')
-      self._advance()
-
-    if self._current.type != Token.Type.SEMICOLON:
-      raise ParserException('missing ";"', self._current.span)
 
     expr_span = merge_span(start_span, self._current.span)
-    self._advance()
     return LabelExpression(label_expr.label, expr_span, maybe_size)
 
   def _parse_assignement(self):
@@ -123,6 +129,9 @@ class Parser:
         break
 
       result = self._parse_assignement()
+      self._expect_next_token(Token.Type.SEMICOLON, 'missing ";')
+      self._advance()
+
       members.append(result)
 
     if self._current.type != Token.Type.END_CURLY_BRACKET:
@@ -139,7 +148,12 @@ class Parser:
     assert (self._current.type == Token.Type.TYPE)
     self._advance()
 
-    return self._parse_assignement()
+    assignment = self._parse_assignement()
+
+    self._expect_next_token(Token.Type.SEMICOLON, 'missing ";')
+    self._advance()
+
+    return assignment
 
   def _parse_macro(self, includes):
     assert (self._current.type == Token.Type.AT)
@@ -155,6 +169,55 @@ class Parser:
 
       self._expect_next_token(Token.Type.END_PARENTHESIS, 'missing ")"')
       self._advance()
+
+  def _parse_trap(self):
+    start_span = self._current.span
+    assert self._current.type == Token.Type.TRAP
+
+    trap_name = self._expect_next_token(
+        Token.Type.IDENTIFIER, 'missing trap name')
+    self._expect_next_token(Token.Type.START_PARENTHESIS, 'missing "("')
+    self._advance()
+
+    arguments = []
+    while not self._is_eof():
+      if self._current.type == Token.Type.END_PARENTHESIS:
+        self._advance()
+        break
+
+      arguments.append(self._parse_assignement())
+      self._advance()
+
+      if self._current.type != Token.Type.COMMA and self._current.type != Token.Type.END_PARENTHESIS:
+        raise ParserException('missing ","', self._current.span)
+
+      if self._current.type == Token.Type.COMMA:
+        self._advance()
+
+    if self._current.type == Token.Type.SEMICOLON:
+      expr_span = merge_span(start_span, self._current.span)
+      self._advance()
+
+      return TrapExpression(
+          name=LabelExpression(label=trap_name.label, span=trap_name.span),
+          arguments=arguments,
+          ret=LabelExpression(label="nil", span=self._current.span),
+          span=expr_span)
+
+    elif self._current.type == Token.Type.COLON:
+      ret_label = self._parse_type_expression()
+      self._expect_next_token(Token.Type.SEMICOLON, 'missing ";"')
+      expr_span = merge_span(start_span, self._current.span)
+      self._advance()
+
+      return TrapExpression(
+          name=LabelExpression(label=trap_name.label, span=trap_name.span),
+          arguments=arguments,
+          ret=ret_label,
+          span=expr_span)
+
+    else:
+      raise ParserException('missing return value', span=self._current.span)
 
   def _expect_next_token(self, token_type, error_message):
     self._advance()
@@ -174,6 +237,9 @@ class Parser:
 
         elif self._current.type == Token.Type.STRUCT:
           expressions.append(self._parse_struct())
+
+        elif self._current.type == Token.Type.TRAP:
+          expressions.append(self._parse_trap())
 
         elif self._current.type == Token.Type.AT:
           self._parse_macro(includes)
