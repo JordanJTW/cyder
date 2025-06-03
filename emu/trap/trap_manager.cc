@@ -1038,12 +1038,12 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-158.html
     case Trap::CheckItem: {
-      auto checked = TRY(Pop<int16_t>());
+      auto checked = TRY(Pop<bool>());
       auto item = TRY(Pop<int16_t>());
       auto the_menu_handle = TRY(Pop<Handle>());
       LOG_DUMMY() << "CheckItem(theMenu: 0x" << std::hex << the_menu_handle
                   << std::dec << ", item: " << item
-                  << ", checked: " << (checked != 0 ? "True" : "False");
+                  << ", checked: " << (checked ? "True" : "False");
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-141.html
@@ -1850,10 +1850,10 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-228.html
     case Trap::NewWindow: {
       auto reference_constant = TRY(Pop<uint32_t>());
-      auto go_away_flag = TRY(Pop<uint16_t>());
+      auto go_away_flag = TRY(Pop<bool>());
       auto behind_window = TRY(Pop<Ptr>());
       auto window_definition_id = TRY(Pop<int16_t>());
-      auto visible = TRY(Pop<uint16_t>());
+      auto visible = TRY(Pop<bool>());
       auto title = TRY(PopRef<std::string>());
       auto bounds_rect = TRY(PopRef<Rect>());
       auto window_storage = TRY(Pop<Ptr>());
@@ -1961,7 +1961,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-246.html
     case Trap::MoveWindow: {
-      auto front = TRY(Pop<uint16_t>());
+      auto front = TRY(Pop<bool>());
       auto v_global = TRY(Pop<int16_t>());
       auto h_global = TRY(Pop<int16_t>());
       auto the_window = TRY(Pop<Ptr>());
@@ -2420,7 +2420,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     }
     // Link: http://0.0.0.0:8000/docs/mac/Sound/Sound-35.html
     case Trap::SndPlay: {
-      auto async = TRY(Pop<uint16_t>());
+      auto async = TRY(Pop<bool>());
       auto snd_hdl = TRY(Pop<Handle>());
       auto chan = TRY(Pop<Ptr>());
       LOG_DUMMY() << "SndPlay(chan: 0x" << std::hex << chan << ", sndHdl: 0x"
@@ -2430,7 +2430,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     }
     // Link: http://0.0.0.0:8000/docs/mac/Sound/Sound-98.html
     case Trap::SndDisposeChannel: {
-      auto quiet_now = TRY(Pop<uint16_t>());
+      auto quiet_now = TRY(Pop<bool>());
       auto chan = TRY(Pop<Ptr>());
       LOG_DUMMY() << "SndDisposeChannel(chan: 0x" << std::hex << chan
                   << ", quietNow: " << (quiet_now ? "True" : "False") << ")";

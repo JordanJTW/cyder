@@ -12,8 +12,10 @@ class CheckedTypeExpression:
   id: str
   size: int
   base_type_id: str
-  is_dynamic: bool
-  is_struct: bool
+  is_dynamic: bool = False
+  is_struct: bool = False
+  is_enum: bool = False
+  is_ref_type: bool = False
   has_user_size: bool = False
 
 
@@ -33,7 +35,7 @@ class CheckedStructExpression:
 
 @dataclass
 class CheckedTrapExpression:
-  name: str
+  id: str
   arguments: List[CheckedAssignExpression]
   ret: CheckedTypeExpression
 
@@ -41,7 +43,7 @@ class CheckedTrapExpression:
 CheckedExpression = Union[CheckedStructExpression, CheckedAssignExpression]
 
 
-_STATIC_TYPE_SIZES = {'u8': 1, 'u16': 2, 'u24': 3,
+_STATIC_TYPE_SIZES = {'u8': 1, 'u16': 2, 'u24': 3, 'bool': 1,
                       'u32': 4, 'i16': 2, 'i32': 4, 'OSType': 4}
 
 
@@ -55,7 +57,11 @@ class TypeChecker:
     def check_type_exists(expr: LabelExpression):
       if size := _STATIC_TYPE_SIZES.get(expr.label, None):
         return CheckedTypeExpression(
-            expr.label, size, base_type_id=expr.label, is_dynamic=False, is_struct=False)
+            expr.label, size, base_type_id=expr.label)
+
+      if expr.label == 'Ptr' or expr.label == 'Handle':
+        return CheckedTypeExpression(
+            expr.label, size=4, base_type_id=expr.label, is_ref_type=True)
 
       if expr.label == 'str':
         return CheckedTypeExpression(
@@ -75,6 +81,9 @@ class TypeChecker:
         elif isinstance(ref, CheckedStructExpression):
           return CheckedTypeExpression(
               expr.label, ref.size, expr.label, ref.is_dynamic, is_struct=True)
+        elif isinstance(ref, EnumExpression):
+          return CheckedTypeExpression(
+              expr.label, 4, expr.label, is_enum=True)
 
       raise ParserException(f'unknown type "{expr.label}"', expr.span)
 
@@ -158,13 +167,15 @@ class TypeChecker:
           if checked_assign := check_assign_expr(arg):
             checked_args.append(checked_assign)
 
-        checked_return = check_type_exists(expr.ret)
+        checked_return = None
+        if expr.ret:
+          checked_return = check_type_exists(expr.ret)
 
         global_types[expr.name.label] = CheckedTrapExpression(
             expr.name.label, checked_args, checked_return)
         
       elif isinstance(expr, EnumExpression):
-        if not check_id_unique(expr.name, global_id_spans):
+        if not check_id_unique(expr.id, global_id_spans):
           continue
 
         local_id_spans: Mapping[str, Tuple[int, int]] = {}
@@ -174,8 +185,8 @@ class TypeChecker:
 
           #TODO: Ensure enum values are also unique
 
-        global_id_spans[expr.name.label] = expr.name.span
-        global_types[expr.name.label] = expr
+        global_id_spans[expr.id.label] = expr.id.span
+        global_types[expr.id.label] = expr
 
       else:
         errors.append(

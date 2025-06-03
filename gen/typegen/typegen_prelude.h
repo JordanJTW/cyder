@@ -18,6 +18,9 @@ using uint24_t = uint32_t;
 // A four character string identifier used through-out Mac OS
 using OSType = uint32_t;
 
+using Ptr = uint32_t;  // A pointer to a memory location, often used in Mac OS.
+using Handle = Ptr;  // A handle is a pointer to a memory location.
+
 struct Field {
   const size_t offset;
   const size_t size;

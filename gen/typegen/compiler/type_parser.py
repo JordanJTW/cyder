@@ -45,7 +45,7 @@ class ParserException(Exception):
 class TrapExpression:
   name: LabelExpression
   arguments: List[AssignExpression]
-  ret: LabelExpression
+  ret: Optional[LabelExpression]
   span: Tuple[int, int]
 
 
@@ -58,7 +58,7 @@ class EnumValueExpression:
 
 @dataclass
 class EnumExpression:
-  name: LabelExpression
+  id: LabelExpression
   values: List[EnumValueExpression]
   span: Tuple[int, int]
 
@@ -215,7 +215,7 @@ class Parser:
       return TrapExpression(
           name=LabelExpression(label=trap_name.label, span=trap_name.span),
           arguments=arguments,
-          ret=LabelExpression(label="nil", span=self._current.span),
+          ret=None,
           span=expr_span)
 
     elif self._current.type == Token.Type.COLON:

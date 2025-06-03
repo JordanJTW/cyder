@@ -7,7 +7,7 @@ import argparse
 import os
 import sys
 
-from compiler.codegen import CodeGenerator
+from compiler.codegen.codegen import CodeGenerator
 from compiler.error_message import print_errors
 from compiler.files import File, FileResolver, FileException
 from compiler.type_checker import TypeChecker

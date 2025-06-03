@@ -5,10 +5,10 @@
 struct WindowRecord {
   port: GrafPort;
   window_kind: Integer;
-  is_visible: Boolean;
-  hilited: Boolean;
-  has_close: Boolean;
-  has_zoom: Boolean;
+  is_visible: bool;
+  hilited: bool;
+  has_close: bool;
+  has_zoom: bool;
   structure_region: RegionHandle;
   content_region: RegionHandle;
   update_region: RegionHandle;

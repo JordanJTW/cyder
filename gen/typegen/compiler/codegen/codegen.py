@@ -6,6 +6,7 @@ import textwrap
 
 from compiler.type_checker import CheckedTypeExpression, CheckedStructExpression, CheckedAssignExpression, CheckedTrapExpression
 from compiler.type_parser import EnumExpression
+from compiler.codegen.common import get_c_type, get_stream_format
 from pathlib import Path
 from typing import List
 
@@ -62,36 +63,18 @@ class CodeGenerator:
     ]
     self._errors: List[str] = []
 
-  def _get_c_type(self, type: CheckedTypeExpression) -> str:
-    builtin_types = {
-        'u8': 'uint8_t',
-        'u16': 'uint16_t',
-        'u24': 'uint24_t',
-        'u32': 'uint32_t',
-        'i16': 'int16_t',
-        'i32': 'int32_t',
-    }
 
-    for struct in self._struct_expressions:
-      if struct.id == type.id:
-        return type.id
-
-    if 'str' == type.id:
-      return 'std::string'
-
-    return builtin_types.get(type.id, type.id)
 
   def _write_type(self, file, label, type):
     file.write(f'using {label} = {type};\n')
 
   def _generate_type_decls(self, file):
     for expr in self._type_expressions:
-      c_type = self._get_c_type(expr.type)
-      self._write_type(file, expr.id, c_type)
+      self._write_type(file, expr.id, get_c_type(expr.type))
 
   def _generate_enum_decls(self, file):
     for expr in self._enum_expressions:
-      file.write(f'enum class {expr.name.label} {{\n')
+      file.write(f'enum class {expr.id.label} {{\n')
       for value in expr.values:
         file.write(f'  {value.id.label} = {value.value},\n')
       file.write('};\n')
@@ -99,8 +82,6 @@ class CodeGenerator:
   def _write_struct(self, file, expr: CheckedStructExpression):
     file.write(f'struct {expr.id} {{\n')
     for member in expr.members:
-      c_type = self._get_c_type(member.type)
-
       init_expr = '{0}'
       # Handle `field: u8[32]` as a C style array i.e. `uint8_t field[32]`
       if member.type.has_user_size and member.type.id == 'u8':
@@ -108,7 +89,7 @@ class CodeGenerator:
       elif member.type.is_struct:
         init_expr = ''
 
-      file.write(f'  {c_type} {member.id}{init_expr};\n')
+      file.write(f'  {get_c_type(member.type)} {member.id}{init_expr};\n')
 
     if not expr.is_dynamic:
       write(
@@ -158,16 +139,19 @@ class CodeGenerator:
 
   def _generate_trap_interface(self, file, output_path):
     file_name = os.path.splitext(os.path.basename(output_path))[0]
-    class_name = snake_to_camel(file_name) + "Trap"
+    class_name = snake_to_camel(file_name)
 
+    file.write('namespace gen {\n')
     file.write(
-        f'class {class_name} {{\n public:\n  virtual ~{class_name}() = 0;\n')
+        f'class {class_name} {{\n public:\n  virtual ~{class_name}() = default;\n')
     for trap in self._trap_expressions:
       argument_string = ', '.join(
-          f'{self._get_c_type(a.type)} {a.id}' for a in trap.arguments)
+          f'{get_c_type(a.type)} {a.id}' for a in trap.arguments)
+      return_string = f'absl::StatusOr<{get_c_type(trap.ret)}>' if trap.ret else 'void'
       file.write(
-          f'  virtual {self._get_c_type(trap.ret)} {trap.name}({argument_string}) = 0;\n')
+          f'  virtual {return_string} {trap.id}({argument_string}) = 0;\n')
     file.write('};')
+    file.write('}  // namespace gen')
 
   def _generate_header(self, include_paths, output_path):
     with open(f'{output_path}.h', 'w') as header:
@@ -222,11 +206,9 @@ class CodeGenerator:
               f'  obj.{member.id} = TRY(ReadType<std::string>(region, {offset_str}));\n')
           offset_variables.append(f'{member.id}.size() + 1')
         else:
-          c_type = self._get_c_type(member.type)
-
           if member.type.is_struct:
             file.write(
-                f'  obj.{member.id} = TRY(ReadType<{c_type}>(region, {offset_str}));\n')
+                f'  obj.{member.id} = TRY(ReadType<{get_c_type(member.type)}>(region, {offset_str}));\n')
             offset_variables.append(f'{member.id}.size()')
           elif member.type.id == 'u24':
             file.write(
@@ -238,7 +220,7 @@ class CodeGenerator:
             offset = offset + member.type.size
           else:
             file.write(
-                f'  obj.{member.id} = TRY(region.Read<{c_type}>({offset_str}));\n')
+                f'  obj.{member.id} = TRY(region.Read<{get_c_type(member.type)}>({offset_str}));\n')
             offset = offset + member.type.size
 
     file.write('  return obj;\n')
@@ -250,13 +232,11 @@ class CodeGenerator:
     file.write('}\n\n')
 
   def _write_write_type_value(self, file, type_expr: CheckedTypeExpression, name, indent):
-    c_type = self._get_c_type(type_expr)
-
     if type_expr.is_struct:
       # If the struct is a 'str' we must account for the proceeding length byte
       is_string = type_expr.id == 'str'
       write(file, f"""
-        RETURN_IF_ERROR(WriteType<{c_type}>({name}, region, total_offset));
+        RETURN_IF_ERROR(WriteType<{get_c_type(type_expr)}>({name}, region, total_offset));
         total_offset += {('1 + ' if is_string else '') + f'{name}.size()'};
       """, indent=indent)
     elif type_expr.id == 'u24':
@@ -269,10 +249,16 @@ class CodeGenerator:
         RETURN_IF_ERROR(region.WriteRaw({name}, total_offset, {type_expr.size}));
         total_offset += {type_expr.size};
       """, indent=indent)
+    elif type_expr.id == 'bool':
+      # sizeof(bool) is not guaranteed to be 1 according to the C++ standard.
+      write(file, f"""
+        RETURN_IF_ERROR(region.Write<bool>(total_offset, {name}));
+        total_offset += 1;
+      """, indent=indent)
     else:
       write(file, f"""
-        RETURN_IF_ERROR(region.Write<{c_type}>(total_offset, {name}));
-        total_offset += sizeof({c_type});
+        RETURN_IF_ERROR(region.Write<{get_c_type(type_expr)}>(total_offset, {name}));
+        total_offset += {type_expr.size};
       """, indent=indent)
 
   def _write_write_type(self, file, label, members: List[CheckedAssignExpression]):
@@ -294,24 +280,7 @@ class CodeGenerator:
         f'std::ostream& operator<<(std::ostream& os, const {label}& obj) {{ return os << "{{ "')
     for index, member in enumerate(members):
       line_end = ' << ", "' if index + 1 != len(members) else ''
-      stream_value = f'obj.{member.id}'
-
-      if member.type.base_type_id == 'u8':
-        if member.type.has_user_size:
-          # Handle special case of a byte array by printing its size
-          stream_value = f'"u8[{member.type.size}]"'
-        else:
-          # Ensure `u8` is not printed as a char (prints invisible/random chars
-          # or is interpreted as an \0 i.e. null-terminator).
-          stream_value = f'int({stream_value})'
-      elif member.type.base_type_id == 'Boolean':
-        stream_value = f'({stream_value} ? "True" : "False")'
-      elif member.type.base_type_id == 'OSType':
-        stream_value = f'OSTypeName({stream_value})'
-      elif 'Handle' in member.type.id or 'Ptr' in member.type.id:
-        stream_value = f'std::hex << "0x" << {stream_value} << std::dec'
-      elif member.type.id == 'str':
-        stream_value = f'\"\\"\" << {stream_value} << \"\\"\"'
+      stream_value = get_stream_format('obj.', member)
 
       file.write(f' << "{member.id}: " << {stream_value}{line_end}')
     file.write('<< " }"; }\n')

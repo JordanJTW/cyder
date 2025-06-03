@@ -50,6 +50,16 @@ class MemoryRegion final {
 
   template <typename Type>
   absl::StatusOr<Type> Read(size_t offset) const {
+    // Special case for bools, which are stored as a single byte
+    // with the least significant bit set to true/false.
+    if (std::is_same<Type, bool>::value) {
+      uint8_t value;
+      RETURN_IF_ERROR(ReadRaw(&value, offset, sizeof(uint8_t)));
+      return value & 0x01 ? true : false;
+    }
+
+    static_assert(std::is_integral<Type>::value,
+                  "Only integral/bool types can be read from MemoryRegion");
     Type value;
     RETURN_IF_ERROR(ReadRaw(&value, offset, sizeof(Type)));
     return betoh<Type>(value);
@@ -61,6 +71,15 @@ class MemoryRegion final {
 
   template <typename Type>
   absl::Status Write(size_t offset, Type data) {
+    // Special case for bools, which are stored as a single byte
+    // with the least significant bit set to true/false.
+    if (std::is_same<Type, bool>::value) {
+      uint8_t value = data ? 0x01 : 0x00;
+      return WriteRaw(&value, offset, sizeof(uint8_t));
+    }
+
+    static_assert(std::is_integral<Type>::value,
+                  "Only integral/bool types can be written to MemoryRegion");
     const Type endian = htobe<Type>(data);
     return WriteRaw(&endian, offset, sizeof(Type));
   }

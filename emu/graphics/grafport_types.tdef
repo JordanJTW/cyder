@@ -104,8 +104,8 @@ struct ItemHeader {
   type_and_disabled: u8;
 }
 struct SFReply {
-  good: Boolean;      // FALSE if ignore command
-  copy: Boolean;      // not used
+  good: bool;      // FALSE if ignore command
+  copy: bool;      // not used
   f_type: OSType;     // file type or not used
   v_ref_num: Integer; // volume reference number
   version: Integer;   // file's version number
