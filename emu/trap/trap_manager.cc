@@ -1975,14 +1975,14 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-247.html
-    case Trap::DragGrayRgn: {
+    case Trap::DragGreyRgn: {
       auto action_proc = TRY(Pop<Ptr>());
       auto axis = TRY(Pop<uint16_t>());
       auto slop_rect = TRY(PopRef<Rect>());
       auto limit_rect = TRY(PopRef<Rect>());
       auto start_pt = TRY(PopType<Point>());
       auto the_rgn = TRY(Pop<Handle>());
-      LOG_TRAP() << "DragGrayRgn(theRgn: 0x" << std::hex << the_rgn
+      LOG_TRAP() << "DragGreyRgn(theRgn: 0x" << std::hex << the_rgn
                  << ", startPt: " << std::dec << start_pt
                  << ", limitRect: " << limit_rect << ", slopRect: " << slop_rect
                  << ", axis: " << axis << ", actionProc: 0x" << std::hex
