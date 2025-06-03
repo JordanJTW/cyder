@@ -14,8 +14,8 @@ macro(typegen target_name type_definition)
     OUTPUT ${output_name}.cc ${output_name}.h
     COMMAND
       ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/gen/typegen/main.py
-      ${CMAKE_CURRENT_SOURCE_DIR}/${type_definition}
-      ${CMAKE_CURRENT_BINARY_DIR}/${output_name}
+      -i ${CMAKE_CURRENT_SOURCE_DIR}/${type_definition}
+      -o ${CMAKE_CURRENT_BINARY_DIR}/${output_name}
       ${CMAKE_SOURCE_DIR}
     DEPENDS ${TYPEGEN_SRC} ${type_definition})
 

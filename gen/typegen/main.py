@@ -4,26 +4,22 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 import argparse
-import os
 import sys
 
 from compiler.codegen.codegen import CodeGenerator
 from compiler.error_message import print_errors
-from compiler.files import File, FileResolver, FileException
+from compiler.files import FileResolver, FileException
 from compiler.type_checker import TypeChecker
 
 
-def compile(filename, output_path, root_directory):
+def compile(files_to_compile, output_path, root_directory):
   try:
-    file_to_compile = File.open_file(filename)
-    sorted_files = FileResolver(root_directory).resolve(file_to_compile)
+    sorted_files = FileResolver(root_directory).resolve(files_to_compile)
   except FileException as e:
     print_errors(e.errors, e.contents)
     exit(-1)
 
-
   global_checked_exprs = []
-  root_file_exprs = []
   for file in sorted_files:
     (exprs, errors) = TypeChecker().check(global_checked_exprs, file.exprs)
     if errors:
@@ -31,23 +27,22 @@ def compile(filename, output_path, root_directory):
       sys.exit(-1)
 
     global_checked_exprs += exprs
-    # The last file processed should be `file_to_compile` due to the DFS
-    root_file_exprs = exprs
+    if file.path not in files_to_compile:
+      continue
 
-  if errors := CodeGenerator(root_file_exprs).generate(
-      file_to_compile.includes, output_path
-  ):
-    for error in errors:
-      print(error)
-    sys.exit(-1)
-
+    if errors := CodeGenerator(exprs).generate(
+        file.includes, output_path
+    ):
+      for error in errors:
+        print(error)
+      sys.exit(-1)
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument("input", type=str,
-                      help="Type definition file to compile")
+  parser.add_argument("-i", "--input", nargs="+",
+                      help="Type definition file(s) to compile")
   parser.add_argument(
-      "output", type=str, help="Path to output the C++ code (without extensions)"
+      "-o", "--output", type=str, help="Path to output the C++ code (without extensions)"
   )
   parser.add_argument(
       "root_directory", type=str, help="Path which all @include(s) are relative to"

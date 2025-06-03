@@ -24,8 +24,8 @@ class File:
     return self.path == file.path
 
   @staticmethod
-  def open_file(path):
-    with open(path, 'r') as f:
+  def open_file(root_dir, path):
+    with open(os.path.join(root_dir, path), 'r') as f:
       contents = f.read()
 
       tokenizer = Tokenizer(contents)
@@ -50,8 +50,9 @@ class FileResolver:
     self.resolving: Set[str] = set()
     self.result: List[File] = []
 
-  def resolve(self, root: File):
-    self._dfs(root)
+  def resolve(self, paths: List[str]):
+    for path in paths:
+      self._dfs(File.open_file(self.root_directory, path))
     return self.result
 
   def _dfs(self, file: File):
@@ -62,7 +63,7 @@ class FileResolver:
 
     self.resolving.add(file.path)
     for dep in file.includes:
-      dep_file = File.open_file(os.path.join(self.root_directory, dep))
+      dep_file = File.open_file(self.root_directory, dep)
       self._dfs(dep_file)
     self.resolving.remove(file.path)
 
