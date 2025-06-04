@@ -1,6 +1,7 @@
 include(../../gen/typegen/typegen.cmake)
 
 typegen(GRAFPORT_TYPES grafport_types.tdef)
+target_link_libraries(GRAFPORT_TYPES BASE_TYPES)
 
 add_library(SCREEN_LIB OBJECT bitmap_image.cc font/basic_font.cc)
 target_link_libraries(SCREEN_LIB CORE_LIB GRAFPORT_TYPES)
