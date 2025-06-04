@@ -23,8 +23,7 @@ class MenuManager {
 
   bool IsInMenuBar(const Point& point) const;
 
-  using OnSelectedFunc = std::function<void(uint32_t)>;
-  void MenuSelect(const Point& start, OnSelectedFunc on_selected);
+  uint32_t MenuSelect(const Point& start);
 
  private:
   graphics::BitmapImage& screen_;

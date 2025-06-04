@@ -55,9 +55,7 @@ class WindowManager {
 
   void SelectWindow(WindowPtr window_ptr);
 
-  void DragGrayRegion(const Region& region,
-                      const Point& start,
-                      std::function<void(const Point&)> on_drag_end);
+  Point DragGrayRegion(const Region& region, const Point& start);
 
   enum class RegionType {
     None,

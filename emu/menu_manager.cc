@@ -69,67 +69,64 @@ bool MenuManager::IsInMenuBar(const Point& point) const {
   return point.y < kMenuBarHeight;
 }
 
-void MenuManager::MenuSelect(const Point& start, OnSelectedFunc on_selected) {
-  EventManager::the().RegisterNativeListener(
-      [&, select = std::move(on_selected)](EventRecord record) {
-        switch (record.what) {
-          case kMouseMove: {
-            int x_offset = kMenuBarWidthPadding;
-            for (MenuResource& menu : menus_) {
-              int menu_bar_item_width =
-                  (IsAppleMenu(menu) ? RectWidth(kMenuIconRect)
-                                     : menu.title.size() * 8) +
-                  (kMenuBarItemWidthPadding * 2);
+uint32_t MenuManager::MenuSelect(const Point& start) {
+  while (true) {
+    EventRecord record =
+        EventManager::the().GetNextEvent(1 << kMouseMove | 1 << kMouseUp);
+    switch (record.what) {
+      case kMouseMove: {
+        int x_offset = kMenuBarWidthPadding;
+        for (MenuResource& menu : menus_) {
+          int menu_bar_item_width =
+              (IsAppleMenu(menu) ? RectWidth(kMenuIconRect)
+                                 : menu.title.size() * 8) +
+              (kMenuBarItemWidthPadding * 2);
 
-              int next_x_offset = x_offset + menu_bar_item_width;
-              if (record.where.x > x_offset && record.where.x < next_x_offset &&
-                  record.where.y < kMenuBarHeight) {
-                if (popup_menu_ && popup_menu_->id() == menu.id) {
-                  return;
-                }
-
-                // Needs to be cleared first so that the background bitmap is
-                // restored in the RAII-types destructor before we create a new
-                // one.
-                popup_menu_.reset();
-
-                popup_menu_ = absl::make_unique<MenuPopUp>(
-                    screen_, menu, menu_items_[menu.id],
-                    NewRect(x_offset, 0, menu_bar_item_width, kMenuBarHeight));
-                break;
-              }
-              x_offset = next_x_offset;
+          int next_x_offset = x_offset + menu_bar_item_width;
+          if (record.where.x > x_offset && record.where.x < next_x_offset &&
+              record.where.y < kMenuBarHeight) {
+            if (popup_menu_ && popup_menu_->id() == menu.id) {
+              break;
             }
-            if (popup_menu_)
-              popup_menu_->GetHoveredMenuItem(record.where.x, record.where.y);
+
+            // Needs to be cleared first so that the background bitmap is
+            // restored in the RAII-types destructor before we create a new
+            // one.
+            popup_menu_.reset();
+
+            popup_menu_ = absl::make_unique<MenuPopUp>(
+                screen_, menu, menu_items_[menu.id],
+                NewRect(x_offset, 0, menu_bar_item_width, kMenuBarHeight));
             break;
           }
-
-          case kMouseUp: {
-            // Once the mouse is released all popups should disappear and
-            // selection should be finished. Transferring ownership of RAII-type
-            // |popup_menu_| ensures it is _always_ cleaned up no matter which
-            // return.
-            std::unique_ptr<MenuPopUp> popup_menu = std::move(popup_menu_);
-
-            if (!popup_menu) {
-              return std::move(select)(0);
-            }
-
-            uint16_t item_index =
-                popup_menu->GetHoveredMenuItem(record.where.x, record.where.y);
-            if (item_index == MenuPopUp::kNoMenuItem) {
-              return std::move(select)(0);
-            }
-
-            std::move(select)(popup_menu->id() << 16 | item_index);
-
-            // Unregister this callback now that the interaction is finished.
-            EventManager::the().RegisterNativeListener(nullptr);
-            break;
-          }
+          x_offset = next_x_offset;
         }
-      });
+        if (popup_menu_)
+          popup_menu_->GetHoveredMenuItem(record.where.x, record.where.y);
+        break;
+      }
+
+      case kMouseUp: {
+        // Once the mouse is released all popups should disappear and
+        // selection should be finished. Transferring ownership of RAII-type
+        // |popup_menu_| ensures it is _always_ cleaned up no matter which
+        // return.
+        std::unique_ptr<MenuPopUp> popup_menu = std::move(popup_menu_);
+
+        if (!popup_menu) {
+          return 0;
+        }
+
+        uint16_t item_index =
+            popup_menu->GetHoveredMenuItem(record.where.x, record.where.y);
+        if (item_index == MenuPopUp::kNoMenuItem) {
+          return 0;
+        }
+
+        return (popup_menu->id() << 16 | item_index);
+      }
+    }
+  }
 
   // Queue the `start` point to trigger the inital draw.
   EventManager::the().OnMouseMove(start.x, start.y);

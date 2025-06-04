@@ -359,40 +359,38 @@ absl::Status ModalDialog(Ptr filter_proc, Var<Integer> item_hit) {
   core::MemoryRegion item_memory =
       MemoryManager::the().GetRegionForHandle(record.items);
 
-  EventManager::the().RegisterNativeListener(
-      [item_memory, item_hit](EventRecord record) {
-        auto test_control_selected =
-            [&](Integer item_no,
-                size_t offset) -> absl::StatusOr<IterationControl> {
-          ItemHeader header = TRY(ReadType<ItemHeader>(item_memory, offset));
+  while (true) {
+    EventRecord record = EventManager::the().GetNextEvent(1 << kMouseDown);
+    auto test_control_selected =
+        [&](Integer item_no,
+            size_t offset) -> absl::StatusOr<IterationControl> {
+      ItemHeader header = TRY(ReadType<ItemHeader>(item_memory, offset));
 
-          bool is_disabled = header.type_and_disabled & ItemType::itemDisable;
-          Integer item_type = header.type_and_disabled & 0x7f;
+      bool is_disabled = header.type_and_disabled & ItemType::itemDisable;
+      Integer item_type = header.type_and_disabled & 0x7f;
 
-          if (is_disabled)
-            return NEXT_ITERATION;
-          if (item_type != btnCtrl)
-            return NEXT_ITERATION;
+      if (is_disabled)
+        return NEXT_ITERATION;
+      if (item_type != btnCtrl)
+        return NEXT_ITERATION;
 
-          if (PointInRect(record.where,
-                          TRY(port::ConvertLocalToGlobal(header.box)))) {
-            RETURN_IF_ERROR(
-                memory::kSystemMemory.Write<Integer>(item_hit.ptr, item_no));
-            EventManager::the().RegisterNativeListener(nullptr);
-            return STOP_ITERATION;
-          }
-          return NEXT_ITERATION;
-        };
+      if (PointInRect(record.where,
+                      TRY(port::ConvertLocalToGlobal(header.box)))) {
+        RETURN_IF_ERROR(
+            memory::kSystemMemory.Write<Integer>(item_hit.ptr, item_no));
+        return STOP_ITERATION;
+      }
+      return NEXT_ITERATION;
+    };
 
-        switch (record.what) {
-          case kMouseDown: {
-            absl::Status status =
-                IterateItems(item_memory, std::move(test_control_selected));
-            CHECK(status.ok()) << "IterateItems failed: " << std::move(status);
-            break;
-          }
-        }
-      });
+    if (record.what == kMouseDown) {
+      absl::Status status =
+          IterateItems(item_memory, std::move(test_control_selected));
+      CHECK(status.ok()) << "IterateItems failed: " << std::move(status);
+      break;
+    }
+  }
+
   return absl::OkStatus();
 }
 

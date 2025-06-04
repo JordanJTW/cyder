@@ -3,10 +3,12 @@
 
 #include <SDL.h>
 
+#include <atomic>
 #include <bitset>
 #include <chrono>
 #include <cstdint>
 #include <iomanip>
+#include <thread>
 
 #include "absl/flags/flag.h"
 #include "absl/status/status.h"
@@ -333,15 +335,14 @@ absl::Status InitTrapManager(MemoryManager& memory_manager,
   return absl::OkStatus();
 }
 
-class EmulatorControlImpl : public cyder::EmulatorControl {
- public:
-  // cyder::EmulatorControl implementation:
-  void Pause() override {
-    m68k_end_timeslice();
-    single_step = true;
+void run_emulator_thread(std::atomic<bool>& is_running) {
+  while (is_running.load()) {
+    CHECK_OK(UpdateGlobalTime());
+    if (!single_step) {
+      m68k_execute(100000);
+    }
   }
-  void Resume() override { single_step = false; }
-};
+}
 
 absl::Status Main(const core::Args& args) {
   auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
@@ -406,8 +407,7 @@ absl::Status Main(const core::Args& args) {
 
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
 
-  EmulatorControlImpl emulator_control;
-  EventManager event_manager(&emulator_control);
+  EventManager event_manager;
   WindowManager window_manager(event_manager, screen, memory_manager);
   TrapManager trap_manager(memory_manager, resource_manager, segment_loader,
                            event_manager, menu_manager, window_manager, bitmap);
@@ -415,14 +415,12 @@ absl::Status Main(const core::Args& args) {
   RETURN_IF_ERROR(
       InitTrapManager(memory_manager, trap_manager, system_file.get()));
 
+  std::atomic<bool> is_running{true};
+  std::thread emulator_thread(run_emulator_thread, std::ref(is_running));
+
   SDL_Event event;
   bool should_exit = false;
   while (!should_exit) {
-    RETURN_IF_ERROR(UpdateGlobalTime());
-    if (!single_step) {
-      m68k_execute(100000);
-    }
-
     if (renderer != nullptr) {
       SDL_Texture* texture =
           SDL_CreateTextureFromSurface(renderer, MakeSurface(screen));
@@ -475,6 +473,8 @@ absl::Status Main(const core::Args& args) {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
   }
+  is_running.store(false);
+  emulator_thread.join();
   SDL_Quit();
   return absl::OkStatus();
 }

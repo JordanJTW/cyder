@@ -1,6 +1,8 @@
 // Copyright (c) 2022, Jordan Werthman
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <mutex>
+
 #include "emu/event_manager.h"
 
 extern bool single_step;
@@ -18,8 +20,7 @@ EventManager* s_instance;
 
 }  // namespace
 
-EventManager::EventManager(EmulatorControl* emulator_control)
-    : emulator_control_(emulator_control) {
+EventManager::EventManager() {
   s_instance = this;
 }
 
@@ -38,6 +39,8 @@ void EventManager::QueueWindowActivate(Ptr window, ActivateState state) {
   // should be deactivated.
   // Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-37.html#MARKER-9-85
   record.modifiers = state == ActivateState::ON ? 1 : 0;
+
+  std::lock_guard<std::mutex> lock(event_mutex_);
   activate_events_.push_back(std::move(record));
 }
 
@@ -46,6 +49,8 @@ void EventManager::QueueWindowUpdate(Ptr window) {
   record.what = kWindowUpdate;
   record.when = NowTicks();
   record.message = window;
+
+  std::lock_guard<std::mutex> lock(event_mutex_);
   update_events_.push_back(std::move(record));
 }
 
@@ -58,7 +63,9 @@ void EventManager::QueueMouseDown(int x, int y) {
   record.what = kMouseDown;
   record.where = where;
   record.when = NowTicks();
-  QueueOrDispatchInputEvent(std::move(record));
+
+  std::lock_guard<std::mutex> lock(event_mutex_);
+  input_events_.push_back(std::move(record));
 }
 
 void EventManager::QueueMouseUp(int x, int y) {
@@ -70,7 +77,9 @@ void EventManager::QueueMouseUp(int x, int y) {
   record.what = kMouseUp;
   record.where = where;
   record.when = NowTicks();
-  QueueOrDispatchInputEvent(std::move(record));
+
+  std::lock_guard<std::mutex> lock(event_mutex_);
+  input_events_.push_back(std::move(record));
 }
 
 void EventManager::QueueKeyDown() {
@@ -78,15 +87,9 @@ void EventManager::QueueKeyDown() {
   record.what = kKeyDown;
   record.when = NowTicks();
   // FIXME: Add keycode information in EventRecord::message
-  QueueOrDispatchInputEvent(std::move(record));
-}
 
-void EventManager::QueueOrDispatchInputEvent(EventRecord record) {
-  if (native_listener_) {
-    native_listener_(std::move(record));
-  } else {
-    input_events_.push_back(std::move(record));
-  }
+  std::lock_guard<std::mutex> lock(event_mutex_);
+  input_events_.push_back(std::move(record));
 }
 
 void EventManager::QueueRawEvent(uint16_t raw_event_type, uint32_t message) {
@@ -103,6 +106,7 @@ void EventManager::QueueRawEvent(uint16_t raw_event_type, uint32_t message) {
   // Even stanger is that this should go into the "Low-Level OS Event Queue"
   // i.e. `input_events_` however it _only_ works in "1000 Miles" if it is in
   // _this_ queue... This requires some more investigation but works for now.
+  std::lock_guard<std::mutex> lock(event_mutex_);
   activate_events_.push_back(std::move(record));
 }
 
@@ -126,6 +130,7 @@ EventRecord EventManager::GetNextEvent(uint16_t event_mask) {
 
   // Event masks can be calculated from the type and are documented here:
   // http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-38.html#MARKER-9-112
+  std::lock_guard<std::mutex> lock(event_mutex_);
 
   if (!activate_events_.empty() && (event_mask & 256 /*activMask*/)) {
     auto event = activate_events_.front();
@@ -167,6 +172,8 @@ uint32_t EventManager::NowTicks() const {
 
 bool EventManager::HasMouseEvent(EventType type) const {
   CHECK(type == kMouseDown || type == kMouseUp);
+
+  std::lock_guard<std::mutex> lock(event_mutex_);
   return std::find_if(input_events_.begin(), input_events_.end(),
                       [type](const EventRecord& event) {
                         return event.what == type;
@@ -174,32 +181,17 @@ bool EventManager::HasMouseEvent(EventType type) const {
 }
 
 void EventManager::OnMouseMove(int x, int y) {
-  if (native_listener_) {
-    Point where;
-    where.x = x;
-    where.y = y;
+  Point where;
+  where.x = x;
+  where.y = y;
 
-    EventRecord record;
-    record.what = kMouseMove;
-    record.where = where;
-    record.when = NowTicks();
-    native_listener_(std::move(record));
-  }
-}
+  EventRecord record;
+  record.what = kMouseMove;
+  record.where = where;
+  record.when = NowTicks();
 
-void EventManager::RegisterNativeListener(
-    std::function<void(EventRecord)> listener) {
-  native_listener_ = listener;
-
-  if (emulator_control_ == nullptr) {
-    return;
-  }
-
-  if (native_listener_) {
-    emulator_control_->Pause();
-  } else {
-    emulator_control_->Resume();
-  }
+  std::lock_guard<std::mutex> lock(event_mutex_);
+  input_events_.push_back(std::move(record));
 }
 
 }  // namespace cyder

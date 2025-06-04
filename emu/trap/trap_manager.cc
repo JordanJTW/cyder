@@ -1009,10 +1009,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       LOG_TRAP() << "MenuSelect(startPt: " << start_pt << ")";
 
-      menu_manager_.MenuSelect(start_pt, [](uint32_t selected) {
-        CHECK(TrapReturn<uint32_t>(selected).ok());
-      });
-      return absl::OkStatus();
+      uint32_t selected = menu_manager_.MenuSelect(start_pt);
+      return TrapReturn<uint32_t>(selected);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-136.html
     case Trap::HiliteMenu: {
@@ -1990,10 +1988,8 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       auto region = TRY(memory_manager_.ReadTypeFromHandle<Region>(the_rgn));
 
-      window_manager_.DragGrayRegion(region, start_pt, [](const Point& pt) {
-        return TrapReturn<uint32_t>(pt.y << 16 | pt.x);
-      });
-      return absl::OkStatus();
+      Point pt = window_manager_.DragGrayRegion(region, start_pt);
+      return TrapReturn<uint32_t>(pt.y << 16 | pt.x);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-230.html
     case Trap::SetWTitle: {

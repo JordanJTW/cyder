@@ -4,6 +4,7 @@
 #pragma once
 
 #include <list>
+#include <mutex>
 
 #include "emu/event_manager.tdef.h"
 
@@ -25,18 +26,13 @@ enum EventType {
 // Whether a window is being made active (ON) or deactive (OFF).
 enum ActivateState { ON, OFF };
 
-constexpr Integer kMouseMove = 255;  // Custom `EventType` for native
-
-class EmulatorControl {
- public:
-  virtual void Pause() = 0;
-  virtual void Resume() = 0;
-};
+// Custom `EventType` for native (9-14 are undefined)
+constexpr Integer kMouseMove = 10;
 
 // Implements the event queue consumed by the MacOS application.
 class EventManager final {
  public:
-  explicit EventManager(EmulatorControl* emulator_control);
+  explicit EventManager();
 
   static EventManager& the();
 
@@ -55,22 +51,15 @@ class EventManager final {
 
   void OnMouseMove(int x, int y);
 
-  void RegisterNativeListener(std::function<void(EventRecord)> listener);
-
   bool has_window_events() const {
     return !activate_events_.empty() || !update_events_.empty();
   }
 
  private:
-  void QueueOrDispatchInputEvent(EventRecord record);
-
-  EmulatorControl* const emulator_control_;
-
+  mutable std::mutex event_mutex_;  // Protects the event lists
   std::list<EventRecord> activate_events_;
   std::list<EventRecord> input_events_;
   std::list<EventRecord> update_events_;
-
-  std::function<void(EventRecord)> native_listener_ = nullptr;
 };
 
 }  // namespace cyder
