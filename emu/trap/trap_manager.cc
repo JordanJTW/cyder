@@ -1229,8 +1229,13 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "PaintOval(rect: " << rect << ")";
 
       return WithPort([&](const GrafPort& port) {
-        graphics::ThePortImage().FillEllipse(port::LocalToGlobal(port, rect),
-                                             port.fill_pattern.bytes);
+        graphics::BitmapImage image = graphics::ThePortImage();
+
+        graphics::TempClipRect _(
+            image, OffsetRect(port.port_rect, -port.port_bits.bounds.left,
+                              -port.port_bits.bounds.top));
+        image.FillEllipse(port::LocalToGlobal(port, rect),
+                        port.fill_pattern.bytes);
         return absl::OkStatus();
       });
     }
