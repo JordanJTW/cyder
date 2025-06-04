@@ -70,39 +70,44 @@ bool MenuManager::IsInMenuBar(const Point& point) const {
 }
 
 uint32_t MenuManager::MenuSelect(const Point& start) {
+  // Draws the menu bar with the mouse at |pt|.
+  auto update_menu_bar = [this](const Point& pt) {
+    int x_offset = kMenuBarWidthPadding;
+    for (MenuResource& menu : menus_) {
+      int menu_bar_item_width = (IsAppleMenu(menu) ? RectWidth(kMenuIconRect)
+                                                   : menu.title.size() * 8) +
+                                (kMenuBarItemWidthPadding * 2);
+
+      int next_x_offset = x_offset + menu_bar_item_width;
+      if (pt.x > x_offset && pt.x < next_x_offset && pt.y < kMenuBarHeight) {
+        if (popup_menu_ && popup_menu_->id() == menu.id) {
+          break;
+        }
+
+        // Needs to be cleared first so that the background bitmap is
+        // restored in the RAII-types destructor before we create a new
+        // one.
+        popup_menu_.reset();
+
+        popup_menu_ = absl::make_unique<MenuPopUp>(
+            screen_, menu, menu_items_[menu.id],
+            NewRect(x_offset, 0, menu_bar_item_width, kMenuBarHeight));
+        break;
+      }
+      x_offset = next_x_offset;
+    }
+    if (popup_menu_)
+      popup_menu_->GetHoveredMenuItem(pt.x, pt.y);
+  };
+
+  update_menu_bar(start);
+
   while (true) {
     EventRecord record =
         EventManager::the().GetNextEvent(1 << kMouseMove | 1 << kMouseUp);
     switch (record.what) {
       case kMouseMove: {
-        int x_offset = kMenuBarWidthPadding;
-        for (MenuResource& menu : menus_) {
-          int menu_bar_item_width =
-              (IsAppleMenu(menu) ? RectWidth(kMenuIconRect)
-                                 : menu.title.size() * 8) +
-              (kMenuBarItemWidthPadding * 2);
-
-          int next_x_offset = x_offset + menu_bar_item_width;
-          if (record.where.x > x_offset && record.where.x < next_x_offset &&
-              record.where.y < kMenuBarHeight) {
-            if (popup_menu_ && popup_menu_->id() == menu.id) {
-              break;
-            }
-
-            // Needs to be cleared first so that the background bitmap is
-            // restored in the RAII-types destructor before we create a new
-            // one.
-            popup_menu_.reset();
-
-            popup_menu_ = absl::make_unique<MenuPopUp>(
-                screen_, menu, menu_items_[menu.id],
-                NewRect(x_offset, 0, menu_bar_item_width, kMenuBarHeight));
-            break;
-          }
-          x_offset = next_x_offset;
-        }
-        if (popup_menu_)
-          popup_menu_->GetHoveredMenuItem(record.where.x, record.where.y);
+        update_menu_bar(record.where);
         break;
       }
 
