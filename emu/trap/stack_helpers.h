@@ -21,16 +21,16 @@ namespace trap {
 
 // Pops `T` off of the stack
 template <typename T>
-absl::StatusOr<T> Pop() {
+T Pop() {
   // Special case for bools. Stored in a byte but word aligned on stack.
   if constexpr (std::is_same<T, bool>::value) {
-    return TRY(Pop<uint16_t>()) ? true : false;
+    return (Pop<uint16_t>() & 0x0100) ? true : false;
   }
 
   static_assert(std::is_integral<T>::value,
                 "Only integers are stored on the stack (see PopRef<>)");
   Ptr current_stack = m68k_get_reg(NULL, M68K_REG_SP);
-  T value = TRY(memory::kSystemMemory.Read<T>(current_stack));
+  T value = MUST(memory::kSystemMemory.Read<T>(current_stack));
   m68k_set_reg(M68K_REG_SP, current_stack + sizeof(T));
   return value;
 }
@@ -50,30 +50,30 @@ absl::StatusOr<T> Peek(size_t offset = 0) {
 // http://0.0.0.0:8000/docs/mac/OSUtilities/OSUtilities-170.html#HEADING170-115
 // FIXME: Add check to template that size of `T` is <= to 4 bytes?
 template <typename T>
-absl::StatusOr<T> PopType() {
+T PopType() {
   Ptr current_stack = m68k_get_reg(NULL, M68K_REG_SP);
-  T value = TRY(ReadType<T>(memory::kSystemMemory, current_stack));
+  T value = MUST(ReadType<T>(memory::kSystemMemory, current_stack));
   m68k_set_reg(M68K_REG_SP, current_stack + T::fixed_size);
   return value;
 }
 
 // Pops pointer to `T` off of the stack and returns the dereferenced value
 template <typename T>
-absl::StatusOr<T> PopRef() {
+T PopRef() {
   // AND-ing here accounts for non 32-bit clean systems where the OS stored
   // flags in the upper byte of a pointer.
   // TODO: Allow for 32-bit clean behavior and handle this more consistently
-  auto ptr = TRY(Pop<Ptr>()) & 0x00FFFFFF;
-  return ReadType<T>(memory::kSystemMemory, ptr);
+  auto ptr = Pop<Ptr>() & 0x00FFFFFF;
+  return MUST(ReadType<T>(memory::kSystemMemory, ptr));
 }
 
 template <typename T>
-absl::StatusOr<Var<T>> PopVar() {
-  auto ptr = TRY(Pop<Ptr>());
+Var<T> PopVar() {
+  auto ptr = Pop<Ptr>();
   if constexpr (std::is_integral<T>::value) {
-    return Var<T>{ptr, TRY(memory::kSystemMemory.Read<T>(ptr))};
+    return Var<T>{ptr, MUST(memory::kSystemMemory.Read<T>(ptr))};
   } else {
-    return Var<T>{ptr, TRY(ReadType<T>(memory::kSystemMemory, ptr))};
+    return Var<T>{ptr, MUST(ReadType<T>(memory::kSystemMemory, ptr))};
   }
 }
 
