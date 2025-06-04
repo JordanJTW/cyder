@@ -23,7 +23,7 @@ namespace trap {
 template <typename T>
 absl::StatusOr<T> Pop() {
   // Special case for bools. Stored in a byte but word aligned on stack.
-  if (std::is_same<T, bool>::value) {
+  if constexpr (std::is_same<T, bool>::value) {
     return TRY(Pop<uint16_t>()) ? true : false;
   }
 
@@ -97,15 +97,16 @@ absl::Status Push(T value) {
 template <typename T>
 absl::Status TrapReturn(T value) {
   // Special case for bools. Stored in a byte but word aligned on stack.
-  if (std::is_same<T, bool>::value) {
+  if constexpr (std::is_same<T, bool>::value) {
     Ptr current_stack = m68k_get_reg(NULL, M68K_REG_SP);
     RETURN_IF_ERROR(memory::kSystemMemory.Write<uint16_t>(
         current_stack, value ? 0x0100 : 0x0000));
-  } else {
-    static_assert(std::is_integral<T>::value,
-                  "Only integers are stored on the stack");
+  } else if constexpr (std::is_integral<T>::value) {
     Ptr current_stack = m68k_get_reg(NULL, M68K_REG_SP);
     RETURN_IF_ERROR(memory::kSystemMemory.Write<T>(current_stack, value));
+  } else {
+    Ptr current_stack = m68k_get_reg(NULL, M68K_REG_SP);
+    RETURN_IF_ERROR(WriteType<T>(value, memory::kSystemMemory, current_stack));
   }
   return absl::OkStatus();
 }

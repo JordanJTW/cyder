@@ -111,3 +111,9 @@ struct SFReply {
   version: Integer;   // file's version number
   file_name: str;     // STRING[63]
 }
+
+struct RGBColor {
+  red: u16;
+  green: u16;
+  blue: u16;
+}

@@ -263,6 +263,8 @@ absl::Status InitializeVM(size_t pc) {
   RETURN_IF_ERROR(
       kSystemMemory.Write<uint16_t>(GlobalVars::MonkeyLives, 0xFFB8));
 
+  RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(GlobalVars::ROM85, 0x0000));
+
   // Write low-memory constants:
   RETURN_IF_ERROR(
       kSystemMemory.Write<uint32_t>(GlobalVars::MinusOne, 0xFFFFFFFF));

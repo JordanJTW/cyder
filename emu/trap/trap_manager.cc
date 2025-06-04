@@ -38,6 +38,7 @@ extern bool single_step;
 
 constexpr bool kVerboseLogTraps = false;
 constexpr bool kDummyTraps = false;
+constexpr bool kSupportColorQD = false;
 
 char save_buffer[2048];
 int f_offset = 0;
@@ -754,11 +755,8 @@ absl::Status TrapManager::DispatchNativeSystemTrap(uint16_t trap) {
       LOG_TRAP() << "SysEnvirons(versionRequested: " << version_requested
                  << ", VAR theWorld: 0x" << std::hex << var_the_world << ")";
 
-      RESTRICT_FIELD_ACCESS(SysEnvRecord, var_the_world,
-                            SysEnvRecordFields::hasColorQD);
-
       return WithType<SysEnvRecord>(var_the_world, [](SysEnvRecord& record) {
-        record.hasColorQD = 0;
+        record.hasColorQD = kSupportColorQD ? 0x01 : 0x00;
         m68k_set_reg(M68K_REG_D0, 0 /*noErr*/);
         return absl::OkStatus();
       });
@@ -1846,6 +1844,7 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       return TrapReturn<Ptr>(window_storage);
     }
       // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-228.html
+    case Trap::NewCWindow:
     case Trap::NewWindow: {
       auto reference_constant = TRY(Pop<uint32_t>());
       auto go_away_flag = TRY(Pop<bool>());
@@ -1913,6 +1912,30 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         case WindowManager::RegionType::None:
           return TrapReturn<int16_t>(0 /*inDesk*/);
       }
+    }
+    // TODO: Set in the Port when Color QuickDraw is implemented
+    case Trap::RGBForeColor: {
+      auto rgb = TRY(PopType<RGBColor>());
+
+      LOG_TRAP() << "RGBForeColor(red: " << rgb.red << ", green: " << rgb.green
+                 << ", blue: " << rgb.blue << ")";
+
+      return WithPort([&](GrafPort& port) {
+        // port.fore_color = {red, green, blue};
+        return absl::OkStatus();
+      });
+    }
+    case Trap::InvertColor: {
+      auto rgb = TRY(PopType<RGBColor>());
+
+      LOG_TRAP() << "InvertColor(red: " << rgb.red << ", green: " << rgb.green
+                 << ", blue: " << rgb.blue << ")";
+
+      rgb.red = 0xFFFF - rgb.red;
+      rgb.green = 0xFFFF - rgb.green;
+      rgb.blue = 0xFFFF - rgb.blue;
+
+      return TrapReturn<RGBColor>(rgb);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-270.html
     case Trap::GetWRefCon: {
