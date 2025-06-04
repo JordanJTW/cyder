@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <ostream>
 #include <set>
 
