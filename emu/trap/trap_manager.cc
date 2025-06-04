@@ -2316,15 +2316,18 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       static auto kLocalTimeZone = absl::LocalTimeZone();
 
       return WithType<DateTimeRec>(record_ptr, [&](DateTimeRec& record) {
-        auto breakdown = absl::FromUnixSeconds(number_of_seconds - 2082844800)
-                             .In(kLocalTimeZone);
-        record.day = breakdown.day;
-        record.month = breakdown.month;
-        record.year = breakdown.year;
-        record.dayOfWeek = breakdown.weekday;
-        record.hour = breakdown.hour;
-        record.minute = breakdown.minute;
-        record.second = breakdown.second;
+        auto breakdown = kLocalTimeZone.At(
+            absl::FromUnixSeconds(number_of_seconds - 2082844800));
+
+        record.day = breakdown.cs.day();
+        record.month = breakdown.cs.month();
+        record.year = breakdown.cs.year();
+        // TODO: Absiel has removed  the weekday field from CivilTime find a
+        //       way to calculate it on our own.
+        // record.dayOfWeek = breakdown.cs.weekday();
+        record.hour = breakdown.cs.hour();
+        record.minute = breakdown.cs.minute();
+        record.second = breakdown.cs.second();
         return absl::OkStatus();
       });
     }
@@ -2332,9 +2335,9 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::DateToSeconds: {
       Ptr record_ptr = m68k_get_reg(NULL, M68K_REG_A0);
       return WithType<DateTimeRec>(record_ptr, [&](const DateTimeRec& record) {
-        absl::Time time = absl::FromDateTime(
-            record.year, record.month, record.day, record.hour, record.minute,
-            record.second, absl::LocalTimeZone());
+        absl::CivilSecond civil_time(record.year, record.month, record.day,
+                                     record.hour, record.minute, record.second);
+        absl::Time time = absl::FromCivil(civil_time, absl::LocalTimeZone());
         m68k_set_reg(M68K_REG_D0, absl::ToUnixSeconds(time) + 2082844800);
         return absl::OkStatus();
       });
