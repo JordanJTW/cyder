@@ -8,7 +8,7 @@ add_custom_command(
           ${CMAKE_CURRENT_BINARY_DIR}/trap_names
   DEPENDS trap_names_gen.py trap_names.txt)
 
-add_library(TRAP_NAMES OBJECT trap_names.cc)
+add_library(TRAP_NAMES STATIC trap_names.cc)
 target_include_directories(TRAP_NAMES PUBLIC ${CMAKE_BINARY_DIR})
 
 add_custom_command(
@@ -17,5 +17,5 @@ add_custom_command(
           ${CMAKE_CURRENT_BINARY_DIR}/global_names
   DEPENDS global_names_gen.py global_names.txt)
 
-add_library(GLOBAL_NAMES OBJECT global_names.cc)
+add_library(GLOBAL_NAMES STATIC global_names.cc)
 target_include_directories(GLOBAL_NAMES PUBLIC ${CMAKE_BINARY_DIR})

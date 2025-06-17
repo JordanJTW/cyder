@@ -28,7 +28,8 @@ _HEADER_INCLUDES = [
 _SOURCE_INCLUDES = [
     '"core/endian_helpers.h"',
     '"core/status_helpers.h"',
-    '"emu/memory/memory_map.h"'
+    '"emu/memory/memory_map.h"',
+    '"emu/debug/debug_manager.h"',
 ]
 
 
@@ -270,9 +271,11 @@ class CodeGenerator:
     for member in members:
       self._write_write_type_value(
           file, member.type, f'obj.{member.id}', indent=2)
-    write(file, """
+
+    write(file, f"""
+        cyder::DebugManager::Instance().TagMemory(region.base_offset() + offset, region.base_offset() + total_offset, "{label}");
         return absl::OkStatus();
-      }\n
+      }}\n
     """)
 
   def _write_struct_stream(self, file, label, members):

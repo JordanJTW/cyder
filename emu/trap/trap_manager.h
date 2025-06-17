@@ -1,6 +1,7 @@
 // Copyright (c) 2022, Jordan Werthman
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <optional>
 #include <tuple>
 
 #include "absl/status/status.h"
@@ -11,6 +12,7 @@
 #include "emu/rsrc/resource_manager.h"
 #include "emu/segment_loader.h"
 #include "emu/window_manager.h"
+#include "gen/trap_names.h"
 
 struct SDL_Renderer;
 
@@ -28,10 +30,10 @@ class TrapManager {
               WindowManager& window_manager,
               BitMap& screen_bits);
 
-  absl::Status DispatchEmulatedSubroutine(uint32_t address);
+  std::optional<Trap> DispatchEmulatedSubroutine(uint32_t address);
 
   absl::Status PerformTrapEntry();
-  absl::Status PerformTrapDispatch(uint16_t trap_index, bool is_toolbox);
+  Trap PerformTrapDispatch(uint16_t trap_index, bool is_toolbox);
   absl::Status PerformTrapExit();
 
   void SetTrapAddress(uint16_t trap, uint32_t address);

@@ -8,6 +8,7 @@
 #include <chrono>
 #include <cstdint>
 #include <iomanip>
+#include <regex>
 #include <thread>
 
 #include "absl/flags/flag.h"
@@ -16,6 +17,8 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "core/status_main.h"
+#include "emu/debug/debug_manager.h"
+#include "emu/debug/debugger.h"
 #include "emu/debug_logger.h"
 #include "emu/event_manager.h"
 #include "emu/graphics/bitmap_image.h"
@@ -53,14 +56,14 @@ ABSL_FLAG(bool,
           /*default_value=*/false,
           "Save a screenshot and exit once idle (use with --headless)");
 
+ABSL_FLAG(bool,
+          debugger,
+          /*default_value=*/false,
+          "Enables the Cyder debugger prompt");
+
 #define SHOW_WINDOW
 
 constexpr bool memory_write_log = false;
-
-constexpr size_t break_on_line = 0;
-
-bool single_step = false;
-bool breakpoint = false;
 
 constexpr SDL_Color kOnColor = {0xFF, 0xFF, 0xFF, 0xFF};
 constexpr SDL_Color kOffColor = {0x00, 0x00, 0x00, 0xFF};
@@ -72,7 +75,7 @@ constexpr size_t kScaleFactor = 1;
 constexpr uint8_t kGreyPattern[8] = {0xAA, 0x55, 0xAA, 0x55,
                                      0xAA, 0x55, 0xAA, 0x55};
 
-typedef std::function<absl::Status(uint32_t)> on_address_callback_t;
+typedef std::function<std::optional<Trap>(uint32_t)> on_address_callback_t;
 
 on_address_callback_t on_emulated_subroutine = nullptr;
 
@@ -110,8 +113,15 @@ unsigned int m68k_read_memory_16(unsigned int address) {
       address < cyder::memory::kSystemMemorySize) {
     CHECK(on_emulated_subroutine)
         << "No emulated subroutine callback registered";
-    auto status = on_emulated_subroutine(address);
-    CHECK(status.ok()) << std::move(status).message();
+    std::optional<Trap> trap = on_emulated_subroutine(address);
+    if (trap.has_value()) {
+      if ((Debugger::Instance().ShouldBreakOnSystemTaskTrap() &&
+           trap.value() == Trap::SystemTask) ||
+          (Debugger::Instance().ShouldBreakOnExitTrap() &&
+           trap.value() == Trap::SysBeep)) {
+        m68k_end_timeslice();
+      }
+    }
   }
 
   return MUST(cyder::memory::kSystemMemory.Read<uint16_t>(address));
@@ -152,15 +162,7 @@ void m68k_write_memory_32(unsigned int address, unsigned int value) {
 static ::cyder::DebugLogger logger;
 
 void cpu_instr_callback(unsigned int pc) {
-  if (pc == break_on_line) {
-    LOG(INFO) << "Breakpoint!";
-    breakpoint = true;
-  }
-
   CHECK(pc != 0) << "Reset";
-  if (absl::GetFlag(FLAGS_disassemble) || breakpoint) {
-    logger.OnInstruction(pc);
-  }
 
   CHECK(m68k_get_reg(NULL, M68K_REG_ISP) <= cyder::memory::kStackStart);
   CHECK(m68k_get_reg(NULL, M68K_REG_ISP) > cyder::memory::kStackEnd);
@@ -170,11 +172,6 @@ void cpu_instr_callback(unsigned int pc) {
     // Is JSR instruction per: http://goldencrystal.free.fr/M68kOpcodes-v2.3.pdf
     // TODO: Track subroutine calls/returns for debugging?
   }
-
-  single_step = breakpoint;
-
-  if (single_step)
-    m68k_end_timeslice();
 }
 
 void PrintFrameTiming(std::ostream& os = std::cout, float period = 2.0f) {
@@ -339,10 +336,11 @@ absl::Status InitTrapManager(MemoryManager& memory_manager,
 
 void run_emulator_thread(std::atomic<bool>& is_running) {
   while (is_running.load()) {
+    while (is_running.load() && absl::GetFlag(FLAGS_debugger) &&
+           !Debugger::Instance().Prompt())
+      ;
     CHECK_OK(UpdateGlobalTime());
-    if (!single_step) {
-      m68k_execute(100000);
-    }
+    m68k_execute(100000);
   }
 }
 
@@ -355,6 +353,8 @@ absl::Status Main(const core::Args& args) {
     system_file = TRY(ResourceFile::Load(system_path));
   }
 
+  cyder::DebugManager::Instance().TagMemory(
+      cyder::memory::kStackEnd, cyder::memory::kStackStart, "Stack");
   MemoryManager memory_manager;
   logger.SetMemoryManager(&memory_manager);
   cyder::memory::InstallMemoryWatcher();
@@ -440,7 +440,6 @@ absl::Status Main(const core::Args& args) {
             SaveScreenshot(screen);
           } else {
             event_manager.QueueKeyDown();
-            single_step = false;
           }
           break;
         case SDL_MOUSEBUTTONDOWN:
@@ -475,7 +474,10 @@ absl::Status Main(const core::Args& args) {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
   }
+  pthread_kill(emulator_thread.native_handle(), SIGINT);
   is_running.store(false);
+  event_manager.QueueMouseDown(1000, 1000);
+  event_manager.Shutdown();
   emulator_thread.join();
   SDL_Quit();
   return absl::OkStatus();

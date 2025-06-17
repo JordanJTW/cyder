@@ -19,7 +19,7 @@ macro(typegen target_name type_definition)
       ${CMAKE_SOURCE_DIR}
     DEPENDS ${TYPEGEN_SRC} ${type_definition})
 
-  add_library(${target_name} OBJECT ${output_name}.cc)
-  target_link_libraries(${target_name} CORE_LIB absl::statusor TYPEGEN_PRELUDE)
+  add_library(${target_name} STATIC ${output_name}.cc)
+  target_link_libraries(${target_name} CORE_LIB absl::statusor MEMORY_LOGGER_LIB TYPEGEN_PRELUDE)
   target_include_directories(${target_name} PUBLIC ${CMAKE_BINARY_DIR})
 endmacro()

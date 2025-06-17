@@ -3,8 +3,10 @@
 
 #include "emu/segment_loader.h"
 
+#include "absl/strings/str_cat.h"
 #include "core/logging.h"
 #include "core/memory_region.h"
+#include "emu/debug/debug_manager.h"
 #include "emu/memory/memory_map.h"
 #include "emu/rsrc/resource.h"
 #include "gen/global_names.h"
@@ -87,6 +89,10 @@ absl::StatusOr<Ptr> SegmentLoader::Load(uint16_t segment_id) {
       resource_manager_.GetResource('CODE', segment_id);
 
   const auto resource_data = memory_manager_.GetRegionForHandle(segment_handle);
+  cyder::DebugManager::Instance().TagMemory(
+      resource_data.base_offset(),
+      resource_data.base_offset() + resource_data.size(),
+      absl::StrCat("CODE", segment_id));
 
   const bool is_far_model = (0xFFFF == TRY(resource_data.Read<uint16_t>(0)));
   // TODO: Add support for far model headers

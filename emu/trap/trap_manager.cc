@@ -99,31 +99,33 @@ TrapManager::TrapManager(memory::MemoryManager& memory_manager,
       window_manager_(window_manager),
       screen_bits_(screen_bits) {}
 
-absl::Status TrapManager::DispatchEmulatedSubroutine(uint32_t address) {
+std::optional<Trap> TrapManager::DispatchEmulatedSubroutine(uint32_t address) {
   switch (address) {
     case memory::kTrapManagerEntryAddress:
-      return PerformTrapEntry();
+      CHECK_OK(PerformTrapEntry()) << "Failed to perform trap entry";
+      return std::nullopt;
     case memory::kTrapManagerExitAddress:
-      return PerformTrapExit();
+      CHECK_OK(PerformTrapExit()) << "Failed to perform trap exit";
+      return std::nullopt;
     // FIXME: This should not be necessary; remove this hack...
     case (memory::kTrapManagerExitAddress + 2):
-      return absl::OkStatus();
+      return std::nullopt;
     default:
       if (address < memory::kTrapManagerExitAddress &&
           address >= memory::kBaseSystemTrapAddress) {
         uint16_t trap_index =
             (address - memory::kBaseSystemTrapAddress) / sizeof(uint16_t);
-        return PerformTrapDispatch(trap_index, false);
+        return PerformTrapDispatch(trap_index, /*is_toolbox=*/false);
       } else if (address < memory::kBaseSystemTrapAddress &&
                  address >= memory::kBaseToolboxTrapAddress) {
         uint16_t trap_index =
             (address - memory::kBaseToolboxTrapAddress) / sizeof(uint16_t);
-        return PerformTrapDispatch(trap_index, true);
+        return PerformTrapDispatch(trap_index, /*is_toolbox=*/true);
       }
 
-      return absl::UnimplementedError(
-          absl::StrCat("No subroutine registered for address: 0x",
-                       absl::Hex(address, absl::kZeroPad8)));
+      NOTREACHED() << "No subroutine registered for address: 0x",
+          absl::Hex(address, absl::kZeroPad8);
+      return std::nullopt;
   }
 }
 
@@ -188,8 +190,7 @@ absl::Status TrapManager::PerformTrapExit() {
   return absl::OkStatus();
 }
 
-absl::Status TrapManager::PerformTrapDispatch(uint16_t trap_index,
-                                              bool is_toolbox) {
+Trap TrapManager::PerformTrapDispatch(uint16_t trap_index, bool is_toolbox) {
   uint16_t trap_op = 0xA000 | trap_index;
   if (is_toolbox) {
     trap_op |= (1 << 11);
@@ -202,18 +203,21 @@ absl::Status TrapManager::PerformTrapDispatch(uint16_t trap_index,
   Ptr return_address = Pop<Ptr>();
 
   // Handle _LoadSeg specially since it needs to modify the return address.
-  absl::Status status = absl::OkStatus();
   if (Trap::LoadSeg == trap_op) {
-    status = HandleLoadSegmentTrap(segment_loader_, return_address);
+    CHECK_OK(HandleLoadSegmentTrap(segment_loader_, return_address))
+        << "Failed to load segment";
+  } else if (IsToolbox(trap_op)) {
+    CHECK_OK(DispatchNativeToolboxTrap(trap_op))
+        << "Failed to dispatch toolbox trap";
   } else {
-    status = IsToolbox(trap_op) ? DispatchNativeToolboxTrap(trap_op)
-                                : DispatchNativeSystemTrap(trap_op);
+    CHECK_OK(DispatchNativeSystemTrap(trap_op))
+        << "Failed to dispatch system trap";
   }
-  RETURN_IF_ERROR(Push<Ptr>(return_address));
+  CHECK_OK(Push<Ptr>(return_address));
   if (IsSystem(trap_op)) {
-    RETURN_IF_ERROR(Push<Ptr>(memory::kTrapManagerExitAddress));
+    CHECK_OK(Push<Ptr>(memory::kTrapManagerExitAddress));
   }
-  return status;
+  return static_cast<Trap>(trap_op);
 }
 
 uint32_t TrapManager::GetTrapAddress(uint16_t trap) {

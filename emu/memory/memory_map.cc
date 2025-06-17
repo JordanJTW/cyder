@@ -8,6 +8,7 @@
 
 #include "absl/strings/str_cat.h"
 #include "core/logging.h"
+#include "emu/debug/debug_manager.h"
 #include "gen/global_names.h"
 
 namespace cyder {
@@ -87,6 +88,7 @@ core::MemoryRegion kSystemMemory(&kSystemMemoryRaw, kSystemMemorySize);
 
 class InitializedWatcher : public core::MemoryWatcher {
   void OnWrite(size_t offset, size_t size) override {
+    DebugManager::Instance().RecordWrite(offset, offset + size);
     for (int i = 0; i < size; ++i) {
       kHasInitializedMemory[offset + i] = true;
     }

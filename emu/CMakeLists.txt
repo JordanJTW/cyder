@@ -4,6 +4,7 @@ include(../gen/typegen/typegen.cmake)
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 
+add_subdirectory(debug)
 add_subdirectory(dialog)
 add_subdirectory(graphics)
 add_subdirectory(memory)
@@ -31,6 +32,7 @@ target_link_libraries(
   emu
   event_manager
   CORE_LIB
+  DEBUG_LIB
   MAIN_LIB
   MEMORY_LIB
   MUSASHI_LIB
