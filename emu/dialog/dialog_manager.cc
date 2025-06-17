@@ -359,6 +359,7 @@ absl::Status ModalDialog(Ptr filter_proc, Var<Integer> item_hit) {
   core::MemoryRegion item_memory =
       MemoryManager::the().GetRegionForHandle(record.items);
 
+  auto mouse_move_enabler = EventManager::the().EnableMouseMove();
   while (true) {
     EventRecord record = EventManager::the().GetNextEvent(1 << kMouseDown);
     auto test_control_selected =

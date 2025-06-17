@@ -102,6 +102,7 @@ uint32_t MenuManager::MenuSelect(const Point& start) {
 
   update_menu_bar(start);
 
+  auto mouse_move_enabler = EventManager::the().EnableMouseMove();
   while (true) {
     EventRecord record =
         EventManager::the().GetNextEvent(1 << kMouseMove | 1 << kMouseUp);

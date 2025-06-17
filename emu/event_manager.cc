@@ -20,6 +20,18 @@ EventManager* s_instance;
 
 }  // namespace
 
+class EventManager::MouseMoveEnablerImpl
+    : public EventManager::MouseMoveEnabler {
+ public:
+  MouseMoveEnablerImpl(EventManager& manager) : manager_(manager) {
+    manager_.AcceptMouseMove();
+  }
+  ~MouseMoveEnablerImpl() override { manager_.RejectMouseMove(); }
+
+ private:
+  EventManager& manager_;
+};
+
 EventManager::EventManager() {
   s_instance = this;
 }
@@ -180,6 +192,11 @@ bool EventManager::HasMouseEvent(EventType type) const {
                       }) != input_events_.end();
 }
 
+std::unique_ptr<EventManager::MouseMoveEnabler>
+EventManager::EnableMouseMove() {
+  return std::make_unique<MouseMoveEnablerImpl>(*this);
+}
+
 void EventManager::OnMouseMove(int x, int y) {
   Point where;
   where.x = x;
@@ -191,7 +208,9 @@ void EventManager::OnMouseMove(int x, int y) {
   record.when = NowTicks();
 
   std::lock_guard<std::mutex> lock(event_mutex_);
-  input_events_.push_back(std::move(record));
+  if (mouse_move_enabled_) {
+    input_events_.push_back(std::move(record));
+  }
 }
 
 }  // namespace cyder

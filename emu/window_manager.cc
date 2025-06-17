@@ -304,6 +304,7 @@ Point WindowManager::DragGrayRegion(const Region& region, const Point& start) {
   target_offset.x = outline_rect_.left - start.x;
   target_offset.y = outline_rect_.top - start.y;
 
+  auto mouse_move_enabler = event_manager_.EnableMouseMove();
   while (true) {
     uint16_t event_mask = (1 << kMouseMove) | (1 << kMouseUp);
     EventRecord record = event_manager_.GetNextEvent(event_mask);

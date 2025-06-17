@@ -49,6 +49,12 @@ class EventManager final {
 
   bool HasMouseEvent(EventType type) const;
 
+  class MouseMoveEnabler {
+   public:
+    virtual ~MouseMoveEnabler() = default;
+  };
+
+  std::unique_ptr<MouseMoveEnabler> EnableMouseMove();
   void OnMouseMove(int x, int y);
 
   bool has_window_events() const {
@@ -56,10 +62,21 @@ class EventManager final {
   }
 
  private:
-  mutable std::mutex event_mutex_;  // Protects the event lists
+  class MouseMoveEnablerImpl;
+  void AcceptMouseMove() {
+    std::lock_guard<std::mutex> lock(event_mutex_);
+    mouse_move_enabled_ = true;
+  }
+  void RejectMouseMove() {
+    std::lock_guard<std::mutex> lock(event_mutex_);
+    mouse_move_enabled_ = false;
+  }
+
+  mutable std::mutex event_mutex_;  // Protects member variables below.
   std::list<EventRecord> activate_events_;
   std::list<EventRecord> input_events_;
   std::list<EventRecord> update_events_;
+  bool mouse_move_enabled_ = false;
 };
 
 }  // namespace cyder
