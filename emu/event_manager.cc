@@ -54,6 +54,7 @@ void EventManager::QueueWindowActivate(Ptr window, ActivateState state) {
 
   std::lock_guard<std::mutex> lock(event_mutex_);
   activate_events_.push_back(std::move(record));
+  event_condition_.notify_all();
 }
 
 void EventManager::QueueWindowUpdate(Ptr window) {
@@ -64,6 +65,7 @@ void EventManager::QueueWindowUpdate(Ptr window) {
 
   std::lock_guard<std::mutex> lock(event_mutex_);
   update_events_.push_back(std::move(record));
+  event_condition_.notify_all();
 }
 
 void EventManager::QueueMouseDown(int x, int y) {
@@ -78,6 +80,7 @@ void EventManager::QueueMouseDown(int x, int y) {
 
   std::lock_guard<std::mutex> lock(event_mutex_);
   input_events_.push_back(std::move(record));
+  event_condition_.notify_all();
 }
 
 void EventManager::QueueMouseUp(int x, int y) {
@@ -92,6 +95,7 @@ void EventManager::QueueMouseUp(int x, int y) {
 
   std::lock_guard<std::mutex> lock(event_mutex_);
   input_events_.push_back(std::move(record));
+  event_condition_.notify_all();
 }
 
 void EventManager::QueueKeyDown() {
@@ -102,6 +106,7 @@ void EventManager::QueueKeyDown() {
 
   std::lock_guard<std::mutex> lock(event_mutex_);
   input_events_.push_back(std::move(record));
+  event_condition_.notify_all();
 }
 
 void EventManager::QueueRawEvent(uint16_t raw_event_type, uint32_t message) {
@@ -120,6 +125,49 @@ void EventManager::QueueRawEvent(uint16_t raw_event_type, uint32_t message) {
   // _this_ queue... This requires some more investigation but works for now.
   std::lock_guard<std::mutex> lock(event_mutex_);
   activate_events_.push_back(std::move(record));
+}
+
+EventRecord EventManager::WaitNextEvent(uint16_t event_mask, uint32_t timeout) {
+  EventRecord current_event = GetNextEvent(event_mask);
+  if (current_event.what != kNullEvent || timeout == 0) {
+    return current_event;
+  }
+
+  {
+    auto has_event_pred = [this, event_mask]() {
+      // Check if any event matching the mask is available
+      if (!activate_events_.empty() && (event_mask & 256 /*activMask*/)) {
+        return true;
+      }
+      if (!input_events_.empty() &&
+          (event_mask & (2 /*mDownMask*/ | 4 /*mUpMask*/ | 8 /*keyDownMask*/ |
+                         16 /*keyUpMask*/))) {
+        auto is_event_enabled = [event_mask](const EventRecord& event) {
+          return event_mask & (1 << event.what);
+        };
+        return std::find_if(input_events_.begin(), input_events_.end(),
+                            is_event_enabled) != input_events_.end();
+      }
+      if (!update_events_.empty() && (event_mask & 64 /*updateMask*/)) {
+        return true;
+      }
+      return false;
+    };
+
+    std::unique_lock<std::mutex> lock(event_mutex_);
+#if true
+    bool event_available =
+        event_condition_.wait_for(lock, std::chrono::milliseconds(timeout * 16),
+                                  std::move(has_event_pred));
+    if (!event_available) {
+      return NullEvent();
+    }
+#else
+    event_condition_.wait(lock, std::move(has_event_pred));
+#endif
+  }
+  // Try again to get the event after being notified
+  return GetNextEvent(event_mask);
 }
 
 EventRecord EventManager::GetNextEvent(uint16_t event_mask) {
@@ -210,6 +258,19 @@ void EventManager::OnMouseMove(int x, int y) {
   std::lock_guard<std::mutex> lock(event_mutex_);
   if (mouse_move_enabled_) {
     input_events_.push_back(std::move(record));
+  }
+}
+
+void EventManager::PrintEvents() const {
+  std::lock_guard<std::mutex> lock(event_mutex_);
+  for (const auto& event : activate_events_) {
+    LOG(INFO) << "Activate Event: " << event.message << " at " << event.when;
+  }
+  for (const auto& event : input_events_) {
+    LOG(INFO) << "Input Event: " << event.what << " at " << event.when;
+  }
+  for (const auto& event : update_events_) {
+    LOG(INFO) << "Update Event: " << event.message << " at " << event.when;
   }
 }
 

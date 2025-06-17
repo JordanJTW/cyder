@@ -44,6 +44,7 @@ class EventManager final {
 
   void QueueRawEvent(uint16_t raw_event_type, uint32_t message);
 
+  EventRecord WaitNextEvent(uint16_t event_mask, uint32_t timeout);
   EventRecord GetNextEvent(uint16_t event_mask);
   uint32_t NowTicks() const;
 
@@ -61,6 +62,12 @@ class EventManager final {
     return !activate_events_.empty() || !update_events_.empty();
   }
 
+  void PrintEvents() const;
+  void Shutdown() {
+    std::lock_guard<std::mutex> lock(event_mutex_);
+    event_condition_.notify_all();
+  }
+
  private:
   class MouseMoveEnablerImpl;
   void AcceptMouseMove() {
@@ -73,6 +80,7 @@ class EventManager final {
   }
 
   mutable std::mutex event_mutex_;  // Protects member variables below.
+  std::condition_variable event_condition_;
   std::list<EventRecord> activate_events_;
   std::list<EventRecord> input_events_;
   std::list<EventRecord> update_events_;
