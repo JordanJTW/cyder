@@ -336,9 +336,16 @@ absl::Status InitTrapManager(MemoryManager& memory_manager,
 
 void run_emulator_thread(std::atomic<bool>& is_running) {
   while (is_running.load()) {
-    while (is_running.load() && absl::GetFlag(FLAGS_debugger) &&
-           !Debugger::Instance().Prompt())
-      ;
+    // If `--debugger` was passed continue to prompt the user for commands until
+    // `Prompt()` indicates it is ready to run the main emulation loop.
+    if (absl::GetFlag(FLAGS_debugger)) {
+      while (!Debugger::Instance().Prompt()) {
+        // The thread may have exited while the user was in the prompt.
+        if (!is_running.load())
+          return;
+      }
+    }
+
     CHECK_OK(UpdateGlobalTime());
     m68k_execute(100000);
   }
@@ -417,8 +424,9 @@ absl::Status Main(const core::Args& args) {
   RETURN_IF_ERROR(
       InitTrapManager(memory_manager, trap_manager, system_file.get()));
 
-  std::atomic<bool> is_running{true};
-  std::thread emulator_thread(run_emulator_thread, std::ref(is_running));
+  std::atomic<bool> is_emulator_running{true};
+  std::thread emulator_thread(run_emulator_thread,
+                              std::ref(is_emulator_running));
 
   SDL_Event event;
   bool should_exit = false;
@@ -465,7 +473,7 @@ absl::Status Main(const core::Args& args) {
           break;
       }
     }
-    if (!absl::GetFlag(FLAGS_headless)) {
+    if (!(absl::GetFlag(FLAGS_headless) || absl::GetFlag(FLAGS_debugger))) {
       PrintFrameTiming();
     }
   }
@@ -474,10 +482,14 @@ absl::Status Main(const core::Args& args) {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
   }
+
+  // Prepare the emulator thread to shutdown.
+  is_emulator_running.store(false);
+  // Send SIGINT to interrupt any console I/O the thread may be blocked on.
   pthread_kill(emulator_thread.native_handle(), SIGINT);
-  is_running.store(false);
-  event_manager.QueueMouseDown(1000, 1000);
+  // Shutdown the EventManager to notify any CondVars it may be blocked on.
   event_manager.Shutdown();
+  // Attempt to join the thread.
   emulator_thread.join();
   SDL_Quit();
   return absl::OkStatus();

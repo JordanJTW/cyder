@@ -65,6 +65,7 @@ class EventManager final {
   void PrintEvents() const;
   void Shutdown() {
     std::lock_guard<std::mutex> lock(event_mutex_);
+    is_shutting_down_ = true;
     event_condition_.notify_all();
   }
 
@@ -85,6 +86,7 @@ class EventManager final {
   std::list<EventRecord> input_events_;
   std::list<EventRecord> update_events_;
   bool mouse_move_enabled_ = false;
+  bool is_shutting_down_ = false;
 };
 
 }  // namespace cyder

@@ -135,6 +135,10 @@ EventRecord EventManager::WaitNextEvent(uint16_t event_mask, uint32_t timeout) {
 
   {
     auto has_event_pred = [this, event_mask]() {
+      // Ensure `wait()` does not interpret shutting down as a spurious wake 
+      if (is_shutting_down_)
+        return true;
+
       // Check if any event matching the mask is available
       if (!activate_events_.empty() && (event_mask & 256 /*activMask*/)) {
         return true;
@@ -155,6 +159,10 @@ EventRecord EventManager::WaitNextEvent(uint16_t event_mask, uint32_t timeout) {
     };
 
     std::unique_lock<std::mutex> lock(event_mutex_);
+    // If the EventManager is already shutting down do not bother `wait()`ing.
+    if (is_shutting_down_)
+      return NullEvent();
+
 #if true
     bool event_available =
         event_condition_.wait_for(lock, std::chrono::milliseconds(timeout * 16),
