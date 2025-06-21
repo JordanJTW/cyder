@@ -1010,6 +1010,12 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       NOTREACHED() << "GetMenuItemText received an invalid index!";
       return absl::OkStatus();
     }
+    // Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-166.html
+    case Trap::CountMItems: {
+      auto theMenu = Pop<Handle>();
+      LOG_DUMMY() << "CountMItems(theMenu: 0x" << std::hex << theMenu << ")";
+      return TrapReturn<uint16_t>(0);
+    }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-133.html
     case Trap::MenuSelect: {
       auto start_pt = PopType<Point>();
