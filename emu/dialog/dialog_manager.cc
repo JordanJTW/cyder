@@ -167,15 +167,15 @@ absl::Status DrawDialogWindow(WindowPtr window_ptr) {
 
             size_t picture_size =
                 PixelWidthToBytes(pict_frame.right) * pict_frame.bottom;
-            uint8_t picture[picture_size];
-            std::memset(picture, 0, picture_size);
+            auto picture = std::make_unique<uint8_t[]>(picture_size);
+            std::memset(picture.get(), 0, picture_size);
 
             RETURN_IF_ERROR(
-                graphics::ParsePICTv1(pict_data, /*output=*/picture));
+                graphics::ParsePICTv1(pict_data, /*output=*/picture.get()));
 
             RETURN_IF_ERROR(WithType<GrafPort>(
                 TRY(port::GetThePort()), [&](const GrafPort& port) {
-                  screen.CopyBits(picture, pict_frame, pict_frame,
+                  screen.CopyBits(picture.get(), pict_frame, pict_frame,
                                   port::LocalToGlobal(port, header.box));
                   return absl::OkStatus();
                 }));

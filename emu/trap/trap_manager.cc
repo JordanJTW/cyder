@@ -1659,13 +1659,14 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
 
       size_t picture_size =
           PixelWidthToBytes(pict_frame.right) * pict_frame.bottom;
-      uint8_t picture[picture_size];
-      std::memset(picture, 0, picture_size);
+      auto picture = std::make_unique<uint8_t[]>(picture_size);
+      std::memset(picture.get(), 0, picture_size);
 
-      RETURN_IF_ERROR(graphics::ParsePICTv1(pict_data, /*output=*/picture));
+      RETURN_IF_ERROR(
+          graphics::ParsePICTv1(pict_data, /*output=*/picture.get()));
 
       return WithPort([&](const GrafPort& port) {
-        graphics::ThePortImage().CopyBits(picture, pict_frame, pict_frame,
+        graphics::ThePortImage().CopyBits(picture.get(), pict_frame, pict_frame,
                                           port::LocalToGlobal(port, dst_rect));
         return absl::OkStatus();
       });

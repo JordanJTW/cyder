@@ -152,12 +152,12 @@ absl::Status ParsePICTv1(const core::MemoryRegion& region, uint8_t* output) {
                        << ", bounds: " << bounds << ", srcRect: " << srcRect
                        << ", dstRect: " << dstRect << ", mode: " << mode << ")";
 
-        uint8_t unpacked_bytes[row_bytes];
+        auto unpacked_bytes = std::make_unique<uint8_t[]>(row_bytes);
         size_t height = bounds.bottom - bounds.top;
 
         for (size_t row = 0; row < height; ++row) {
-          RETURN_IF_ERROR(UnpackBits(reader, unpacked_bytes, row_bytes));
-          bitarray_copy(unpacked_bytes, srcRect.left,
+          RETURN_IF_ERROR(UnpackBits(reader, unpacked_bytes.get(), row_bytes));
+          bitarray_copy(unpacked_bytes.get(), srcRect.left,
                         srcRect.right - srcRect.left,
                         output + row_size * (dstRect.top + row), 0);
         }
