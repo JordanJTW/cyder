@@ -1609,6 +1609,18 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return TrapReturn<bool>(PointInRect(pt, region.bounding_box));
       });
     }
+      // Link: https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-147.html
+    case Trap::RectInRgn: {
+      auto rgn_handle = Pop<Handle>();
+      auto rect = PopRef<Rect>();
+      LOG_TRAP() << "RectInRgn(rect: " << rect << ", rgn: 0x" << std::hex
+                 << rgn_handle << ")";
+
+      return WithHandleToType<Region>(rgn_handle, [&](const Region& region) {
+        CHECK_EQ(region.region_size, 10u) << "Only rect regions are supported!";
+        return TrapReturn<bool>(RectInRect(rect, region.bounding_box));
+      });
+    }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-133.html
     case Trap::OpenRgn: {
       return WithPort([this](GrafPort& port) {
