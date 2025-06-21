@@ -1485,6 +1485,12 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       event_manager_.QueueWindowUpdate(TRY(port::GetThePort()));
       return absl::OkStatus();
     }
+    // Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-264.html
+    case Trap::ValidRect: {
+      auto goodRect = PopRef<Rect>();
+      LOG_DUMMY() << "ValidRect(goodRect: " << goodRect << ")";
+      return absl::OkStatus();
+    }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-43.html
     case Trap::GetClip: {
       auto rgn = Pop<Handle>();
