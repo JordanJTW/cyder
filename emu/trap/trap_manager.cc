@@ -970,6 +970,47 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       auto the_menu = Pop<Handle>();
       LOG_DUMMY() << "AppendResMenu(theMenu: 0x" << std::hex << the_menu
                   << ", theType: " << OSTypeName(the_type) << ")";
+
+      core::MemoryReader reader(memory_manager_.GetRegionForHandle(the_menu));
+
+      auto menu = TRY(reader.NextType<MenuResource>());
+      // The MenuResource ends with a null-terminated list of MenuItems
+      // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-183.html
+      std::vector<MenuItemResource> menu_items;
+      size_t size = menu.size();
+      while (reader.HasNext() && TRY(reader.Peek<uint8_t>()) != 0) {
+        auto menu_item = TRY(reader.NextType<MenuItemResource>());
+        menu_items.push_back(menu_item);
+        size += menu_item.size();
+      }
+
+      std::vector<std::pair<ResId, std::string>> ids_and_names =
+          resource_manager_.GetIdsForType(the_type);
+
+      if (ids_and_names.empty())
+        return absl::OkStatus();
+
+      for (auto& [id, name] : ids_and_names) {
+        if (name.empty())
+          continue;
+
+        MenuItemResource item;
+        item.title = name;
+        menu_items.push_back(item);
+        size += item.size();
+      }
+
+      Ptr new_location = memory_manager_.Allocate(size);
+      RETURN_IF_ERROR(
+          WriteType<MenuResource>(menu, memory::kSystemMemory, new_location));
+      size_t offset = menu.size();
+      for (MenuItemResource& item : menu_items) {
+        RETURN_IF_ERROR(
+            WriteType(item, memory::kSystemMemory, new_location + offset));
+        offset += item.size();
+      }
+
+      memory_manager_.UpdateHandle(the_menu, new_location, offset);
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-130.html
@@ -1012,9 +1053,17 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
     }
     // Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-166.html
     case Trap::CountMItems: {
-      auto theMenu = Pop<Handle>();
-      LOG_DUMMY() << "CountMItems(theMenu: 0x" << std::hex << theMenu << ")";
-      return TrapReturn<uint16_t>(0);
+      auto the_menu = Pop<Handle>();
+      LOG_DUMMY() << "CountMItems(theMenu: 0x" << std::hex << the_menu << ")";
+      core::MemoryReader reader(memory_manager_.GetRegionForHandle(the_menu));
+      auto menu = TRY(reader.NextType<MenuResource>());
+
+      uint16_t count = 0;
+      while (reader.HasNext() && TRY(reader.Peek<uint8_t>()) != 0) {
+        MUST(reader.NextType<MenuItemResource>());
+        ++count;
+      }
+      return TrapReturn<uint16_t>(count);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-133.html
     case Trap::MenuSelect: {

@@ -38,9 +38,8 @@ MemoryManager& MemoryManager::the() {
 Ptr MemoryManager::Allocate(uint32_t size) {
   size_t ptr = kHeapStart + heap_offset_;
   heap_offset_ += size;
-  LOG_MEM(INFO) << "Allocate " << size << "b at 0x" << std::hex << ptr
-                << "(" << std::dec << heap_offset_ << " / "
-                << (kHeapEnd - kHeapStart);
+  LOG_MEM(INFO) << "Allocate " << size << "b at 0x" << std::hex << ptr << "("
+                << std::dec << heap_offset_ << " / " << (kHeapEnd - kHeapStart);
   CHECK_LT(heap_offset_, kHeapEnd);
   return ptr;
 }
@@ -50,7 +49,7 @@ Handle MemoryManager::AllocateHandle(uint32_t size, std::string tag) {
   Handle handle = kHeapStart + handle_offset_;
 
   LOG_MEM(INFO) << "Handle " << (handle_offset_ / sizeof(Handle)) << " ["
-            << std::hex << handle << "] for '" << tag << "'";
+                << std::hex << handle << "] for '" << tag << "'";
 
   CHECK_LT(handle_offset_, kHeapHandleOffset);
 
@@ -93,6 +92,19 @@ Ptr MemoryManager::GetPtrForHandle(Handle handle) const {
   CHECK_EQ(current_ptr, metadata.start);
 
   return current_ptr;
+}
+
+void MemoryManager::UpdateHandle(Handle handle,
+                                 uint32_t new_address,
+                                 uint32_t new_size) {
+  auto entry = handle_to_metadata_.find(handle);
+  CHECK(entry != handle_to_metadata_.cend())
+      << "Handle (0x" << std::hex << handle << ") can not be found.";
+
+  CHECK_OK(kSystemMemory.Write<uint32_t>(entry->first, new_address));
+
+  entry->second.start = new_address;
+  entry->second.size = new_size;
 }
 
 core::MemoryRegion MemoryManager::GetRegionForHandle(Handle handle) const {

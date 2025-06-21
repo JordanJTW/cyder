@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <map>
 #include <string>
+#include <vector>
 
 #include "absl/strings/string_view.h"
 #include "emu/memory/memory_manager.h"
@@ -28,6 +29,7 @@ class ResourceManager {
 
   Handle GetResource(ResType, ResId);
   Handle GetResourseByName(ResType, absl::string_view);
+  std::vector<std::pair<ResId, std::string>> GetIdsForType(ResType);
 
   template <typename T>
   absl::StatusOr<T> GetResource(ResType theType, ResId theId) {

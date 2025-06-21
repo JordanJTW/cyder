@@ -42,6 +42,8 @@ class MemoryManager {
 
   uint32_t GetHandleSize(Handle handle) const;
 
+  void UpdateHandle(Handle handle, uint32_t new_address, uint32_t new_size);
+
   bool SetApplLimit(Ptr last_addr);
   uint32_t GetFreeMemorySize() const;
 

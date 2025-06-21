@@ -92,4 +92,22 @@ Handle ResourceManager::GetResourseByName(ResType theType,
   return handle;
 }
 
+std::vector<std::pair<ResId, std::string>> ResourceManager::GetIdsForType(
+    ResType theType) {
+  std::vector<std::pair<ResId, std::string>> id_and_names;
+
+  for (rsrc::ResourceFile* file : {&resource_file_, system_file_}) {
+    if (file == nullptr)
+      continue;
+
+    const rsrc::ResourceGroup* type_group = file->FindGroupByType(theType);
+    if (type_group == nullptr)
+      continue;
+
+    for (auto& resource : type_group->GetResources())
+      id_and_names.emplace_back() = {resource.GetId(), resource.GetName()};
+  }
+  return id_and_names;
+}
+
 }  // namespace cyder
