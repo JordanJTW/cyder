@@ -2178,6 +2178,30 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return absl::OkStatus();
       });
     }
+    // Link: https://dev.os9.ca/techpubs/mac/Text/Text-224.html
+    case Trap::GetFontName: {
+      auto theName = PopVar<std::string>();
+      auto familyId = Pop<uint16_t>();
+      LOG_DUMMY() << "GetFontName(familyId: " << familyId << ", VAR theName: '"
+                  << theName << "')";
+      return absl::OkStatus();
+    }
+    // Link: https://dev.os9.ca/techpubs/mac/Text/Text-225.html
+    case Trap::GetFontNum: {
+      auto familyId = PopVar<uint16_t>();
+      auto theName = PopRef<std::string>();
+      LOG_DUMMY() << "GetFontNum(theName: '" << theName
+                  << "', VAR familyId: " << familyId << ")";
+      return absl::OkStatus();
+    }
+    // Link: https://dev.os9.ca/techpubs/mac/Text/Text-226.html
+    case Trap::RealFont: {
+      auto size = Pop<uint16_t>();
+      auto fontNum = Pop<uint16_t>();
+      LOG_DUMMY() << "RealFont(fontNum: " << fontNum << ", size: " << size
+                  << ")";
+      return TrapReturn<bool>(false);
+    }
     // Link: http://0.0.0.0:8000/docs/mac/Text/Text-163.html
     case Trap::StringWidth: {
       auto str = PopRef<absl::string_view>();
