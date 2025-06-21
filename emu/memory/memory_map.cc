@@ -62,7 +62,9 @@ constexpr GlobalVars kWhitelistWriteGlobalVars[] = {
     // should be fine (but does possibly cause us to run out of memory :P)
     GlobalVars::ResLoad,
     // TODO: Why would you want to write to the MemoryManager error code?
-    GlobalVars::MemErr, GlobalVars::PaintWhite};
+    GlobalVars::MemErr, GlobalVars::PaintWhite,
+    GlobalVars::MouseOffset, GlobalVars::MouseMask,
+  };
 
 #define RETURN_IF_WHITELISTED(address, whitelist)                       \
   if (auto iter = std::find(std::begin(whitelist), std::end(whitelist), \
