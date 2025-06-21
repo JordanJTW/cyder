@@ -172,6 +172,13 @@ void cpu_instr_callback(unsigned int pc) {
     // Is JSR instruction per: http://goldencrystal.free.fr/M68kOpcodes-v2.3.pdf
     // TODO: Track subroutine calls/returns for debugging?
   }
+
+  if (Debugger::Instance().IsSingleStep()) {
+    char buffer[255];
+    m68k_disassemble(buffer, pc, M68K_CPU_TYPE_68000);
+    printf("0x%x: %s\n", pc, buffer);
+    m68k_end_timeslice();
+  }
 }
 
 void PrintFrameTiming(std::ostream& os = std::cout, float period = 2.0f) {

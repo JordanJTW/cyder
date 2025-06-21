@@ -39,6 +39,11 @@ bool Debugger::Prompt() {
   std::string line;
   std::getline(std::cin, line);
 
+  if (line == "")
+    line = last_command;
+
+  last_command = line;
+
   if (line == "run")
     return true;
 
@@ -55,6 +60,11 @@ bool Debugger::Prompt() {
   if (line == "trap sys") {
     should_break_on_sys = true;
     return false;
+  }
+
+  if (line == "step") {
+    is_single_step = true;
+    return true;
   }
 
   if (ReadTypePrompt(line))
