@@ -1113,6 +1113,15 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
         return absl::OkStatus();
       });
     }
+    // Link: https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-47.html
+    case Trap::SetPortBits: {
+      auto bitmap = PopRef<BitMap>();
+      LOG(INFO) << "SetPortBits(bitmap: " << bitmap << ")";
+      return WithPort([&](GrafPort& port) {
+        port.port_bits = std::move(bitmap);
+        return absl::OkStatus();
+      });
+    }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-392.html
     case Trap::HideCursor: {
       LOG_DUMMY() << "HideCursor()";
