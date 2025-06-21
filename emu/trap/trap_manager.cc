@@ -2636,6 +2636,16 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       Handle handle_to_control = TRY(control::GetNewControl(control_id, owner));
       return TrapReturn<Handle>(handle_to_control);
     }
+
+    // ========================  Segment Manager  ==========================
+
+    // Link: https://dev.os9.ca/techpubs/mac/Processes/Processes-144.html
+    case Trap::UnLoadSeg: {
+      auto routineAddr = Pop<Ptr>();
+      LOG_DUMMY() << "UnloadSeg(routineAddr: 0x" << std::hex << routineAddr
+                  << ")";
+      return absl::OkStatus();
+    }
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unimplemented Toolbox trap: '", GetTrapName(trap), "'"));
