@@ -209,10 +209,14 @@ Trap TrapManager::PerformTrapDispatch(uint16_t trap_index, bool is_toolbox) {
         << "Failed to load segment";
   } else if (IsToolbox(trap_op)) {
     CHECK_OK(DispatchNativeToolboxTrap(trap_op))
-        << "Failed to dispatch toolbox trap";
+        << "Failed to dispatch Toolbox::" << GetTrapName(trap_op) << " (0x"
+        << std::hex << trap_op << ") Index: " << std::dec
+        << ExtractIndex(trap_op);
   } else {
     CHECK_OK(DispatchNativeSystemTrap(trap_op))
-        << "Failed to dispatch system trap";
+        << "Failed to dispatch System::" << GetTrapName(trap_op) << " (0x"
+        << std::hex << trap_op << ") Index: " << std::dec
+        << ExtractIndex(trap_op);
   }
   CHECK_OK(Push<Ptr>(return_address));
   if (IsSystem(trap_op)) {
