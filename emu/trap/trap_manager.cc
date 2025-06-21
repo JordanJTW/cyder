@@ -14,6 +14,7 @@
 #include "absl/time/time.h"
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
+#include "emu/controls/control_manager.h"
 #include "emu/dialog/dialog_manager.h"
 #include "emu/graphics/font/basic_font.h"
 #include "emu/graphics/grafport_types.tdef.h"
@@ -2558,6 +2559,17 @@ absl::Status TrapManager::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG(FATAL) << "Unknown _Pack3 routine selector: " << selector;
     }
 
+    // ========================  Control Manager  ==========================
+
+    // Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-323.html
+    case Trap::GetNewControl: {
+      auto owner = Pop<WindowPtr>();
+      auto control_id = Pop<uint16_t>();
+      LOG_TRAP() << "GetNewControl(control_id: 0x" << std::hex << control_id
+                 << ", owner: 0x" << owner << std::dec << ")";
+      Handle handle_to_control = TRY(control::GetNewControl(control_id, owner));
+      return TrapReturn<Handle>(handle_to_control);
+    }
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unimplemented Toolbox trap: '", GetTrapName(trap), "'"));

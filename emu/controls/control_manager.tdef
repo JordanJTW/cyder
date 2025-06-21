@@ -1,0 +1,33 @@
+@include("gen/typegen/base_types.tdef")
+@include("emu/window_manager.tdef")
+
+type ControlHandle: Handle;
+type ProcPtr: Ptr;
+
+struct ControlRecord {
+   nextControl:   ControlHandle; // next control
+   contrlOwner:   WindowPtr;     // control's window
+   contrlRect:    Rect;          // rectangle
+   contrlVis:     Byte;          // 255 if visible
+   contrlHilite:  Byte;          // highlight state
+   contrlValue:   Integer;       // control's current setting
+   contrlMin:     Integer;       // control's minimum setting
+   contrlMax:     Integer;       // control's maximum setting
+   contrlDefProc: Handle;        // control definition function
+   contrlData:    Handle;        // data used by contrlDefProc
+   contrlAction:  ProcPtr;       // action procedure
+   contrlRfCon:   LongInt;       // control's reference value
+   contrlTitle:   str;           // control's title
+}
+
+struct ControlResource {
+  rect: Rect;
+  initial_setting: u16;
+  is_visible: bool;
+  fill: u8; // This should always be 0.
+  maximum_setting: u16;
+  minimum_setting: u16;
+  control_definition_id: u16;
+  reference_value: u16;
+  title: str;
+}

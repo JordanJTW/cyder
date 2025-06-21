@@ -29,6 +29,13 @@ class ResourceManager {
   Handle GetResource(ResType, ResId);
   Handle GetResourseByName(ResType, absl::string_view);
 
+  template <typename T>
+  absl::StatusOr<T> GetResource(ResType theType, ResId theId) {
+    Handle handle = GetResource(theType, theId);
+    return ReadType<T>(memory::kSystemMemory,
+                       memory::MemoryManager::the().GetPtrForHandle(handle));
+  }
+
  private:
   memory::MemoryManager& memory_manager_;
   rsrc::ResourceFile& resource_file_;

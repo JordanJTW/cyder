@@ -1,6 +1,8 @@
 @include("gen/typegen/base_types.tdef")
 @include("emu/graphics/grafport_types.tdef")
 
+type WindowPtr: Ptr;
+
 // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-296.html#HEADING296-96
 struct WindowRecord {
   port: GrafPort;

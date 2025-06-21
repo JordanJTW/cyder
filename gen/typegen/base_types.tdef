@@ -1,4 +1,5 @@
 type Integer: u16;
 type LongInt: u32;
 type Fixed: u32;
+type Byte: u8;
 
