@@ -21,16 +21,10 @@ add_dependencies(WINDOW_TYPES BASE_TYPES GRAFPORT_TYPES)
 add_library(event_manager event_manager.cc)
 target_link_libraries(event_manager CORE_LIB EVENT_TYPES TYPEGEN_PRELUDE)
 
-add_executable(
-  emu
-  main.cc
-  debug_logger.cc
-  menu_manager.cc
-  menu_popup.cc
-  segment_loader.cc
-  window_manager.cc)
-target_link_libraries(
-  emu
+set(APP_DEPS
+  absl::flags
+  absl::statusor
+  absl::strings
   event_manager
   control_manager
   CORE_LIB
@@ -50,10 +44,34 @@ target_link_libraries(
   GENERATED_TYPES
   SEGMENT_TYPES
   TYPEGEN_PRELUDE
-  WINDOW_TYPES)
-target_link_libraries(emu absl::flags absl::statusor absl::strings
-                      GRAFPORT_TYPES)
-target_link_libraries(emu ${SDL2_LIBRARIES})
+  WINDOW_TYPES
+  GRAFPORT_TYPES
+  ${SDL2_LIBRARIES}
+)
+
+set(APP_SRCS
+  main.cc
+  debug_logger.cc
+  menu_manager.cc
+  menu_popup.cc
+  segment_loader.cc
+  window_manager.cc
+)
+
+add_executable(emu ${APP_SRCS})
+target_link_libraries(emu ${APP_DEPS})
+
+set(CMAKE_MACOSX_BUNDLE TRUE) # Enable bundle creation
+
+add_executable(cyder MACOSX_BUNDLE ${APP_SRCS})
+target_link_libraries(cyder ${APP_DEPS})
 
 gtest(event_manager_tests)
 target_link_libraries(event_manager_tests event_manager)
+
+set_target_properties(cyder PROPERTIES
+  MACOSX_BUNDLE_GUI_IDENTIFIER "com.binary.one.cyder"
+  MACOSX_BUNDLE_BUNDLE_NAME "Cyder"
+  MACOSX_BUNDLE_BUNDLE_VERSION "0.1"
+  MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
+)
