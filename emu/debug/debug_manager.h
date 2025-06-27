@@ -4,6 +4,7 @@
 #include <deque>
 #include <ostream>
 #include <string>
+#include <vector>
 
 #include "core/logging.h"
 

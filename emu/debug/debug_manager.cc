@@ -1,6 +1,9 @@
 #include "emu/debug/debug_manager.h"
 
+#include <cstddef>
 #include <iostream>
+#include <string>
+#include <vector>
 
 #include "absl/base/no_destructor.h"
 #include "core/logging.h"
