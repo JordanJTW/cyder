@@ -3,6 +3,10 @@
 
 #include <SDL.h>
 
+#ifdef __LINUX__
+#include <signal.h>
+#endif  // __LINUX__
+
 #include <atomic>
 #include <bitset>
 #include <chrono>
