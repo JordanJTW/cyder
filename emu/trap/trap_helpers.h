@@ -6,6 +6,8 @@
 #include <bitset>
 #include <cstdint>
 
+#include "core/logging.h"
+
 namespace cyder {
 namespace trap {
 
@@ -64,7 +66,7 @@ constexpr bool IsAutoPopSet(uint16_t trap) {
   return IsToolbox(trap) && ((trap >> 10) & 1);
 }
 
-std::bitset<2> ExtractFlags(uint16_t trap) {
+inline std::bitset<2> ExtractFlags(uint16_t trap) {
   CHECK(IsSystem(trap)) << "Only OS traps contain flags";
   return (trap >> 9) & 0x03;
 }

@@ -24,6 +24,7 @@
 #include "emu/debug/debug_manager.h"
 #include "emu/debug/debugger.h"
 #include "emu/debug_logger.h"
+#include "emu/emulator.h"
 #include "emu/event_manager.h"
 #include "emu/graphics/bitmap_image.h"
 #include "emu/graphics/graphics_helpers.h"
@@ -34,16 +35,12 @@
 #include "emu/rsrc/resource_manager.h"
 #include "emu/segment_loader.h"
 #include "emu/trap/stack_helpers.h"
+#include "emu/trap/trap_dispatcher.h"
 #include "emu/trap/trap_manager.h"
 #include "emu/window_manager.h"
 #include "gen/global_names.h"
 #include "gen/trap_names.h"
 #include "third_party/musashi/src/m68k.h"
-
-ABSL_FLAG(bool,
-          disassemble,
-          /*default_value=*/false,
-          "Disassemble the m68k instructions being executed");
 
 ABSL_FLAG(std::string,
           system_file,
@@ -67,8 +64,6 @@ ABSL_FLAG(bool,
 
 #define SHOW_WINDOW
 
-constexpr bool memory_write_log = false;
-
 constexpr SDL_Color kOnColor = {0xFF, 0xFF, 0xFF, 0xFF};
 constexpr SDL_Color kOffColor = {0x00, 0x00, 0x00, 0xFF};
 
@@ -79,111 +74,49 @@ constexpr size_t kScaleFactor = 1;
 constexpr uint8_t kGreyPattern[8] = {0xAA, 0x55, 0xAA, 0x55,
                                      0xAA, 0x55, 0xAA, 0x55};
 
-typedef std::function<std::optional<Trap>(uint32_t)> on_address_callback_t;
+// unsigned int m68k_read_memory_16(unsigned int address) {
+//   cyder::memory::CheckReadAccess(address);
 
-on_address_callback_t on_emulated_subroutine = nullptr;
+//   if (address >= cyder::memory::kLastEmulatedSubroutineAddress &&
+//       address < cyder::memory::kSystemMemorySize) {
+//     CHECK(on_emulated_subroutine)
+//         << "No emulated subroutine callback registered";
+//     std::optional<Trap> trap = on_emulated_subroutine(address);
+//     if (trap.has_value()) {
+//       if ((Debugger::Instance().ShouldBreakOnSystemTaskTrap() &&
+//            trap.value() == Trap::SystemTask) ||
+//           (Debugger::Instance().ShouldBreakOnExitTrap() &&
+//            trap.value() == Trap::SysBeep)) {
+//         m68k_end_timeslice();
+//       }
+//     }
+//   }
 
-absl::Status HandleException(unsigned int address) {
-  CHECK_LT(address, 0x100) << "Address 0x" << std::hex << address
-                           << " is outside of the IVT";
-
-  switch (address) {
-    case 0x28:
-      return absl::OkStatus();
-    default:
-      return absl::UnimplementedError(absl::StrCat(
-          "Exception occured with no handler: 0x", absl::Hex(address)));
-  }
-}
-
-unsigned int m68k_read_disassembler_8(unsigned int address) {
-  return MUST(cyder::memory::kSystemMemory.Read<uint8_t>(address));
-}
-unsigned int m68k_read_disassembler_16(unsigned int address) {
-  return MUST(cyder::memory::kSystemMemory.Read<uint16_t>(address));
-}
-unsigned int m68k_read_disassembler_32(unsigned int address) {
-  return MUST(cyder::memory::kSystemMemory.Read<uint32_t>(address));
-}
-
-unsigned int m68k_read_memory_8(unsigned int address) {
-  cyder::memory::CheckReadAccess(address);
-  return MUST(cyder::memory::kSystemMemory.Read<uint8_t>(address));
-}
-unsigned int m68k_read_memory_16(unsigned int address) {
-  cyder::memory::CheckReadAccess(address);
-
-  if (address >= cyder::memory::kLastEmulatedSubroutineAddress &&
-      address < cyder::memory::kSystemMemorySize) {
-    CHECK(on_emulated_subroutine)
-        << "No emulated subroutine callback registered";
-    std::optional<Trap> trap = on_emulated_subroutine(address);
-    if (trap.has_value()) {
-      if ((Debugger::Instance().ShouldBreakOnSystemTaskTrap() &&
-           trap.value() == Trap::SystemTask) ||
-          (Debugger::Instance().ShouldBreakOnExitTrap() &&
-           trap.value() == Trap::SysBeep)) {
-        m68k_end_timeslice();
-      }
-    }
-  }
-
-  return MUST(cyder::memory::kSystemMemory.Read<uint16_t>(address));
-}
-unsigned int m68k_read_memory_32(unsigned int address) {
-  cyder::memory::CheckReadAccess(address);
-
-  if (address < cyder::memory::kInterruptVectorTableEnd) {
-    auto status = HandleException(address);
-    CHECK(status.ok()) << std::move(status).message();
-  }
-
-  return MUST(cyder::memory::kSystemMemory.Read<uint32_t>(address));
-}
-
-void m68k_write_memory_8(unsigned int address, unsigned int value) {
-  cyder::memory::CheckWriteAccess(address, value);
-  LOG_IF(INFO, memory_write_log)
-      << std::hex << __func__ << "(" << address << ": " << value << ")";
-  CHECK(cyder::memory::kSystemMemory.Write<uint8_t>(address, value).ok())
-      << " unable to write " << std::hex << value << " to " << address;
-}
-void m68k_write_memory_16(unsigned int address, unsigned int value) {
-  cyder::memory::CheckWriteAccess(address, value);
-  LOG_IF(INFO, memory_write_log)
-      << std::hex << __func__ << "(" << address << ": " << value << ")";
-  CHECK(cyder::memory::kSystemMemory.Write<uint16_t>(address, value).ok())
-      << " unable to write " << std::hex << value << " to " << address;
-}
-void m68k_write_memory_32(unsigned int address, unsigned int value) {
-  cyder::memory::CheckWriteAccess(address, value);
-  LOG_IF(INFO, memory_write_log)
-      << std::hex << __func__ << "(" << address << ": " << value << ")";
-  CHECK(cyder::memory::kSystemMemory.Write<uint32_t>(address, value).ok())
-      << " unable to write " << std::hex << value << " to " << address;
-}
+//   return MUST(cyder::memory::kSystemMemory.Read<uint16_t>(address));
+// }
 
 static ::cyder::DebugLogger logger;
 
-void cpu_instr_callback(unsigned int pc) {
-  CHECK(pc != 0) << "Reset";
+// void cpu_instr_callback(unsigned int pc) {
+//   CHECK(pc != 0) << "Reset";
 
-  CHECK(m68k_get_reg(NULL, M68K_REG_ISP) <= cyder::memory::kStackStart);
-  CHECK(m68k_get_reg(NULL, M68K_REG_ISP) > cyder::memory::kStackEnd);
+//   CHECK(m68k_get_reg(NULL, M68K_REG_ISP) <= cyder::memory::kStackStart);
+//   CHECK(m68k_get_reg(NULL, M68K_REG_ISP) > cyder::memory::kStackEnd);
 
-  auto instr = MUST(cyder::memory::kSystemMemory.Read<uint16_t>(pc));
-  if ((instr & 0xFFC0) == 0x4E80) {
-    // Is JSR instruction per: http://goldencrystal.free.fr/M68kOpcodes-v2.3.pdf
-    // TODO: Track subroutine calls/returns for debugging?
-  }
+//   auto instr = MUST(cyder::memory::kSystemMemory.Read<uint16_t>(pc));
+//   if ((instr & 0xFFC0) == 0x4E80) {
+//     // Is JSR instruction per:
+//     http://goldencrystal.free.fr/M68kOpcodes-v2.3.pdf
+//     // TODO: Track subroutine calls/returns for debugging?
+//   }
 
-  if (Debugger::Instance().IsSingleStep()) {
-    char buffer[255];
-    m68k_disassemble(buffer, pc, M68K_CPU_TYPE_68000);
-    printf("0x%x: %s\n", pc, buffer);
-    m68k_end_timeslice();
-  }
-}
+//   if (Debugger::Instance().IsSingleStep()) {
+//     char buffer[255];
+//     m68k_disassemble(buffer, pc, M68K_CPU_TYPE_68000);
+//     printf("0x%x: %s\n", pc, buffer);
+//     m68k_end_timeslice();
+//   }
+// }
 
 void PrintFrameTiming(std::ostream& os = std::cout, float period = 2.0f) {
   static unsigned int frames = 0;
@@ -209,12 +142,13 @@ using cyder::EventManager;
 using cyder::MenuManager;
 using cyder::NewRect;
 using cyder::ResourceManager;
-using cyder::SegmentLoader;
+using cyder::SegmentLoaderImpl;
 using cyder::WindowManager;
 using cyder::graphics::BitmapImage;
 using cyder::memory::kSystemMemory;
 using cyder::memory::MemoryManager;
 using cyder::rsrc::ResourceFile;
+using cyder::trap::TrapDispatcherImpl;
 using cyder::trap::TrapManager;
 
 SDL_Surface* const MakeSurface(const BitmapImage& screen) {
@@ -239,18 +173,7 @@ void SaveScreenshot(const BitmapImage& screen) {
 }
 
 absl::Status InitializeVM(size_t pc) {
-  m68k_init();
-  m68k_set_instr_hook_callback(cpu_instr_callback);
-  m68k_set_cpu_type(M68K_CPU_TYPE_68000);
-
-  m68k_set_reg(M68K_REG_PC, pc);
-  m68k_set_reg(M68K_REG_A5, cyder::memory::GetA5WorldPosition());
-  m68k_set_reg(M68K_REG_SP, cyder::memory::kStackStart);
-
-  // Mac OS _always_ runs in supervisor mode so set the SR
-  // Link: https://en.wikibooks.org/wiki/68000_Assembly/Registers
-  uint32_t sr = m68k_get_reg(NULL, M68K_REG_SR);
-  m68k_set_reg(M68K_REG_SR, sr | (1 << 13));
+  cyder::Emulator::Instance().Init(pc);
 
   RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(GlobalVars::ApplLimit,
                                                 cyder::memory::kHeapEnd));
@@ -281,67 +204,12 @@ absl::Status InitializeVM(size_t pc) {
   RETURN_IF_ERROR(
       kSystemMemory.Write<uint32_t>(GlobalVars::Lo3Bytes, 0x00FFFFFF));
 
-  // Assembly: RTS
-  RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
-      cyder::memory::kTrapManagerEntryAddress, 0x4E75));
-  RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(
-      0x28, cyder::memory::kTrapManagerEntryAddress));
-
-  // Assembly: TST.W D0
-  RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
-      cyder::memory::kTrapManagerExitAddress, 0x4A40));
-  // Assembly: RTS
-  RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
-      cyder::memory::kTrapManagerExitAddress + 2, 0x4E75));
-
-  for (int i = 0; i < 1024; ++i) {
-    RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
-        cyder::memory::kBaseToolboxTrapAddress + (i * sizeof(uint16_t)),
-        0x4E75));
-  }
-  for (int i = 0; i < 256; ++i) {
-    RETURN_IF_ERROR(kSystemMemory.Write<uint16_t>(
-        cyder::memory::kBaseSystemTrapAddress + (i * sizeof(uint16_t)),
-        0x4E75));
-  }
-
   RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(GlobalVars::CurStackBase,
                                                 cyder::memory::kStackStart));
 
   RETURN_IF_ERROR(cyder::trap::Push<uint32_t>(
       cyder::memory::kBaseToolboxTrapAddress +
       (Trap::ExitToShell & 0x03FF) * sizeof(uint16_t)));
-  return absl::OkStatus();
-}
-
-absl::Status InitTrapManager(MemoryManager& memory_manager,
-                             TrapManager& trap_manager,
-                             cyder::rsrc::ResourceFile* system_file) {
-  on_emulated_subroutine = std::bind(&TrapManager::DispatchEmulatedSubroutine,
-                                     &trap_manager, std::placeholders::_1);
-
-  if (system_file != nullptr) {
-    if (auto* version = system_file->FindByTypeAndId('STR ', 0)) {
-      LOG(INFO) << "System: "
-                << TRY(ReadType<absl::string_view>(version->GetData(), 0));
-    }
-
-    if (auto* pack4 = system_file->FindByTypeAndId('PACK', 4)) {
-      LOG(INFO) << "Loading PACK4 into memory";
-      Handle handle =
-          memory_manager.AllocateHandleForRegion(pack4->GetData(), "PACK4");
-      size_t address = MUST(kSystemMemory.Read<uint32_t>(handle));
-      trap_manager.SetTrapAddress(Trap::Pack4, address);
-    }
-
-    if (auto* pack7 = system_file->FindByTypeAndId('PACK', 7)) {
-      LOG(INFO) << "Loading PACK7 into memory";
-      Handle handle =
-          memory_manager.AllocateHandleForRegion(pack7->GetData(), "PACK7");
-      size_t address = MUST(kSystemMemory.Read<uint32_t>(handle));
-      trap_manager.SetTrapAddress(Trap::Pack7, address);
-    }
-  }
   return absl::OkStatus();
 }
 
@@ -358,7 +226,7 @@ void run_emulator_thread(std::atomic<bool>& is_running) {
     }
 
     CHECK_OK(UpdateGlobalTime());
-    m68k_execute(100000);
+    cyder::Emulator::Instance().Run();
   }
 }
 
@@ -380,9 +248,9 @@ absl::Status Main(const core::Args& args) {
   ResourceManager resource_manager(memory_manager, *file, system_file.get());
 
   auto segment_loader =
-      TRY(SegmentLoader::Create(memory_manager, resource_manager));
+      TRY(SegmentLoaderImpl::Create(memory_manager, resource_manager));
 
-  size_t pc = TRY(segment_loader.Load(1));
+  size_t pc = TRY(segment_loader->Load(1));
   LOG(INFO) << "Initialize PC: " << std::hex << pc;
   LOG(INFO) << "Memory Map: " << cyder::memory::MemoryMapToStr();
 
@@ -429,11 +297,14 @@ absl::Status Main(const core::Args& args) {
 
   EventManager event_manager;
   WindowManager window_manager(event_manager, screen, memory_manager);
-  TrapManager trap_manager(memory_manager, resource_manager, segment_loader,
-                           event_manager, menu_manager, window_manager, bitmap);
+  TrapDispatcherImpl trap_dispatcher(memory_manager, resource_manager,
+                                     event_manager, menu_manager,
+                                     window_manager, bitmap);
+  TrapManager trap_manager(*segment_loader, trap_dispatcher);
 
-  RETURN_IF_ERROR(
-      InitTrapManager(memory_manager, trap_manager, system_file.get()));
+  if (system_file) {
+    trap_manager.PatchTrapsFromSystemFile(memory_manager, *system_file);
+  }
 
   std::atomic<bool> is_emulator_running{true};
   std::thread emulator_thread(run_emulator_thread,

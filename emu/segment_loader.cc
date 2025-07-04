@@ -55,7 +55,7 @@ using ::cyder::rsrc::Resource;
 using ::cyder::rsrc::ResourceGroup;
 
 // static
-absl::StatusOr<SegmentLoader> SegmentLoader::Create(
+absl::StatusOr<std::unique_ptr<SegmentLoader>> SegmentLoaderImpl::Create(
     memory::MemoryManager& memory_manager,
     ResourceManager& resource_manager) {
   const Resource* const segment_zero = resource_manager.GetSegmentZero();
@@ -81,10 +81,11 @@ absl::StatusOr<SegmentLoader> SegmentLoader::Create(
 
   RETURN_IF_ERROR(WriteAppParams(memory_manager, memory::GetA5WorldPosition()));
 
-  return SegmentLoader(memory_manager, resource_manager, std::move(header));
+  return std::unique_ptr<SegmentLoader>(new SegmentLoaderImpl(
+      memory_manager, resource_manager, std::move(header)));
 }
 
-absl::StatusOr<Ptr> SegmentLoader::Load(uint16_t segment_id) {
+absl::StatusOr<Ptr> SegmentLoaderImpl::Load(uint16_t segment_id) {
   const Handle segment_handle =
       resource_manager_.GetResource('CODE', segment_id);
 
@@ -132,9 +133,9 @@ absl::StatusOr<Ptr> SegmentLoader::Load(uint16_t segment_id) {
   return absolute_address;
 }
 
-SegmentLoader::SegmentLoader(memory::MemoryManager& memory_manager,
-                             ResourceManager& resource_manager,
-                             SegmentTableHeader table_header)
+SegmentLoaderImpl::SegmentLoaderImpl(memory::MemoryManager& memory_manager,
+                                     ResourceManager& resource_manager,
+                                     SegmentTableHeader table_header)
     : memory_manager_(memory_manager),
       resource_manager_(resource_manager),
       table_header_(std::move(table_header)) {}

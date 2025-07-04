@@ -21,7 +21,13 @@ add_dependencies(WINDOW_TYPES BASE_TYPES GRAFPORT_TYPES)
 add_library(event_manager event_manager.cc)
 target_link_libraries(event_manager CORE_LIB EVENT_TYPES TYPEGEN_PRELUDE)
 
+add_library(emulator STATIC emulator.cc)
+target_link_libraries(MEMORY_LIB MUSASHI_LIB TRAP_NAMES TRAP_LIB)
+gtest(emulator_tests)
+target_link_libraries(emulator_tests emulator MEMORY_LIB MUSASHI_LIB TRAP_NAMES TRAP_LIB)
+
 set(APP_DEPS
+  emulator
   absl::flags
   absl::statusor
   absl::strings
