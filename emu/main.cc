@@ -207,9 +207,8 @@ absl::Status InitializeVM(size_t pc) {
   RETURN_IF_ERROR(kSystemMemory.Write<uint32_t>(GlobalVars::CurStackBase,
                                                 cyder::memory::kStackStart));
 
-  RETURN_IF_ERROR(cyder::trap::Push<uint32_t>(
-      cyder::memory::kBaseToolboxTrapAddress +
-      (Trap::ExitToShell & 0x03FF) * sizeof(uint16_t)));
+  cyder::trap::Push<uint32_t>(cyder::memory::kBaseToolboxTrapAddress +
+                              (Trap::ExitToShell & 0x03FF) * sizeof(uint16_t));
   return absl::OkStatus();
 }
 

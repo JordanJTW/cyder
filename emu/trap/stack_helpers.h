@@ -79,13 +79,18 @@ Var<T> PopVar() {
 
 // Pushes `T` on to the stack
 template <typename T>
-absl::Status Push(T value) {
+void Push(T value) {
+  // Special case for bools. Stored in a byte but word aligned on stack.
+  if constexpr (std::is_same<T, bool>::value) {
+    Push<uint16_t>(value ? 0x0100 : 0x0000);
+    return;
+  }
+
   static_assert(std::is_integral<T>::value,
                 "Only integers are stored on the stack");
   Ptr new_stack_ptr = m68k_get_reg(NULL, M68K_REG_SP) - sizeof(T);
-  RETURN_IF_ERROR(memory::kSystemMemory.Write<T>(new_stack_ptr, value));
+  CHECK_OK(memory::kSystemMemory.Write<T>(new_stack_ptr, value));
   m68k_set_reg(M68K_REG_SP, new_stack_ptr);
-  return absl::OkStatus();
 }
 
 // Function results are returned by value or by address on the stack.

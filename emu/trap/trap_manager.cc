@@ -107,15 +107,15 @@ uint32_t TrapManager::PerformTrapEntry() {
       << " (0x" << std::hex << trap_op << ") Index: " << std::dec
       << ExtractIndex(trap_op) << COLOR_RESET();
 
-  CHECK_OK(Push<uint32_t>(ip));
+  Push<uint32_t>(ip);
 
   if (IsSystem(trap_op)) {
     if (ShouldSaveA0(trap_op)) {
-      CHECK_OK(Push<uint32_t>(m68k_get_reg(/*context=*/NULL, M68K_REG_A0)));
+      Push<uint32_t>(m68k_get_reg(/*context=*/NULL, M68K_REG_A0));
     }
-    CHECK_OK(Push<uint32_t>(m68k_get_reg(/*context=*/NULL, M68K_REG_A1)));
-    CHECK_OK(Push<uint32_t>(m68k_get_reg(/*context=*/NULL, M68K_REG_D1)));
-    CHECK_OK(Push<uint32_t>(m68k_get_reg(/*context=*/NULL, M68K_REG_D2)));
+    Push<uint32_t>(m68k_get_reg(/*context=*/NULL, M68K_REG_A1));
+    Push<uint32_t>(m68k_get_reg(/*context=*/NULL, M68K_REG_D1));
+    Push<uint32_t>(m68k_get_reg(/*context=*/NULL, M68K_REG_D2));
 
     m68k_set_reg(M68K_REG_D1, trap_op);
   }
@@ -128,7 +128,7 @@ uint32_t TrapManager::PerformTrapEntry() {
     // the registes (and stack). Pushing the exit address emulates a `JSR` so
     // that TrapManager can complete the rest of its logic (the same as native).
     if (IsSystem(trap_op))
-      CHECK_OK(Push<uint32_t>(memory::kTrapManagerExitAddress));
+      Push<uint32_t>(memory::kTrapManagerExitAddress);
 
     // A patched trap address should end with an `RTS` instruction. So the PC
     // will be reset to `ip` when the patched trap address returns.
@@ -180,7 +180,7 @@ void TrapManager::PerformTrapDispatch(uint16_t trap_index, bool is_toolbox) {
     CHECK_OK(trap_dispatcher_.Dispatch(trap_op));
   }
 
-  CHECK_OK(Push<Ptr>(return_address));
+  Push<Ptr>(return_address);
 }
 
 uint32_t TrapManager::GetTrapAddress(uint16_t trap) {
