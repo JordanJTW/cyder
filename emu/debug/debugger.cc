@@ -9,6 +9,7 @@
 #include "emu/debug/debug_manager.h"
 #include "emu/graphics/grafport_types.tdef.h"
 #include "emu/memory/memory_map.h"
+#include "third_party/musashi/src/m68k.h"
 
 bool ReadTypePrompt(const std::string& line) {
   std::smatch match;
@@ -49,6 +50,15 @@ bool Debugger::Prompt() {
 
   if (line == "mem") {
     cyder::DebugManager::Instance().PrintMemoryMap();
+    return false;
+  }
+
+  if (line == "stack") {
+    uint32_t stack_ptr = m68k_get_reg(NULL, M68K_REG_SP);
+    std::cout << "\n"
+              << cyder::memory::kSystemMemory.Create(
+                     "stack", stack_ptr, cyder::memory::kStackStart - stack_ptr)
+              << std::endl;
     return false;
   }
 
