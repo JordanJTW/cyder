@@ -3,6 +3,9 @@
 #include <cstdint>
 #include <functional>
 
+#include "emu/memory/memory_map.h"
+#include "emu/trap/stack_helpers.h"
+
 namespace cyder {
 
 class Emulator {
@@ -32,9 +35,42 @@ class Emulator {
   // during emulation. It is expected that the handler will perform the
   // necessary trap handling and return control to the emulator.
   virtual void RegisterATrapHandler(NativeFunc handler) = 0;
+
+  // Registers `func` to run when `memory::kEndFunctionCallAddress` is invoked.
+  // Multiple `func`s can be registered and run in FILO (stack) ordering. This
+  // is used by `CallFunction<>()` to end functions (accounts for nesting).
+  virtual void RegisterExitFunction(NativeFunc func) = 0;
 };
 
 // Emulates the `RTS` (return from subroutine) instruction for native code.
 void ReturnSubroutine();
+
+// Calls an emulated function at `func_entry` using Pascal calling conventions.
+//   NOTE: Use `core/literal_helpers.h` to ensure `args` are the right type. :^)
+template <typename ReturnType, typename... Args>
+ReturnType CallFunction(uint32_t func_entry, Args&&... args) {
+  trap::Push<uint32_t>(m68k_get_reg(NULL, M68K_REG_PC));
+
+  // The emulated function should end with `RTS` which will pop the address of
+  // the "calling" function off the stack and jump to it. We want to "jump" back
+  // to native code so we push `memory::kEndFunctionCallAddress` to `RTS` to
+  // which ends the current emulator timeslice and allows us to grab the return
+  // value off the stack and restore the actual `PC` saved above.
+  bool function_has_returned = false;
+  Emulator::Instance().RegisterExitFunction(
+      [&function_has_returned]() { function_has_returned = true; });
+
+  trap::Push<ReturnType>(0);  // Placeholder for return value
+  (trap::Push(std::forward<Args>(args)), ...);
+  trap::Push<uint32_t>(memory::kEndFunctionCallAddress);
+  m68k_set_reg(M68K_REG_PC, func_entry);
+
+  while (!function_has_returned) {
+    Emulator::Instance().Run();
+  }
+  auto return_type = trap::Pop<ReturnType>();
+  ReturnSubroutine();
+  return return_type;
+}
 
 }  // namespace cyder

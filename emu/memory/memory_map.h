@@ -60,7 +60,10 @@ const size_t kBaseSystemTrapAddress =
 const size_t kBaseToolboxTrapAddress =
     kBaseSystemTrapAddress - (1024 * sizeof(uint16_t));
 
-const size_t kLastEmulatedSubroutineAddress = kBaseToolboxTrapAddress;
+const size_t kEndFunctionCallAddress =
+    kBaseToolboxTrapAddress - sizeof(uint16_t);
+
+const size_t kLastEmulatedSubroutineAddress = kEndFunctionCallAddress;
 
 // A5 World
 

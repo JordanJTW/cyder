@@ -50,8 +50,10 @@ class EmulatorImpl : public Emulator {
     if (!native_func_.has_value())
       return;
 
-    (*native_func_)();
+    // Ensure reset BEFORE calling the function so it is ready for a nested call
+    auto func = std::move(native_func_.value());
     native_func_.reset();
+    std::move(func)();
   }
 
   void RegisterNativeFunction(uint32_t address, NativeFunc func) override {
@@ -66,11 +68,24 @@ class EmulatorImpl : public Emulator {
     // timeslice and call the native TrapManager::PerformTrapEntry().
     // NOTE: The stack will be different than on a real machine since the RTE
     //       is executed BEFORE the A-Trap handler is called.
-    RegisterNativeFunction(0x1fff, std::move(handler));
-    CHECK_OK(memory::kSystemMemory.Write<uint32_t>(0x28, 0x1fff));
+    RegisterNativeFunction(memory::kTrapManagerEntryAddress,
+                           std::move(handler));
+    CHECK_OK(memory::kSystemMemory.Write<uint32_t>(
+        0x28, memory::kTrapManagerEntryAddress));
     // Overwrite the native function `NOP` with an `RTE` instruction to restore
     // the PC and SR registers correctly.
-    CHECK_OK(memory::kSystemMemory.Write<uint16_t>(0x1fff, 0x4E73 /* RTE */));
+    CHECK_OK(memory::kSystemMemory.Write<uint16_t>(
+        memory::kTrapManagerEntryAddress, 0x4E73 /* RTE */));
+  }
+
+  void RegisterExitFunction(NativeFunc func) override {
+    exit_funcs_.push(std::move(func));
+    RegisterNativeFunction(memory::kEndFunctionCallAddress,
+                           [exit_funcs = &exit_funcs_]() {
+                             NativeFunc func = std::move(exit_funcs->top());
+                             exit_funcs->pop();
+                             return std::move(func)();
+                           });
   }
 
   void HandleInstruction(unsigned int address) {
@@ -100,6 +115,8 @@ class EmulatorImpl : public Emulator {
 
   std::map<uint32_t, NativeFunc> native_functions_;
   absl::optional<NativeFunc> native_func_;
+
+  std::stack<NativeFunc> exit_funcs_;
 };
 
 // static
