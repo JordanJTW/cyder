@@ -140,11 +140,7 @@ uint32_t TrapManager::PerformTrapEntry() {
   if (IsSystem(trap_op)) {
     return memory::kTrapManagerExitAddress;
   }
-
-  uint32_t return_address = Pop<uint32_t>();
-  CHECK_EQ(return_address, ip) << "Expected return address to be 0x" << std::hex
-                               << ip << " but got 0x" << return_address;
-  return return_address;
+  return Pop<uint32_t>();
 }
 
 absl::Status TrapManager::PerformTrapExit() {
