@@ -129,6 +129,7 @@ absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
   // FIXME: This assumes the entire window is visible at creation
   port.visible_region =
       TRY(create_rect_region(port.port_rect, "VisibleRegion"));
+  port.clip_region = TRY(create_rect_region(port.port_rect, "ClipRegion"));
 
   WindowRecord record;
   record.port = std::move(port);
@@ -147,7 +148,10 @@ absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
 
   record.content_region = TRY(create_empty_region("ContentRegion"));
   record.structure_region = TRY(create_empty_region("StructRegion"));
-  record.update_region = TRY(create_empty_region("UpdateRegion"));
+  // The update region is set to the entire window at creation to ensure that
+  // it is fully drawn in the first WindowUpdate event (cleared in BeginUpdate).
+  record.update_region =
+      TRY(create_rect_region(port.port_rect, "UpdateRegion"));
 
   // The resource ID of the window definition function is in the upper
   // 12 bits of the definition ID ('WDEF' ID 0 is the default function provided
@@ -188,7 +192,9 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
   RETURN_IF_ERROR(
       WriteType<WindowRecord>(record, memory::kSystemMemory, window_storage));
 
-  window_list_.push_front(window_storage);
+  // Always add new windows to the back -- will be brought to the front if
+  // needed in the call to `SelectWindow()` below.
+  window_list_.push_back(window_storage);
 
   if (record.is_visible) {
     RETURN_IF_ERROR(ShowWindow(window_storage));
@@ -198,8 +204,10 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
   // Reference: https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-32.html
   RETURN_IF_ERROR(
       port::SetThePort(window_storage + WindowRecordFields::port.offset));
-  // Is every new window supposed to become active?
-  SelectWindow(window_storage);
+  
+  // If `behind_window` is NULL then window remains at the end of window list.
+  if (behind_window != 0)
+    SelectWindow(window_storage);
   return window_storage;
 }
 
