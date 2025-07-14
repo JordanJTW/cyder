@@ -2352,6 +2352,20 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
 
       return TrapReturn<uint32_t>(v1 & v2);
     }
+    // Mathematical and Logical Utilities (3-30)
+    // https://dev.os9.ca/techpubs/mac/pdf/Operating_System_Utilities/MLU.pdf
+    case Trap::BitShift: {
+      auto count = Pop<int16_t>();
+      auto value = Pop<uint32_t>();
+
+      LOG_TRAP() << "BitShift(value: " << value << ", count: " << count << ")";
+
+      if (count < 0) {
+        return TrapReturn<uint32_t>(value >> -count);
+      } else {
+        return TrapReturn<uint32_t>(value << count);
+      }
+    }
 
     // ======================  Sound Manager  ========================
 
