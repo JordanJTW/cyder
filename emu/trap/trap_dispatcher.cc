@@ -62,6 +62,19 @@ absl::Status WithPort(std::function<absl::Status(GrafPort& the_port)> cb) {
   return WithType<GrafPort>(TRY(port::GetThePort()), std::move(cb));
 }
 
+absl::Status InPort(
+    std::function<absl::Status(GrafPort& the_port,
+                               graphics::BitmapImage& bitmap)> cb) {
+  return WithPort([&cb](GrafPort& the_port) {
+    graphics::BitmapImage image = graphics::ThePortImage();
+    auto clip_region = MUST(ReadHandleToType<Region>(the_port.clip_region));
+    graphics::TempClipRect _(image, OffsetRect(clip_region.bounding_box,
+                                               -the_port.port_bits.bounds.left,
+                                               -the_port.port_bits.bounds.top));
+    return cb(the_port, image);
+  });
+}
+
 void SaveScreenShotAndExit() {
   auto globals = MUST(port::GetQDGlobals());
   graphics::BitmapImage(
@@ -979,11 +992,8 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-98.html
     case Trap::PaintRect: {
       auto rect = PopRef<Rect>();
-      LOG_TRAP() << "PaintRect(rect: " << rect << ")";
-
-      return WithPort([&](const GrafPort& port) {
-        graphics::ThePortImage().FillRect(port::LocalToGlobal(port, rect),
-                                          port.fill_pattern.bytes);
+      return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
+        image.FillRect(port::LocalToGlobal(port, rect), port.pen_pattern.bytes);
         return absl::OkStatus();
       });
     }
@@ -993,9 +1003,8 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = PopRef<Rect>();
       LOG_TRAP() << "FillRect(rect: " << rect << ", pat: " << pattern << ")";
 
-      return WithPort([&](const GrafPort& port) {
-        graphics::ThePortImage().FillRect(port::LocalToGlobal(port, rect),
-                                          pattern.bytes);
+      return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
+        image.FillRect(port::LocalToGlobal(port, rect), pattern.bytes);
         return absl::OkStatus();
       });
     }
@@ -1005,9 +1014,8 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = PopRef<Rect>();
       LOG_TRAP() << "FillOval(rect: " << rect << ", pat: " << pattern << ")";
 
-      return WithPort([&](const GrafPort& port) {
-        graphics::ThePortImage().FillEllipse(port::LocalToGlobal(port, rect),
-                                             pattern.bytes);
+      return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
+        image.FillEllipse(port::LocalToGlobal(port, rect), pattern.bytes);
         return absl::OkStatus();
       });
     }
@@ -1020,11 +1028,10 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
                  << ", ovalWidth: " << oval_width
                  << ", ovalHeight: " << oval_height << ")";
 
-      return WithPort([&](const GrafPort& port) {
+      return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
         // FIXME: Use a proper rounded rectangle here.
-        graphics::ThePortImage().FillRect(
-            port::LocalToGlobal(port, rect), graphics::kBlackPattern,
-            graphics::BitmapImage::FillMode::NotXOr);
+        image.FillRect(port::LocalToGlobal(port, rect), graphics::kBlackPattern,
+                       graphics::BitmapImage::FillMode::NotXOr);
         return absl::OkStatus();
       });
     }
@@ -1033,11 +1040,10 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = PopRef<Rect>();
       LOG_TRAP() << "FrameRect(rect: " << rect << ")";
 
-      return WithPort([&](const GrafPort& port) {
-        // TODO: Respect the pen size when framing rects
-        graphics::ThePortImage().FrameRect(port::LocalToGlobal(port, rect),
-                                           port.pen_pattern.bytes,
-                                           ConvertMode(port.pattern_mode));
+      return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
+        // FIXME: Respect the pen size when framing rects
+        image.FrameRect(port::LocalToGlobal(port, rect), port.pen_pattern.bytes,
+                        ConvertMode(port.pattern_mode));
         return absl::OkStatus();
       });
     }
@@ -1046,9 +1052,9 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = PopRef<Rect>();
       LOG_TRAP() << "EraseRect(rect: " << rect << ")";
 
-      return WithPort([&](const GrafPort& port) {
-        graphics::ThePortImage().FillRect(port::LocalToGlobal(port, rect),
-                                          port.back_pattern.bytes);
+      return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
+        image.FillRect(port::LocalToGlobal(port, rect),
+                       port.back_pattern.bytes);
         return absl::OkStatus();
       });
     }
@@ -1061,7 +1067,7 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
                  << ", ovalWidth: " << oval_width
                  << ", ovalHeight: " << oval_height << ")";
 
-      return WithPort([&](const GrafPort& port) {
+      return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
         if (port.region_save) {
           // TODO: Implement proper Region support!
           return WithType<Region>(port.region_save, [&](Region& region) {
@@ -1073,9 +1079,8 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
 
         // TODO: Respect the pen size when framing rects
         // TODO: Implement support for rounded rects i.e. squircles
-        graphics::ThePortImage().FrameRect(port::LocalToGlobal(port, rect),
-                                           port.pen_pattern.bytes,
-                                           ConvertMode(port.pattern_mode));
+        image.FrameRect(port::LocalToGlobal(port, rect), port.pen_pattern.bytes,
+                        ConvertMode(port.pattern_mode));
         return absl::OkStatus();
       });
     }
@@ -1084,12 +1089,7 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = PopRef<Rect>();
       LOG_TRAP() << "PaintOval(rect: " << rect << ")";
 
-      return WithPort([&](const GrafPort& port) {
-        graphics::BitmapImage image = graphics::ThePortImage();
-
-        graphics::TempClipRect _(
-            image, OffsetRect(port.port_rect, -port.port_bits.bounds.left,
-                              -port.port_bits.bounds.top));
+      return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
         image.FillEllipse(port::LocalToGlobal(port, rect),
                           port.fill_pattern.bytes);
         return absl::OkStatus();
@@ -1100,9 +1100,9 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = PopRef<Rect>();
       LOG_TRAP() << "EraseOval(rect: " << rect << ")";
 
-      return WithPort([&](const GrafPort& port) {
-        graphics::ThePortImage().FillEllipse(port::LocalToGlobal(port, rect),
-                                             port.back_pattern.bytes);
+      return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
+        image.FillEllipse(port::LocalToGlobal(port, rect),
+                          port.back_pattern.bytes);
         return absl::OkStatus();
       });
     }
@@ -1275,10 +1275,10 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       auto rect = PopRef<Rect>();
       LOG_TRAP() << "InvertRect(r: " << rect << ")";
 
-      return WithPort([&](const GrafPort& port) {
-        graphics::ThePortImage().FillRect(port::LocalToGlobal(port, rect),
-                                          kForegroundPattern.bytes,
-                                          graphics::BitmapImage::FillMode::XOr);
+      return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
+        image.FillRect(port::LocalToGlobal(port, rect),
+                       kForegroundPattern.bytes,
+                       graphics::BitmapImage::FillMode::XOr);
         return absl::OkStatus();
       });
     }
@@ -1415,11 +1415,11 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "LineTo(h: " << h << ", v: " << v << ")";
       // TODO: Support drawing arbitrarily sloped lines...
       // CHECK(dv == 0) << "Only horizontal lines are supported currently";
-      return WithPort([&](GrafPort& port) {
-        graphics::ThePortImage().FillRow(
-            port.pen_location.y - port.port_bits.bounds.top,
-            port.pen_location.x - port.port_bits.bounds.left,
-            h - port.port_bits.bounds.left, port.pen_pattern.bytes[0]);
+      return InPort([&](GrafPort& port, graphics::BitmapImage& image) {
+        image.FillRow(port.pen_location.y - port.port_bits.bounds.top,
+                      port.pen_location.x - port.port_bits.bounds.left,
+                      h - port.port_bits.bounds.left,
+                      port.pen_pattern.bytes[0]);
         port.pen_location.x = h;
         port.pen_location.y = v;
         return absl::OkStatus();
@@ -1432,12 +1432,11 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "Line(dh: " << dh << ", dv: " << dv << ")";
       // TODO: Support drawing arbitrarily sloped lines...
       // CHECK(dv == 0) << "Only horizontal lines are supported currently";
-      return WithPort([&](GrafPort& port) {
-        graphics::ThePortImage().FillRow(
-            port.pen_location.y - port.port_bits.bounds.top,
-            port.pen_location.x - port.port_bits.bounds.left,
-            port.pen_location.x - port.port_bits.bounds.left + dh,
-            port.pen_pattern.bytes[0]);
+      return InPort([&](GrafPort& port, graphics::BitmapImage& image) {
+        image.FillRow(port.pen_location.y - port.port_bits.bounds.top,
+                      port.pen_location.x - port.port_bits.bounds.left,
+                      port.pen_location.x - port.port_bits.bounds.left + dh,
+                      port.pen_pattern.bytes[0]);
         port.pen_location.x += dh;
         port.pen_location.y += dv;
         return absl::OkStatus();
@@ -1508,9 +1507,9 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "FillRgn(region: " << region << " @ 0x" << std::hex
                  << region_handle << ", pattern: " << pattern << ")";
 
-      return WithPort([&](const GrafPort& port) {
-        graphics::ThePortImage().FillRect(
-            port::LocalToGlobal(port, region.bounding_box), pattern.bytes);
+      return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
+        image.FillRect(port::LocalToGlobal(port, region.bounding_box),
+                       pattern.bytes);
         return absl::OkStatus();
       });
     }
@@ -1534,9 +1533,9 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       RETURN_IF_ERROR(
           graphics::ParsePICTv1(pict_data, /*output=*/picture.get()));
 
-      return WithPort([&](const GrafPort& port) {
-        graphics::ThePortImage().CopyBits(picture.get(), pict_frame, pict_frame,
-                                          port::LocalToGlobal(port, dst_rect));
+      return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
+        image.CopyBits(picture.get(), pict_frame, pict_frame,
+                       port::LocalToGlobal(port, dst_rect));
         return absl::OkStatus();
       });
     }
@@ -1983,8 +1982,8 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       auto ch = Pop<Integer>();
       LOG_TRAP() << "DrawChar(ch: '" << (char)ch << "')";
 
-      return WithPort([&](GrafPort& port) {
-        graphics::ThePortImage().CopyBits(
+      return InPort([&](GrafPort& port, graphics::BitmapImage& image) {
+        image.CopyBits(
             basic_font[ch], NewRect(0, 0, 8, 8), NewRect(0, 0, 8, 8),
             NewRect(port.pen_location.x - port.port_bits.bounds.left,
                     port.pen_location.y - port.port_bits.bounds.top - 8, 8, 8));
@@ -1996,12 +1995,8 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::DrawString: {
       auto str = PopRef<std::string>();
       LOG_TRAP() << "DrawString(str: " << str << ")";
-      return WithPort([&](GrafPort& port) {
-        graphics::BitmapImage image = graphics::ThePortImage();
 
-        graphics::TempClipRect _(
-            image, OffsetRect(port.port_rect, -port.port_bits.bounds.left,
-                              -port.port_bits.bounds.top));
+      return InPort([&](GrafPort& port, graphics::BitmapImage& image) {
         int width = DrawString(
             image, str, port.pen_location.x - port.port_bits.bounds.left,
             port.pen_location.y - port.port_bits.bounds.top - 8);
@@ -2086,23 +2081,25 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       auto length_px = text.size() * 8;
       // Alignment Constants Link:
       //   http://0.0.0.0:8000/docs/mac/Text/Text-125.html#MARKER-9-577
-      graphics::BitmapImage image = graphics::ThePortImage();
-      switch (align) {
-        case 1: {  // teCenter
-          int offset_x = (RectWidth(box) - length_px) / 2;
-          int offset_y = (RectHeight(box) - 8) / 2;
-          DrawString(image, text, box.left + offset_x, box.top + offset_y);
-          break;
+
+      return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
+        switch (align) {
+          case 1: {  // teCenter
+            int offset_x = (RectWidth(box) - length_px) / 2;
+            int offset_y = (RectHeight(box) - 8) / 2;
+            DrawString(image, text, box.left + offset_x, box.top + offset_y);
+            break;
+          }
+          case -1:  // teFlushRight
+            DrawString(image, text, box.right - length_px, box.top);
+            break;
+          case 0:   // teFlushDefault (assume Left-to-Right script)
+          case -2:  // teFlushLeft
+            DrawString(image, text, box.left, box.top);
+            break;
         }
-        case -1:  // teFlushRight
-          DrawString(image, text, box.right - length_px, box.top);
-          break;
-        case 0:   // teFlushDefault (assume Left-to-Right script)
-        case -2:  // teFlushLeft
-          DrawString(image, text, box.left, box.top);
-          break;
-      }
-      return absl::OkStatus();
+        return absl::OkStatus();
+      });
     }
 
     // ======================  Dialog Manager  =======================
@@ -2221,10 +2218,10 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "PlotIcon(theRect: " << the_rect << ", theHandle: 0x"
                  << std::hex << the_handle << ")";
 
-      return WithPort([&](const GrafPort& port) {
-        graphics::ThePortImage().CopyBits(
-            memory::kSystemMemory.raw_ptr() + icon_ptr, NewRect(0, 0, 32, 32),
-            NewRect(0, 0, 32, 32), port::LocalToGlobal(port, the_rect));
+      return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
+        image.CopyBits(memory::kSystemMemory.raw_ptr() + icon_ptr,
+                       NewRect(0, 0, 32, 32), NewRect(0, 0, 32, 32),
+                       port::LocalToGlobal(port, the_rect));
         return absl::OkStatus();
       });
     }
