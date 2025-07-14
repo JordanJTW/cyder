@@ -1,6 +1,9 @@
 #pragma once
 
 #include <string>
+#include <vector>
+
+namespace cyder {
 
 class Debugger {
  public:
@@ -8,17 +11,14 @@ class Debugger {
 
   bool Prompt();
 
-  bool ShouldBreakOnExitTrap() { return should_break_on_exit; }
-  bool ShouldBreakOnSystemTaskTrap() { return should_break_on_sys; }
-  bool IsSingleStep() {
-    bool current = is_single_step;
-    is_single_step = false;
-    return current;
-  }
+  void OnTrapEntry(const std::string& trap_name);
+  bool OnInstruction();
 
  private:
-  bool should_break_on_exit = false;
-  bool should_break_on_sys = false;
+  std::vector<std::string> trap_to_break_on;
   bool is_single_step = false;
+  bool should_enter_debug = true;
   std::string last_command;
 };
+
+}  // namespace cyder

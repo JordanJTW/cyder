@@ -7,6 +7,7 @@
 #include "absl/base/no_destructor.h"
 #include "absl/types/optional.h"
 #include "core/logging.h"
+#include "emu/debug/debugger.h"
 #include "emu/memory/memory_map.h"
 #include "emu/trap/stack_helpers.h"
 #include "third_party/musashi/src/m68k.h"
@@ -45,7 +46,7 @@ class EmulatorImpl : public Emulator {
   }
 
   void Run() override {
-    m68k_execute(1000);
+    m68k_execute(100000000);
 
     if (!native_func_.has_value())
       return;
@@ -95,15 +96,19 @@ class EmulatorImpl : public Emulator {
     CHECK(m68k_get_reg(NULL, M68K_REG_ISP) <= cyder::memory::kStackStart);
     CHECK(m68k_get_reg(NULL, M68K_REG_ISP) > cyder::memory::kStackEnd);
 
+    uint16_t instruction = MUST(memory::kSystemMemory.Read<uint16_t>(address));
+
     // Only one native function should be queued at a time since one being
     // encountered MUST end the timeslice.
     CHECK(!native_func_.has_value());
-    if (native_functions_.find(address) != native_functions_.end()) {
+    if ((instruction == 0x4E73 || 0x4E71) &&
+        native_functions_.find(address) != native_functions_.end()) {
       native_func_ = native_functions_[address];
       m68k_end_timeslice();
     }
 
-    if constexpr (kDisassembleInstructions) {
+    bool should_disasseble = ::cyder::Debugger::Instance().OnInstruction();
+    if (kDisassembleInstructions || should_disasseble) {
       char buffer[255];
       m68k_disassemble(buffer, address, kCpuType);
       printf("0x%x: %s\n", address, buffer);

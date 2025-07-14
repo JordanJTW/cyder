@@ -9,6 +9,7 @@
 
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
+#include "emu/debug/debugger.h"
 #include "emu/emulator.h"
 #include "emu/memory/memory_helpers.h"
 #include "emu/memory/memory_map.h"
@@ -101,6 +102,8 @@ uint32_t TrapManager::PerformTrapEntry() {
     ip += 2;
   }
 
+  ::cyder::Debugger::Instance().OnTrapEntry(GetTrapName(trap_op));
+
   LOG_IF(INFO, kVerboseLogTraps)
       << COLOR(160) << "A-Line Exception "
       << (IsToolbox(trap_op) ? "Toolbox" : "OS") << "::" << GetTrapName(trap_op)
@@ -122,8 +125,6 @@ uint32_t TrapManager::PerformTrapEntry() {
 
   auto patch_address = patch_trap_addresses_.find(trap_op);
   if (patch_address != patch_trap_addresses_.cend()) {
-    LOG(INFO) << "Patched trap: '" << GetTrapName(trap_op) << "' (0x"
-              << std::hex << trap_op << ") -> 0x" << patch_address->second;
     // Patched system traps still need to execute `PerformTrapExit()` to restore
     // the registes (and stack). Pushing the exit address emulates a `JSR` so
     // that TrapManager can complete the rest of its logic (the same as native).

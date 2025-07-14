@@ -1,5 +1,6 @@
 #include "emu/debug/debugger.h"
 
+#include <algorithm>
 #include <iostream>
 #include <regex>
 
@@ -7,9 +8,14 @@
 #include "core/memory_reader.h"
 #include "core/status_helpers.h"
 #include "emu/debug/debug_manager.h"
+#include "emu/event_manager.tdef.h"
 #include "emu/graphics/grafport_types.tdef.h"
 #include "emu/memory/memory_map.h"
+#include "emu/window_manager.tdef.h"
 #include "third_party/musashi/src/m68k.h"
+
+namespace cyder {
+namespace {
 
 bool ReadTypePrompt(const std::string& line) {
   std::smatch match;
@@ -23,11 +29,31 @@ bool ReadTypePrompt(const std::string& line) {
   } else if (match[1] == "point") {
     auto point = MUST(ReadType<Point>(cyder::memory::kSystemMemory, address));
     std::cout << point << "\n";
+  } else if (match[1] == "event") {
+    auto event =
+        MUST(ReadType<EventRecord>(cyder::memory::kSystemMemory, address));
+    std::cout << event << "\n";
+  } else if (match[1] == "window") {
+    auto window =
+        MUST(ReadType<WindowRecord>(cyder::memory::kSystemMemory, address));
+    std::cout << window << "\n";
   } else {
     std::cout << "Unknown type: " << match[1] << "\n";
   }
   return true;
 }
+
+bool ReadBreakPrompt(const std::string& line,
+                     std::vector<std::string>& trap_to_break_on) {
+  std::smatch match;
+  if (!std::regex_match(line, match, std::regex("break trap (\\w+)")))
+    return false;
+
+  trap_to_break_on.push_back(match[1]);
+  return true;
+}
+
+}  // namespace
 
 // static
 Debugger& Debugger::Instance() {
@@ -35,7 +61,27 @@ Debugger& Debugger::Instance() {
   return *s_instance;
 }
 
+void Debugger::OnTrapEntry(const std::string& trap_name) {
+  if (std::find(trap_to_break_on.cbegin(), trap_to_break_on.cend(),
+                trap_name) != trap_to_break_on.cend()) {
+    should_enter_debug = true;
+    m68k_end_timeslice();
+  }
+}
+
+bool Debugger::OnInstruction() {
+  bool should_disassemble = is_single_step;
+  if (is_single_step) {
+    m68k_end_timeslice();
+    is_single_step = false;
+  }
+  return should_disassemble;
+}
+
 bool Debugger::Prompt() {
+  if (!should_enter_debug)
+    return true;
+
   std::cout << "? ";
   std::string line;
   std::getline(std::cin, line);
@@ -45,8 +91,10 @@ bool Debugger::Prompt() {
 
   last_command = line;
 
-  if (line == "run")
+  if (line == "run") {
+    should_enter_debug = false;
     return true;
+  }
 
   if (line == "mem") {
     cyder::DebugManager::Instance().PrintMemoryMap();
@@ -62,20 +110,17 @@ bool Debugger::Prompt() {
     return false;
   }
 
-  if (line == "trap exit") {
-    should_break_on_exit = true;
-    return false;
-  }
-
-  if (line == "trap sys") {
-    should_break_on_sys = true;
-    return false;
-  }
-
   if (line == "step") {
     is_single_step = true;
     return true;
   }
+
+  if (line == "quit" || line == "exit") {
+    exit(0);
+  }
+
+  if (ReadBreakPrompt(line, trap_to_break_on))
+    return false;
 
   if (ReadTypePrompt(line))
     return false;
@@ -83,3 +128,5 @@ bool Debugger::Prompt() {
   std::cerr << "Unknown command: '" << line << "'" << std::endl;
   return false;
 }
+
+}  // namespace cyder

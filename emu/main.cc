@@ -217,7 +217,7 @@ void run_emulator_thread(std::atomic<bool>& is_running) {
     // If `--debugger` was passed continue to prompt the user for commands until
     // `Prompt()` indicates it is ready to run the main emulation loop.
     if (absl::GetFlag(FLAGS_debugger)) {
-      while (!Debugger::Instance().Prompt()) {
+      while (!cyder::Debugger::Instance().Prompt()) {
         // The thread may have exited while the user was in the prompt.
         if (!is_running.load())
           return;
