@@ -98,7 +98,6 @@ inline bool PointInRect(const Point& pt, const Rect& rect) {
 }
 
 inline bool RectInRect(const Rect& inset, const Rect& rect) {
-  LOG(INFO) << "Rect: " << inset << " in " << rect;
   return inset.left >= rect.left && inset.right <= rect.right &&
          inset.top >= rect.top && inset.bottom <= rect.bottom;
 }
