@@ -964,7 +964,7 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-47.html
     case Trap::SetPortBits: {
       auto bitmap = PopRef<BitMap>();
-      LOG(INFO) << "SetPortBits(bitmap: " << bitmap << ")";
+      LOG_TRAP() << "SetPortBits(bitmap: " << bitmap << ")";
       return WithPort([&](GrafPort& port) {
         port.port_bits = std::move(bitmap);
         return absl::OkStatus();
@@ -1319,8 +1319,8 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       auto pt2 = PopType<Point>();
       auto pt1 = PopType<Point>();
 
-      LOG(INFO) << "Pt2Rect(pt1: " << pt1 << ", pt2: " << pt2
-                << ", VAR dstRect: " << var_dest_rect << ")";
+      LOG_TRAP() << "Pt2Rect(pt1: " << pt1 << ", pt2: " << pt2
+                 << ", VAR dstRect: " << var_dest_rect << ")";
 
 #define MAX(a, b) a > b ? a : b
 #define MIN(a, b) a < b ? a : b
