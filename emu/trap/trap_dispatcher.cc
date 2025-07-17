@@ -1304,6 +1304,33 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "EqualRect(rect1: " << rect1 << ", rect2: " << rect2 << ")";
       return TrapReturn<bool>(EqualRect(rect1, rect2));
     }
+    // Link: https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-55.html
+    case Trap::EqualPt: {
+      auto pt2 = PopType<Point>();
+      auto pt1 = PopType<Point>();
+      LOG_TRAP() << "EqualPt(p1:" << pt1 << ", pt2: " << pt2 << ")";
+      return TrapReturn<bool>(pt1.x == pt2.x && pt1.y == pt2.y);
+    }
+    // Link: https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-92.html
+    case Trap::Pt2Rect: {
+      auto var_dest_rect = PopVar<Rect>();
+      auto pt2 = PopType<Point>();
+      auto pt1 = PopType<Point>();
+
+      LOG(INFO) << "Pt2Rect(pt1: " << pt1 << ", pt2: " << pt2
+                << ", VAR dstRect: " << var_dest_rect << ")";
+
+#define MAX(a, b) a > b ? a : b
+#define MIN(a, b) a < b ? a : b
+
+      return WithType<Rect>(var_dest_rect.ptr, [&](Rect& rect) {
+        rect = Rect{.top = MIN(pt1.y, pt2.y),
+                    .left = MIN(pt1.x, pt2.x),
+                    .bottom = MAX(pt1.y, pt2.y),
+                    .right = MAX(pt1.x, pt2.x)};
+        return absl::OkStatus();
+      });
+    }
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-384.html
     case Trap::GetCursor: {
       auto cursor_id = Pop<uint16_t>();
