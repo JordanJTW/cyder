@@ -31,6 +31,7 @@ absl::StatusOr<Point> GetLocalToGlobalOffset();
 absl::StatusOr<Rect> ConvertLocalToGlobal(Rect rect);
 
 Rect LocalToGlobal(const GrafPort& port, const Rect& rect);
+Point GlobalToLocal(const GrafPort& port, const Point& pt);
 
 void InitPort(GrafPort& port);
 

@@ -605,9 +605,11 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       mouse_location.x = mouse_x;
       mouse_location.y = mouse_y;
 
-      RETURN_IF_ERROR(WriteType<Point>(mouse_location, memory::kSystemMemory,
-                                       mouse_location_var));
-      return absl::OkStatus();
+      return WithPort([&](GrafPort& the_port) {
+        mouse_location = port::GlobalToLocal(the_port, mouse_location);
+        return WriteType<Point>(mouse_location, memory::kSystemMemory,
+                                mouse_location_var);
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-51.html
     case Trap::WaitNextEvent: {

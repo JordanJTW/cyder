@@ -75,6 +75,13 @@ Rect LocalToGlobal(const GrafPort& port, const Rect& rect) {
                     -port.port_bits.bounds.top);
 }
 
+Point GlobalToLocal(const GrafPort& port, const Point& pt) {
+  Point local_pt = pt;
+  local_pt.x += port.port_bits.bounds.left;
+  local_pt.y += port.port_bits.bounds.top;
+  return local_pt;
+}
+
 void InitPort(GrafPort& port) {
   port.fill_pattern = {
       .bytes = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}};
