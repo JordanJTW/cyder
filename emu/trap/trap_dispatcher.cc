@@ -163,6 +163,7 @@ absl::Status TrapDispatcherImpl::DispatchNativeSystemTrap(uint16_t trap) {
     case Trap::NewPtr:
     // All allocated pointers are cleared (and never reallocated)
     case Trap::NewPtrClear:
+    case Trap::NewPtrSysClear:
     // FIXME: Should "SYS" pointers be allocated differently?
     case Trap::NewPtrSys: {
       // D0 seems to contain the argument in a sample program...
