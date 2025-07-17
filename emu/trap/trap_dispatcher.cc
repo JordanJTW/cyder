@@ -1963,15 +1963,41 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
     case Trap::BeginUpDate: {
       auto the_window = Pop<Ptr>();
-      LOG_DUMMY() << "BeginUpdate(theWindow: 0x" << std::hex << the_window
-                  << ")";
+      LOG_TRAP() << "BeginUpdate(theWindow: 0x" << std::hex << the_window
+                 << ")";
+
+      auto window_record =
+          MUST(ReadType<WindowRecord>(memory::kSystemMemory, the_window));
+      auto update_region =
+          MUST(ReadHandleToType<Region>(window_record.update_region));
+      return WithPort([update_region](GrafPort& the_port) {
+        return WithHandleToType<Region>(
+            the_port.clip_region, [update_region](Region& clip_region) {
+              clip_region.bounding_box = update_region.bounding_box;
+              return absl::OkStatus();
+            });
+      });
       return absl::OkStatus();
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
     case Trap::EndUpDate: {
       auto the_window = Pop<Ptr>();
-      LOG_DUMMY() << "EndUpdate(theWindow: 0x" << std::hex << the_window << ")";
-      return absl::OkStatus();
+      LOG_TRAP() << "EndUpdate(theWindow: 0x" << std::hex << the_window << ")";
+
+      auto window_record =
+          MUST(ReadType<WindowRecord>(memory::kSystemMemory, the_window));
+      WithHandleToType<Region>(
+          window_record.port.clip_region, [](Region& clip_region) {
+            // FIXME: Restore to the previous value of the
+            // clip region!
+            clip_region.bounding_box = Rect{0, 0, 512, 384};
+            return absl::OkStatus();
+          });
+      return WithHandleToType<Region>(
+          window_record.update_region, [](Region& update_region) {
+            update_region.bounding_box = Rect{0, 0, 0, 0};
+            return absl::OkStatus();
+          });
     }
 
     // ======================  Text Manager  =======================
