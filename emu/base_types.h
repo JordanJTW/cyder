@@ -18,6 +18,6 @@ struct Var {
 
 template <typename T>
 std::ostream& operator<<(std::ostream& os, const Var<T>& var) {
-  return os << "0x" << std::hex << var.ptr << " [value: " << var.current_value
-            << "]";
+  return os << "0x" << std::hex << var.ptr << std::dec
+            << " [value: " << var.current_value << "]";
 }
