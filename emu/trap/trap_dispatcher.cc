@@ -1992,7 +1992,7 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
           window_record.port.clip_region, [](Region& clip_region) {
             // FIXME: Restore to the previous value of the
             // clip region!
-            clip_region.bounding_box = Rect{0, 0, 512, 384};
+            clip_region.bounding_box = Rect{0, 0, 384, 512};
             return absl::OkStatus();
           });
       return WithHandleToType<Region>(
