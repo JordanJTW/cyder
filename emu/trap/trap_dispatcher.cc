@@ -2422,6 +2422,22 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
         return TrapReturn<uint32_t>(value << count);
       }
     }
+    // Mathematical and Logical Utilities (3-30)
+    // https://dev.os9.ca/techpubs/mac/pdf/Operating_System_Utilities/MLU.pdf
+    case Trap::BitSet: {
+      auto bitNum = Pop<uint32_t>();
+      auto bytePtr = Pop<Ptr>();
+
+      LOG_TRAP() << "BitSet(bytePtr: 0x" << std::hex << bytePtr
+                 << ", bitNum: " << std::dec << bitNum << ")";
+
+      uint32_t byteOffset = bitNum / 8;
+      uint32_t bitInByte = bitNum % 8;
+      const_cast<uint8_t*>(
+          memory::kSystemMemory.raw_ptr())[bytePtr + byteOffset] |=
+          (1 << (7 - bitInByte));
+      return absl::OkStatus();
+    }
 
     // ======================  Sound Manager  ========================
 
