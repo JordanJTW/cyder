@@ -43,13 +43,38 @@ bool ReadTypePrompt(const std::string& line) {
   return true;
 }
 
-bool ReadBreakPrompt(const std::string& line,
-                     std::vector<std::string>& trap_to_break_on) {
+bool ReadBreakTrapPrompt(const std::string& line,
+                         std::vector<std::string>& trap_to_break_on) {
   std::smatch match;
   if (!std::regex_match(line, match, std::regex("break trap (\\w+)")))
     return false;
 
   trap_to_break_on.push_back(match[1]);
+  return true;
+}
+
+bool ReadBreakEventPrompt(const std::string& line, uint16_t& break_event_mask) {
+  std::smatch match;
+  if (!std::regex_match(line, match, std::regex("break event (\\w+)")))
+    return false;
+
+  if (match[1] == "null") {
+    break_event_mask |= (1 << kNullEvent);
+  } else if (match[1] == "mouseDown") {
+    break_event_mask |= (1 << kMouseDown);
+  } else if (match[1] == "mouseUp") {
+    break_event_mask |= (1 << kMouseUp);
+  } else if (match[1] == "keyDown") {
+    break_event_mask |= (1 << kKeyDown);
+  } else if (match[1] == "KeyUp") {
+    break_event_mask |= (1 << kKeyUp);
+  } else if (match[1] == "windowUpdate") {
+    break_event_mask |= (1 << kWindowUpdate);
+  } else if (match[1] == "windowActivate") {
+    break_event_mask |= (1 << kWindowActivate);
+  } else {
+    return false;
+  }
   return true;
 }
 
@@ -61,11 +86,21 @@ Debugger& Debugger::Instance() {
   return *s_instance;
 }
 
+void Debugger::Break() {
+  should_enter_debug = true;
+  m68k_end_timeslice();
+}
+
 void Debugger::OnTrapEntry(const std::string& trap_name) {
   if (std::find(trap_to_break_on.cbegin(), trap_to_break_on.cend(),
                 trap_name) != trap_to_break_on.cend()) {
-    should_enter_debug = true;
-    m68k_end_timeslice();
+    Break();
+  }
+}
+
+void Debugger::OnEvent(uint16_t event_type) {
+  if (break_event_mask & (1 << event_type)) {
+    Break();
   }
 }
 
@@ -119,7 +154,10 @@ bool Debugger::Prompt() {
     exit(0);
   }
 
-  if (ReadBreakPrompt(line, trap_to_break_on))
+  if (ReadBreakTrapPrompt(line, trap_to_break_on))
+    return false;
+
+  if (ReadBreakEventPrompt(line, break_event_mask))
     return false;
 
   if (ReadTypePrompt(line))

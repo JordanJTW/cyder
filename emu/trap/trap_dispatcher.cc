@@ -15,6 +15,7 @@
 #include "core/memory_region.h"
 #include "core/status_helpers.h"
 #include "emu/controls/control_manager.h"
+#include "emu/debug/debugger.h"
 #include "emu/dialog/dialog_manager.h"
 #include "emu/graphics/font/basic_font.h"
 #include "emu/graphics/grafport_types.tdef.h"
@@ -629,6 +630,7 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       }
 
       EventRecord event = event_manager_.WaitNextEvent(event_mask, sleep);
+      Debugger::Instance().OnEvent(event.what);
 
       RETURN_IF_ERROR(WriteType<EventRecord>(
           std::move(event), memory::kSystemMemory, the_event_var));
@@ -660,6 +662,8 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       }
 
       auto event = event_manager_.GetNextEvent(event_mask);
+
+      Debugger::Instance().OnEvent(event.what);
 
       RETURN_IF_ERROR(WriteType<EventRecord>(
           std::move(event), memory::kSystemMemory, the_event_var));
