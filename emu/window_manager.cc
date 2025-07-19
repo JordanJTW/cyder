@@ -441,7 +441,9 @@ void DrawWindowFrame(const WindowRecord& window, BitmapImage& screen) {
 
   auto struct_region = MUST(ReadHandleToType<Region>(window.structure_region));
 
-  screen.FillRect(struct_region.bounding_box, kWhitePattern);
+  // TODO: Re-enable drawing the white background after Cyder starts calling
+  //       DrawWindowFrame() at the right times and respecting the clip.
+  // screen.FillRect(struct_region.bounding_box, kWhitePattern);
   screen.FrameRect(struct_region.bounding_box, kBlackPattern);
 
   if (!HasTitleBar(window)) {
