@@ -129,7 +129,9 @@ absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
   // FIXME: This assumes the entire window is visible at creation
   port.visible_region =
       TRY(create_rect_region(port.port_rect, "VisibleRegion"));
-  port.clip_region = TRY(create_rect_region(port.port_rect, "ClipRegion"));
+  // FIXME: This is _supposed_ to be `port_rect` but that breaks MacPaint...
+  port.clip_region =
+      TRY(create_rect_region(NewRect(0, 0, 512, 384), "ClipRegion"));
 
   WindowRecord record;
   record.port = std::move(port);
