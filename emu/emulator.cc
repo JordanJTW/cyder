@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <stack>
 
 #include "absl/base/no_destructor.h"
 #include "absl/types/optional.h"
