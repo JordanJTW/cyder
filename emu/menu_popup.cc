@@ -4,16 +4,16 @@
 #include "emu/menu_popup.h"
 
 #include "absl/strings/str_format.h"
-#include "emu/graphics/font/basic_font.h"
+#include "emu/font/font.h"
 #include "emu/graphics/graphics_helpers.h"
 
 namespace cyder {
 namespace {
 
-constexpr size_t kMenuItemHeight = 12u;
-constexpr size_t kMenuItemGlyphWidth = 8u;
-constexpr size_t kMenuItemPaddingWidth = 6u;
-constexpr size_t kMenuItemPaddingHeight = 2u;
+constexpr int16_t kMenuItemHeight = 12u;
+constexpr int16_t kMenuItemGlyphWidth = 8u;
+constexpr int16_t kMenuItemPaddingWidth = 6u;
+constexpr int16_t kMenuItemPaddingHeight = 2u;
 
 constexpr uint8_t kMenuPopUpPattern[8] = {0x00, 0x00, 0x00, 0x00,
                                           0x00, 0x00, 0x00, 0x00};
@@ -96,15 +96,16 @@ MenuPopUp::MenuPopUp(graphics::BitmapImage& screen,
       screen_.FillRow(y_offset + (kMenuItemHeight / 2), popup_rect_.left + 1,
                       popup_rect_.right - 1, /*pattern=*/0xAA);
     } else {
-      DrawString(screen_, item.title, popup_rect_.left + kMenuItemPaddingWidth,
-                 y_offset + kMenuItemPaddingHeight);
+      SystemFont().DrawString(screen_, item.title,
+                              popup_rect_.left + kMenuItemPaddingWidth,
+                              y_offset + kMenuItemPaddingHeight);
       if (item.keyboard_shortcut != 0) {
         // See GetPopUpBounds() above for an explanation of this math :P
-        DrawString(screen_,
-                   absl::StrFormat("&%c", (char)item.keyboard_shortcut),
-                   popup_rect_.right - kMenuItemPaddingWidth -
-                       (kMenuItemGlyphWidth * 2),
-                   y_offset + kMenuItemPaddingHeight);
+        SystemFont().DrawString(
+            screen_, absl::StrFormat("&%c", (char)item.keyboard_shortcut),
+            popup_rect_.right - kMenuItemPaddingWidth -
+                (kMenuItemGlyphWidth * 2),
+            y_offset + kMenuItemPaddingHeight);
       }
     }
     y_offset += kMenuItemHeight;

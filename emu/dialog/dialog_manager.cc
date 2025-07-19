@@ -1,8 +1,9 @@
 #include "emu/dialog/dialog_manager.h"
 
 #include "core/status_helpers.h"
-#include "emu/graphics/font/basic_font.h"
+#include "emu/font/font.h"
 #include "emu/graphics/grafport_types.tdef.h"
+#include "emu/graphics/graphics_helpers.h"
 #include "emu/graphics/pict_v1.h"
 #include "emu/graphics/quickdraw.h"
 #include "emu/memory/memory_helpers.h"
@@ -145,7 +146,8 @@ absl::Status DrawDialogWindow(WindowPtr window_ptr) {
             GrafPort port = dialog_record.window_record.port;
             Rect global_box = port::LocalToGlobal(port, header.box);
             screen.FrameRect(global_box, port.pen_pattern.bytes);
-            DrawString(screen, text, global_box.left, global_box.top);
+            SystemFont().DrawString(screen, text, global_box.left,
+                                    global_box.top);
             break;
           }
           case ItemType::statText: {
@@ -153,7 +155,8 @@ absl::Status DrawDialogWindow(WindowPtr window_ptr) {
 
             GrafPort port = dialog_record.window_record.port;
             Rect global_box = port::LocalToGlobal(port, header.box);
-            DrawString(screen, text, global_box.left, global_box.top);
+            SystemFont().DrawString(screen, text, global_box.left,
+                                    global_box.top);
             break;
           }
           case ItemType::picItem: {

@@ -7,6 +7,7 @@ include_directories(${SDL2_INCLUDE_DIRS})
 add_subdirectory(controls)
 add_subdirectory(debug)
 add_subdirectory(dialog)
+add_subdirectory(font)
 add_subdirectory(graphics)
 add_subdirectory(memory)
 add_subdirectory(rsrc)
@@ -33,6 +34,7 @@ set(APP_DEPS
   absl::strings
   event_manager
   control_manager
+  font
   CORE_LIB
   DEBUG_LIB
   MAIN_LIB

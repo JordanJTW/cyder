@@ -6,7 +6,7 @@
 #include "absl/strings/str_join.h"
 #include "core/logging.h"
 #include "emu/event_manager.h"
-#include "emu/graphics/font/basic_font.h"
+#include "emu/font/font.h"
 #include "emu/graphics/graphics_helpers.h"
 
 namespace cyder {
@@ -58,8 +58,9 @@ void MenuManager::DrawMenuBar() const {
                      (kMenuBarHeight - RectHeight(kMenuIconRect)) / 2));
       x_offset += RectWidth(kMenuIconRect) + (kMenuBarItemWidthPadding * 2);
     } else {
-      DrawString(screen_, menu.title, x_offset + kMenuBarItemWidthPadding,
-                 kMenuBarItemHeightPadding);
+      SystemFont().DrawString(screen_, menu.title,
+                              x_offset + kMenuBarItemWidthPadding,
+                              kMenuBarItemHeightPadding);
       x_offset += (menu.title.size() * 8) + (kMenuBarItemWidthPadding * 2);
     }
   }

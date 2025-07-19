@@ -17,7 +17,7 @@
 #include "emu/controls/control_manager.h"
 #include "emu/debug/debugger.h"
 #include "emu/dialog/dialog_manager.h"
-#include "emu/graphics/font/basic_font.h"
+#include "emu/font/font.h"
 #include "emu/graphics/grafport_types.tdef.h"
 #include "emu/graphics/graphics_helpers.h"
 #include "emu/graphics/pict_v1.h"
@@ -2011,9 +2011,11 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/Text/Text-149.html
     case Trap::TextFont: {
       auto font = Pop<Integer>();
-      LOG_DUMMY() << "TextFont(font: " << font << ")";
-      // We only support one bitmap font but nice of it to ask... :P
-      return absl::OkStatus();
+      LOG_TRAP() << "TextFont(font: " << font << ")";
+      return WithPort([&](GrafPort& the_port) {
+        the_port.text_font = font;
+        return absl::OkStatus();
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/Text/Text-150.html
     case Trap::TextFace: {
@@ -2031,23 +2033,21 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
     }
     // Link: http://0.0.0.0:8000/docs/mac/Text/Text-162.html
     case Trap::CharWidth: {
-      // TODO: A single byte is based as a 16-bit value on the stack?
       auto ch = Pop<Integer>();
       LOG_TRAP() << "CharWidth(ch: '" << (char)ch << "')";
       return TrapReturn<Integer>(8 /*8x8 bitmap font*/);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Text/Text-157.html
     case Trap::DrawChar: {
-      // TODO: A single byte is based as a 16-bit value on the stack?
       auto ch = Pop<Integer>();
       LOG_TRAP() << "DrawChar(ch: '" << (char)ch << "')";
 
       return InPort([&](GrafPort& port, graphics::BitmapImage& image) {
-        image.CopyBits(
-            basic_font[ch], NewRect(0, 0, 8, 8), NewRect(0, 0, 8, 8),
-            NewRect(port.pen_location.x - port.port_bits.bounds.left,
-                    port.pen_location.y - port.port_bits.bounds.top - 8, 8, 8));
-        port.pen_location.x += 8;
+        port.pen_location.x +=
+            GetFont(port.text_font)
+                .DrawChar(image, ch,
+                          port.pen_location.x - port.port_bits.bounds.left,
+                          port.pen_location.y - port.port_bits.bounds.top);
         return absl::OkStatus();
       });
     }
@@ -2057,9 +2057,15 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "DrawString(str: " << str << ")";
 
       return InPort([&](GrafPort& port, graphics::BitmapImage& image) {
-        int width = DrawString(
-            image, str, port.pen_location.x - port.port_bits.bounds.left,
-            port.pen_location.y - port.port_bits.bounds.top - 8);
+        // TODO: Remove the -8 y-offset. It looks like maybe QuickDraw expects
+        //       fonts drawn from the bottom-left corner and Cyder's code
+        //       expects them in the top-left... needs more investigation.
+        int width =
+            GetFont(port.text_font)
+                .DrawString(
+                    image, str,
+                    port.pen_location.x - port.port_bits.bounds.left,
+                    port.pen_location.y - port.port_bits.bounds.top - 8);
         port.pen_location.x += width;
         return absl::OkStatus();
       });
@@ -2147,15 +2153,18 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
           case 1: {  // teCenter
             int offset_x = (RectWidth(box) - length_px) / 2;
             int offset_y = (RectHeight(box) - 8) / 2;
-            DrawString(image, text, box.left + offset_x, box.top + offset_y);
+            GetFont(port.text_font)
+                .DrawString(image, text, box.left + offset_x,
+                            box.top + offset_y);
             break;
           }
           case -1:  // teFlushRight
-            DrawString(image, text, box.right - length_px, box.top);
+            GetFont(port.text_font)
+                .DrawString(image, text, box.right - length_px, box.top);
             break;
           case 0:   // teFlushDefault (assume Left-to-Right script)
           case -2:  // teFlushLeft
-            DrawString(image, text, box.left, box.top);
+            GetFont(port.text_font).DrawString(image, text, box.left, box.top);
             break;
         }
         return absl::OkStatus();

@@ -1,7 +1,13 @@
 // Copyright (c) 2022, Jordan Werthman
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include "emu/graphics/font/basic_font.h"
+#include "emu/font/font.h"
+
+#include "absl/base/no_destructor.h"
+#include "emu/graphics/graphics_helpers.h"
+
+namespace cyder {
+namespace {
 
 // Font based on Public Domain font:
 //  https://github.com/dhepper/font8x8/blob/master/font8x8_basic.h
@@ -139,6 +145,12 @@ uint8_t basic_font[128][8] = {
     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},  // U+007F
 };
 
+struct GlyphMetric {
+  int start;
+  int width;
+  int follow;
+};
+
 struct GlyphMetric glyph_metrics[128] = {
     {.start = 0, .width = 0, .follow = 0},  // U+0000
     {.start = 0, .width = 0, .follow = 0},  // U+0001
@@ -270,14 +282,29 @@ struct GlyphMetric glyph_metrics[128] = {
     {.start = 0, .width = 0, .follow = 0},  // U+007F
 };
 
-namespace cyder {
-
 #define IGNORE_FONT_METRICS 1
 
-int DrawString(graphics::BitmapImage& screen,
-               absl::string_view string,
-               int x,
-               int y) {
+class BasicFont : public Font {
+ public:
+  // Font implementation:
+  virtual int DrawString(graphics::BitmapImage& image,
+                         absl::string_view string,
+                         int x,
+                         int y) override;
+  virtual int DrawChar(graphics::BitmapImage& image,
+                       char ch,
+                       int x,
+                       int y) override {
+    image.CopyBits(basic_font[ch], NewRect(0, 0, 8, 8), NewRect(0, 0, 8, 8),
+                   NewRect(x, y - 8, 8, 8));
+    return 8;
+  }
+};
+
+int BasicFont::DrawString(graphics::BitmapImage& screen,
+                          absl::string_view string,
+                          int x,
+                          int y) {
   int x_offset = 0;
   for (int c : string) {
     if (c == '\r') {
@@ -301,6 +328,17 @@ int DrawString(graphics::BitmapImage& screen,
 #endif  // IGNORE_FONT_METRICS
   }
   return x_offset;
+}
+
+}  // namespace
+
+Font& SystemFont() {
+  return BuiltInFont();
+}
+
+Font& BuiltInFont() {
+  static absl::NoDestructor<BasicFont> kSystemFont;
+  return *kSystemFont.get();
 }
 
 }  // namespace cyder

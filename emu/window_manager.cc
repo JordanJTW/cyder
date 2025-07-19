@@ -3,7 +3,7 @@
 
 #include "emu/window_manager.h"
 
-#include "emu/graphics/font/basic_font.h"
+#include "emu/font/font.h"
 #include "emu/graphics/graphics_helpers.h"
 #include "emu/graphics/quickdraw.h"
 #include "emu/memory/memory_helpers.h"
@@ -204,7 +204,7 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
   // Reference: https://dev.os9.ca/techpubs/mac/QuickDraw/QuickDraw-32.html
   RETURN_IF_ERROR(
       port::SetThePort(window_storage + WindowRecordFields::port.offset));
-  
+
   // If `behind_window` is NULL then window remains at the end of window list.
   if (behind_window != 0)
     SelectWindow(window_storage);
@@ -459,7 +459,7 @@ void DrawWindowFrame(const WindowRecord& window, BitmapImage& screen) {
       kFrameWidth);
 
   screen.FillRect(title_rect, kWhitePattern);
-  DrawString(
+  SystemFont().DrawString(
       screen, MUST(ReadHandleToType<absl::string_view>(window.title_handle)),
       title_rect.left + kTitlePaddingWidth,
       title_rect.top + (RectHeight(title_bar_rect) - 8 /*8x8 fixed font*/) / 2);

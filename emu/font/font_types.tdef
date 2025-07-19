@@ -1,0 +1,22 @@
+
+// Link: https://developer.apple.com/library/archive/documentation/mac/Text/Text-250.html
+struct FontResource {
+  font_type: u16;
+  first_char_code: u16;
+  last_char_code: u16;
+  max_width: u16;
+  max_kerning: u16;
+  negated_descent_value: u16;
+  font_rect_width: u16;
+  font_rect_height: u16;
+  offset_width_table: u16;
+  max_ascent: u16;
+  max_decent: u16;
+  leading: u16;
+  bit_image_row_width: u16;
+  // Bit image table (variable)
+  // Bitmap location table (variable)
+  // Width offset table (variable)
+  // Glyph width table (variable)
+  // Image height table (variable)
+}
