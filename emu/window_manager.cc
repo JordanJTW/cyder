@@ -403,6 +403,13 @@ absl::Status WindowManager::ShowWindow(WindowPtr the_window) {
 void WindowManager::InvalidateWindows() const {
   // Invalidate windows in reverse order per the painter's algorithm
   for (auto it = window_list_.rbegin(); it != window_list_.rend(); ++it) {
+    CHECK_OK(WithType<WindowRecord>(*it, [](const WindowRecord& the_window) {
+      return WithHandleToType<Region>(
+          the_window.update_region, [&](Region& update_region) {
+            update_region.bounding_box = the_window.port.port_rect;
+            return absl::OkStatus();
+          });
+    }));
     event_manager_.QueueWindowUpdate(*it);
   }
 }

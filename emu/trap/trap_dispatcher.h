@@ -52,6 +52,8 @@ class TrapDispatcherImpl : public TrapDispatcher {
   MenuManager& menu_manager_;
   WindowManager& window_manager_;
   BitMap screen_bits_;
+
+  Handle previous_clip_region_;
 };
 
 }  // namespace trap

@@ -76,6 +76,11 @@ absl::Status InPort(
   });
 }
 
+absl::Status WithWindow(
+    std::function<absl::Status(WindowRecord& the_window)> cb) {
+  return WithType<WindowRecord>(TRY(port::GetThePort()), std::move(cb));
+}
+
 void SaveScreenShotAndExit() {
   auto globals = MUST(port::GetQDGlobals());
   graphics::BitmapImage(
@@ -1357,6 +1362,13 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       auto bad_rect = PopRef<Rect>();
       LOG_TRAP() << "InvalRect(badRect: " << bad_rect << ")";
       // FIXME: Implement this once "update regions" are supported
+      RETURN_IF_ERROR(WithWindow([bad_rect](WindowRecord& the_window) {
+        return WithHandleToType<Region>(the_window.update_region,
+                                        [&](Region& region) {
+                                          region.bounding_box = bad_rect;
+                                          return absl::OkStatus();
+                                        });
+      }));
       event_manager_.QueueWindowUpdate(TRY(port::GetThePort()));
       return absl::OkStatus();
     }
@@ -1972,37 +1984,26 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       LOG_TRAP() << "BeginUpdate(theWindow: 0x" << std::hex << the_window
                  << ")";
 
-      auto window_record =
-          MUST(ReadType<WindowRecord>(memory::kSystemMemory, the_window));
-      auto update_region =
-          MUST(ReadHandleToType<Region>(window_record.update_region));
-      return WithPort([update_region](GrafPort& the_port) {
-        return WithHandleToType<Region>(
-            the_port.clip_region, [update_region](Region& clip_region) {
-              clip_region.bounding_box = update_region.bounding_box;
-              return absl::OkStatus();
-            });
-      });
-      return absl::OkStatus();
+      return WithType<WindowRecord>(
+          the_window, [this](WindowRecord& window_record) {
+            previous_clip_region_ = window_record.port.clip_region;
+            window_record.port.clip_region = window_record.update_region;
+            return absl::OkStatus();
+          });
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-260.html
     case Trap::EndUpDate: {
       auto the_window = Pop<Ptr>();
       LOG_TRAP() << "EndUpdate(theWindow: 0x" << std::hex << the_window << ")";
 
-      auto window_record =
-          MUST(ReadType<WindowRecord>(memory::kSystemMemory, the_window));
-      WithHandleToType<Region>(
-          window_record.port.clip_region, [](Region& clip_region) {
-            // FIXME: Restore to the previous value of the
-            // clip region!
-            clip_region.bounding_box = Rect{0, 0, 384, 512};
-            return absl::OkStatus();
-          });
-      return WithHandleToType<Region>(
-          window_record.update_region, [](Region& update_region) {
-            update_region.bounding_box = Rect{0, 0, 0, 0};
-            return absl::OkStatus();
+      return WithType<WindowRecord>(
+          the_window, [this](WindowRecord& window_record) {
+            window_record.port.clip_region = previous_clip_region_;
+            return WithHandleToType<Region>(
+                window_record.update_region, [](Region& update_region) {
+                  update_region.bounding_box = Rect{0, 0, 0, 0};
+                  return absl::OkStatus();
+                });
           });
     }
 
