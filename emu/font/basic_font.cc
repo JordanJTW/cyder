@@ -4,6 +4,7 @@
 #include "emu/font/font.h"
 
 #include "absl/base/no_destructor.h"
+#include "emu/font/font_types.tdef.h"
 #include "emu/graphics/graphics_helpers.h"
 
 namespace cyder {
@@ -298,6 +299,14 @@ class BasicFont : public Font {
   }
 
   int GetCharWidth(char ch) override { return 8; /*fixed-width font*/ }
+
+  int GetStringWidth(absl::string_view string) override {
+    return 8 /*fixed-width font*/ * string.length();
+  }
+
+  FontInfo GetFontInfo() override {
+    return {.ascent = 8, .descent = 0, .width_max = 8, .leading = 0};
+  }
 };
 
 int BasicFont::DrawString(graphics::BitmapImage& screen,

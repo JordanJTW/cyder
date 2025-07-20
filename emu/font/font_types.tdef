@@ -1,3 +1,4 @@
+@include("gen/typegen/base_types.tdef")
 
 // Link: https://developer.apple.com/library/archive/documentation/mac/Text/Text-250.html
 struct FontResource {
@@ -11,7 +12,7 @@ struct FontResource {
   font_rect_height: u16;
   offset_width_table: u16;
   max_ascent: u16;
-  max_decent: u16;
+  max_descent: u16;
   leading: u16;
   bit_image_row_width: u16;
   // Bit image table (variable)
@@ -19,4 +20,12 @@ struct FontResource {
   // Width offset table (variable)
   // Glyph width table (variable)
   // Image height table (variable)
+}
+
+// Link: https://dev.os9.ca/techpubs/mac/Text/Text-145.html#MARKER-9-250
+struct FontInfo {
+  ascent:  Integer;
+  descent: Integer;
+  width_max:  Integer;
+  leading: Integer;
 }

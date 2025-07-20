@@ -2088,13 +2088,11 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       auto info_var = Pop<Ptr>();
       LOG_TRAP() << "GetFontInfo(VAR info: 0x" << std::hex << info_var << ")";
 
-      return WithType<FontInfo>(info_var, [&](FontInfo& info) {
-        // Only a fixed width 8x8 bitmap font is currently supported :P
-        info.ascent = 8;
-        info.descent = 0;
-        info.widMax = 8;
-        info.leading = 0;
-        return absl::OkStatus();
+      return WithType<FontInfo>(info_var, [](FontInfo& info) {
+        return WithPort([&](const GrafPort& the_port) {
+          info = GetFont(the_port.text_font).GetFontInfo();
+          return absl::OkStatus();
+        });
       });
     }
     // Link: https://dev.os9.ca/techpubs/mac/Text/Text-224.html
@@ -2125,8 +2123,10 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::StringWidth: {
       auto str = PopRef<absl::string_view>();
       LOG_TRAP() << "StringWidth(s: '" << str << "')";
-      // Only a fixed width 8x8 bitmap font is currently supported :P
-      return TrapReturn<Integer>(str.size() * 8);
+      return WithPort([str](const GrafPort& the_port) {
+        return TrapReturn<Integer>(
+            GetFont(the_port.text_font).GetStringWidth(str));
+      });
     }
 
     // =========================  TextEdit  ==========================

@@ -90,14 +90,6 @@ struct QDGlobals {
   the_port: Ptr;
 }
 
-// Link: http://0.0.0.0:8000/docs/mac/Text/Text-145.html#MARKER-9-250
-struct FontInfo {
-  ascent:  Integer;
-  descent: Integer;
-  widMax:  Integer;
-  leading: Integer;
-}
-
 struct ItemHeader {
   item: Handle;
   box: Rect;

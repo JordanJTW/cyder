@@ -22,6 +22,8 @@ class ResFont : public Font {
                  int y) override;
   int DrawChar(graphics::BitmapImage& image, char ch, int x, int y) override;
   int GetCharWidth(char ch) override;
+  int GetStringWidth(absl::string_view string) override;
+  FontInfo GetFontInfo() override;
 
  private:
   Rect GetRectForGlyph(char glyph);
@@ -50,8 +52,7 @@ ResFont::ResFont(const core::MemoryRegion& data)
           "width_offset_table",
           /*offset=*/FontResourceFields::offset_width_table.offset +
               (header_.offset_width_table * sizeof(uint16_t)),
-          /*size=*/(header_.last_char_code - header_.first_char_code) * 2))) {
-}
+          /*size=*/(header_.last_char_code - header_.first_char_code) * 2))) {}
 
 int ResFont::DrawString(graphics::BitmapImage& image,
                         absl::string_view string,
@@ -108,6 +109,20 @@ int ResFont::DrawChar(graphics::BitmapImage& image, char ch, int x, int y) {
 
 int ResFont::GetCharWidth(char ch) {
   return GetOffsetAndWidthForGlyph(ch).second;
+}
+
+int ResFont::GetStringWidth(absl::string_view string) {
+  int total_width = 0;
+  for (char ch : string)
+    total_width += GetOffsetAndWidthForGlyph(ch).second;
+  return total_width;
+}
+
+FontInfo ResFont::GetFontInfo() {
+  return {.ascent = header_.max_ascent,
+          .descent = header_.max_descent,
+          .width_max = header_.font_rect_width,
+          .leading = header_.leading};
 }
 
 Rect ResFont::GetRectForGlyph(char ch) {
