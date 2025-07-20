@@ -2036,7 +2036,11 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
     case Trap::CharWidth: {
       auto ch = Pop<Integer>();
       LOG_TRAP() << "CharWidth(ch: '" << (char)ch << "')";
-      return TrapReturn<Integer>(8 /*8x8 bitmap font*/);
+
+      return WithPort([ch](const GrafPort& the_port) {
+        return TrapReturn<Integer>(
+            GetFont(the_port.text_font).GetCharWidth(ch));
+      });
     }
     // Link: http://0.0.0.0:8000/docs/mac/Text/Text-157.html
     case Trap::DrawChar: {

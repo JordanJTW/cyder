@@ -287,18 +287,17 @@ struct GlyphMetric glyph_metrics[128] = {
 class BasicFont : public Font {
  public:
   // Font implementation:
-  virtual int DrawString(graphics::BitmapImage& image,
-                         absl::string_view string,
-                         int x,
-                         int y) override;
-  virtual int DrawChar(graphics::BitmapImage& image,
-                       char ch,
-                       int x,
-                       int y) override {
+  int DrawString(graphics::BitmapImage& image,
+                 absl::string_view string,
+                 int x,
+                 int y) override;
+  int DrawChar(graphics::BitmapImage& image, char ch, int x, int y) override {
     image.CopyBits(basic_font[ch], NewRect(0, 0, 8, 8), NewRect(0, 0, 8, 8),
                    NewRect(x, y - 8, 8, 8));
     return 8;
   }
+
+  int GetCharWidth(char ch) override { return 8; /*fixed-width font*/ }
 };
 
 int BasicFont::DrawString(graphics::BitmapImage& screen,

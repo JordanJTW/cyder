@@ -1,3 +1,5 @@
+#include <utility>
+
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "core/memory_region.h"
@@ -19,14 +21,17 @@ class ResFont : public Font {
                  int x,
                  int y) override;
   int DrawChar(graphics::BitmapImage& image, char ch, int x, int y) override;
+  int GetCharWidth(char ch) override;
 
  private:
   Rect GetRectForGlyph(char glyph);
+  std::pair<int8_t, int8_t> GetOffsetAndWidthForGlyph(char ch);
 
   core::MemoryReader reader_;
   FontResource header_;
   core::MemoryRegion image_table_;
   core::MemoryRegion location_table_;
+  core::MemoryRegion width_offset_table_;
 };
 
 ResFont::ResFont(const core::MemoryRegion& data)
@@ -37,58 +42,76 @@ ResFont::ResFont(const core::MemoryRegion& data)
           header_.bit_image_row_width * header_.font_rect_height * 2))),
       location_table_(MUST(reader_.NextRegion(
           "location_table",
-          (header_.last_char_code - header_.first_char_code) * 2))) {}
+          (header_.last_char_code - header_.first_char_code) * 2))),
+      // An integer value that specifies the offset to the offset/width table
+      // from this point in the font record, in words.
+      // https://developer.apple.com/library/archive/documentation/mac/Text/Text-250.html
+      width_offset_table_(MUST(data.Create(
+          "width_offset_table",
+          /*offset=*/FontResourceFields::offset_width_table.offset +
+              (header_.offset_width_table * sizeof(uint16_t)),
+          /*size=*/(header_.last_char_code - header_.first_char_code) * 2))) {
+}
 
 int ResFont::DrawString(graphics::BitmapImage& image,
                         absl::string_view string,
                         int x,
                         int y) {
   int x_offset = 0;
-  for (int c : string) {
+  for (int ch : string) {
     // TODO: Figure out how to properly handle out of range characters...
     //       This probably has something to do with Apple having non-standard
     //       extended character sets and absl::string_view iterator returning
     //       signed chars (the positive half is the non-extended half).
-    if (c < 0 || c > 255) {
-      LOG(WARNING) << "Skipping out-of-range char: " << c;
+    if (ch < 0 || ch > 255) {
+      LOG(WARNING) << "Skipping out-of-range char: " << ch;
       continue;
     }
 
-    if (c == '\r') {
+    if (ch == '\r') {
       x_offset = 0;
       y += header_.font_rect_height;
     }
 
-    auto rect = GetRectForGlyph(c);
-
-    image.CopyBits(image_table_.raw_ptr(),
-                   NewRect(0, 0, header_.bit_image_row_width * 16,
-                           header_.font_rect_height),
-                   rect,
-                   NewRect(x + x_offset, y, rect.right - rect.left,
-                           header_.font_rect_height));
-
-    x_offset += (rect.right - rect.left);
+    x_offset += DrawChar(image, ch, x + x_offset, y);
   }
   return x_offset;
 }
 
 int ResFont::DrawChar(graphics::BitmapImage& image, char ch, int x, int y) {
+  if (!(ch >= header_.first_char_code && ch <= header_.last_char_code)) {
+    LOG(WARNING) << "Skipping missing '" << ch << "' in font";
+    return header_.font_rect_width;
+  }
+
   auto rect = GetRectForGlyph(ch);
+  auto offset_and_width = GetOffsetAndWidthForGlyph(ch);
 
   image.CopyBits(
       image_table_.raw_ptr(),
       NewRect(0, 0, header_.bit_image_row_width * 16, header_.font_rect_height),
-      rect, NewRect(x, y, rect.right - rect.left, header_.font_rect_height));
+      rect,
+      // |x| represents the glyph-origin. The value of the offset, when added to
+      // the maximum kerning value for the font, determines the horizontal
+      // distance from the glyph origin to the left edge of the bit image of the
+      // glyph, in pixels. If this sum is negative, the glyph origin is to the
+      // right of the glyph image's left edge, meaning the glyph kerns to the
+      // left. If the sum is positive, the origin is to the left of the image's
+      // left edge. If the sum equals zero, the glyph origin corresponds with
+      // the left edge of the bit image.
+      NewRect(x + offset_and_width.first + header_.max_kerning, y,
+              rect.right - rect.left, header_.font_rect_height));
 
-  return (rect.right - rect.left);
+  // The width represents the glyph-origin to next glyph-origin delta.
+  return offset_and_width.second;
 }
 
-Rect ResFont::GetRectForGlyph(char glyph) {
-  if (!(glyph >= header_.first_char_code && glyph <= header_.last_char_code))
-    return NewRect(0, 0, 0, 0);
+int ResFont::GetCharWidth(char ch) {
+  return GetOffsetAndWidthForGlyph(ch).second;
+}
 
-  auto select_char_index = glyph - header_.first_char_code;
+Rect ResFont::GetRectForGlyph(char ch) {
+  auto select_char_index = ch - header_.first_char_code;
   auto select_glyph_offset =
       MUST(location_table_.Read<int16_t>(select_char_index * 2));
   auto next_glyph_offset =
@@ -98,6 +121,15 @@ Rect ResFont::GetRectForGlyph(char glyph) {
               .left = select_glyph_offset,
               .bottom = static_cast<int16_t>(header_.font_rect_height),
               .right = next_glyph_offset};
+}
+
+std::pair<int8_t, int8_t> ResFont::GetOffsetAndWidthForGlyph(char ch) {
+  auto select_char_index = ch - header_.first_char_code;
+  // Width/offset table. For every glyph in the font, this table contains a word
+  // with the glyph offset in the high-order byte and the glyph's width, in
+  // integer form, in the low-order byte.
+  return {MUST(width_offset_table_.Read<int8_t>(select_char_index * 2)),
+          MUST(width_offset_table_.Read<int8_t>(select_char_index * 2 + 1))};
 }
 
 class FontManager {

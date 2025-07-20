@@ -21,6 +21,9 @@ class Font {
   // Draws |ch| to |image| with the upper-left corner at (x, y).
   // Returns the width of the glyph in pixels.
   virtual int DrawChar(graphics::BitmapImage& image, char ch, int x, int y) = 0;
+
+  // Gets the width of |ch| in pixels as drawn by this font.
+  virtual int GetCharWidth(char ch) = 0;
 };
 
 // The font used by native functions to draw to the screen.
