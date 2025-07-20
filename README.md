@@ -97,6 +97,10 @@ Cyder gets around these limitations by reading *raw* resource forks. These can b
 
 *[1000 Miles](https://www.macintoshrepository.org/2964-1000-miles): A clone of [Mille Bornes](https://en.wikipedia.org/wiki/Mille_Bornes) by Robert Harris (1987)*
 
+![MacPaint](assets/screen-macpaint.png)
+
+*[MacPaint](https://www.macintoshrepository.org/1912-macpaint-source-code): Created by Bill Atkinson (1984)*
+
 !["Bill"](assets/screen-bill.png)
 
 *["Bill"](https://www.macintoshrepository.org/8239-bill): An Essential Background Application by Jeff Hokit (1987)*
