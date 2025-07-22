@@ -26,7 +26,7 @@ class MemoryRegion final {
  public:
   // Constructs a "base" region to access [`data` : `data` + `size`)
   // `size` is the maximum size that any sub-region can occupy
-  MemoryRegion(void* const data, size_t size);
+  MemoryRegion(void* const data, size_t size, bool is_big_endian = true);
 
   // Creates a new MemoryRegion representing a subset of the parent region from
   // [`offset`, `parent size`).
@@ -62,7 +62,7 @@ class MemoryRegion final {
                   "Only integral/bool types can be read from MemoryRegion");
     Type value;
     RETURN_IF_ERROR(ReadRaw(&value, offset, sizeof(Type)));
-    return betoh<Type>(value);
+    return is_big_endian_ ? betoh<Type>(value) : value;
   }
 
   // Copies `length` bytes from `offset` to `dest`. Returns
@@ -80,7 +80,7 @@ class MemoryRegion final {
 
     static_assert(std::is_integral<Type>::value,
                   "Only integral/bool types can be written to MemoryRegion");
-    const Type endian = htobe<Type>(data);
+    const Type endian = is_big_endian_ ? htobe<Type>(data) : data;
     return WriteRaw(&endian, offset, sizeof(Type));
   }
 
@@ -109,6 +109,7 @@ class MemoryRegion final {
                size_t size,
                size_t maximum_size,
                size_t base_offset,
+               bool is_big_endian,
                std::shared_ptr<SharedData> shared_data);
 
   absl::Status CheckSafeAccess(const std::string& access_type,
@@ -121,6 +122,7 @@ class MemoryRegion final {
 
   const size_t maximum_size_;
   const size_t base_offset_;
+  bool is_big_endian_;
 
   std::shared_ptr<SharedData> shared_data_;
 };

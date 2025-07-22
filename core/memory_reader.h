@@ -48,6 +48,11 @@ class MemoryReader final {
     return region_.Read<IntegerType>(offset_);
   }
 
+  template <typename Type>
+  absl::StatusOr<Type> PeekType() {
+    return TRY(ReadType<Type>(region_, offset_));
+  }
+
   // Read the next ReadType<> `Type` from the MemoryRegion.
   // FIXME: Ensure the templated `Type` has a size() method and is not a string
   template <typename Type>
@@ -81,6 +86,8 @@ class MemoryReader final {
 
   // Returns the current `offset` being read from.
   size_t offset() const { return offset_; }
+
+  const core::MemoryRegion& region() const { return region_; }
 
  private:
   const MemoryRegion region_;

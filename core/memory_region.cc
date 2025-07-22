@@ -14,12 +14,13 @@
 
 namespace core {
 
-MemoryRegion::MemoryRegion(void* const data, size_t size)
+MemoryRegion::MemoryRegion(void* const data, size_t size, bool is_big_endian)
     : MemoryRegion("Base",
                    reinterpret_cast<uint8_t* const>(data),
                    size,
                    /*maximum_size=*/size,
                    /*base_offset=*/0,
+                   is_big_endian,
                    std::make_shared<SharedData>()) {}
 
 absl::StatusOr<MemoryRegion> MemoryRegion::Create(size_t offset) const {
@@ -39,7 +40,7 @@ absl::StatusOr<MemoryRegion> MemoryRegion::Create(std::string name,
 
   return MemoryRegion(std::move(name), data_ + offset, size,
                       maximum_size_ - offset, base_offset_ + offset,
-                      shared_data_);
+                      is_big_endian_, shared_data_);
 }
 
 absl::Status MemoryRegion::ReadRaw(void* dest,
@@ -92,12 +93,14 @@ MemoryRegion::MemoryRegion(std::string name,
                            size_t size,
                            size_t maximum_size,
                            size_t base_offset,
+                           bool is_big_endian,
                            std::shared_ptr<SharedData> shared_data)
     : name_(std::move(name)),
       data_(data),
       size_(size),
       maximum_size_(maximum_size),
       base_offset_(base_offset),
+      is_big_endian_(is_big_endian),
       shared_data_(shared_data) {}
 
 std::ostream& operator<<(std::ostream& os, const MemoryRegion& region) {
