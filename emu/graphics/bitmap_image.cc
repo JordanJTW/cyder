@@ -6,7 +6,9 @@
 #include <bitset>
 #include <fstream>
 
+#include "core/literal_helpers.h"
 #include "core/logging.h"
+#include "core/memory_reader.h"
 #include "emu/graphics/copybits.h"
 #include "emu/graphics/graphics_helpers.h"
 
@@ -19,6 +21,27 @@ static const bool kVerbose = false;
 inline uint8_t RotateByteRight(uint8_t byte, uint16_t shift) {
   return (byte >> shift) | (byte << (CHAR_BIT - shift));
 }
+
+struct RegionCursor {
+  void TryAdvanceScanline(int16_t y,
+                          std::vector<std::pair<int16_t, int16_t>>& output) {
+    if (region.owned_data.size() < index || region.owned_data[index] > y)
+      return;
+
+    ++index;  // Skip over the `y` value
+    int16_t count = region.owned_data[index++];
+    output.clear();
+    for (int16_t i = 0; i < count; i = i + 2) {
+      output.emplace_back(region.owned_data[index + i],
+                          region.owned_data[index + i + 1]);
+    }
+    index += count;
+  }
+
+  const region::OwnedRegion& region;
+  int16_t current_y = 0;
+  size_t index = 0;
+};
 
 }  // namespace
 
@@ -218,6 +241,26 @@ void BitmapImage::FillRow(int row,
     set_index_with_mask(start_byte + full_bytes, ~kMask[end_outset]);
     LOG_IF(INFO, kVerbose) << "End outset: " << (int)end_outset
                            << " Mask: " << std::bitset<8>(~kMask[end_outset]);
+  }
+}
+
+void BitmapImage::FillRegion(const region::OwnedRegion& region,
+                             const uint8_t pattern[8],
+                             FillMode mode) {
+  // The pattern should align with the left side of the |rect| but may not
+  // be byte aligned so we rotate the byte right by the offset to compensate
+  int16_t pattern_offset = std::max(0_i16, region.rect.left) % 8;
+
+  int16_t height = RectHeight(region.rect);
+
+  RegionCursor cursor(region);
+  std::vector<std::pair<int16_t, int16_t>> scanline;
+  for (int16_t row = 0; row < height; ++row) {
+    cursor.TryAdvanceScanline(row, scanline);
+
+    uint8_t swatch = RotateByteRight(pattern[row % 8], pattern_offset);
+    for (auto& [start, end] : scanline)
+      FillRow(row, start, end, swatch, mode);
   }
 }
 

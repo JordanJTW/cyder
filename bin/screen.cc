@@ -12,16 +12,22 @@
 #include "emu/graphics/grafport_types.tdef.h"
 #include "emu/graphics/graphics_helpers.h"
 #include "emu/graphics/pict_v1.h"
+#include "emu/graphics/region.h"
 
 namespace {
 
 using ::cyder::FrameRectToBytes;
 using ::cyder::NewRect;
+using ::cyder::OffsetRect;
 using ::cyder::RectHeight;
 using ::cyder::RectWidth;
 using ::cyder::graphics::BitmapImage;
 using ::cyder::graphics::GetPICTFrame;
 using ::cyder::graphics::ParsePICTv1;
+using ::cyder::region::ConvertRegion;
+using ::cyder::region::NewRectRegion;
+using ::cyder::region::Subtract;
+using ::cyder::region::Union;
 
 constexpr SDL_Color kOnColor = {0xFF, 0xFF, 0xFF, 0xFF};
 constexpr SDL_Color kOffColor = {0x00, 0x00, 0x00, 0xFF};
@@ -31,8 +37,8 @@ constexpr uint8_t kWhite[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 constexpr uint8_t kGrey[8] = {0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55};
 constexpr uint8_t kBlack[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-constexpr size_t kScreenWidth = 512;
-constexpr size_t kScreenHeight = 384;
+constexpr int16_t kScreenWidth = 512;
+constexpr int16_t kScreenHeight = 384;
 
 constexpr size_t kScaleFactor = 1;
 
@@ -102,18 +108,30 @@ absl::Status Main(const core::Args& args) {
   screen.FillRect(window_rect, kWhite);
   screen.FillEllipse(window_rect, kBlack);
 
-  auto region = TRY(LoadFile(TRY(args.GetArg(1, "FILENAME"))));
-  auto frame = TRY(GetPICTFrame(region));
+  auto pict_data = TRY(LoadFile(TRY(args.GetArg(1, "FILENAME"))));
+  auto frame = TRY(GetPICTFrame(pict_data));
 
   size_t picture_size = FrameRectToBytes(frame);
   uint8_t picture[picture_size];
   std::memset(picture, 0, picture_size);
 
-  RETURN_IF_ERROR(ParsePICTv1(region, /*output=*/picture));
+  RETURN_IF_ERROR(ParsePICTv1(pict_data, /*output=*/picture));
   auto picture_rect = NewRect(kScreenWidth - RectWidth(frame),
                               kScreenHeight - RectHeight(frame),
                               RectWidth(frame), RectHeight(frame));
   screen.CopyBits(picture, frame, frame, picture_rect);
+
+  auto region = NewRectRegion(0, 0, 20, 20);
+  auto region2 = NewRectRegion(15, 15, 20, 20);
+  auto region3 = NewRectRegion(25, 25, 5, 5);
+
+  auto result = Union(ConvertRegion(region, /*is_big_endian=*/false),
+                      ConvertRegion(region2, /*is_big_endian=*/false));
+  auto final_result = Subtract(ConvertRegion(result, /*is_big_endian=*/false),
+                               ConvertRegion(region3, /*is_big_endian=*/false));
+
+  screen.FillRect(final_result.rect, kBlack);
+  screen.FillRegion(final_result, kWhite);
 
   bool should_exit = false;
   bool is_drag = false;
@@ -178,6 +196,9 @@ absl::Status Main(const core::Args& args) {
             screen.FillRect(fill_rect, kGrey);
             screen.FillRect(window_rect, kWhite);
             screen.FillEllipse(window_rect, kBlack);
+
+            screen.FillRect(final_result.rect, kBlack);
+            screen.FillRegion(final_result, kWhite);
             screen.CopyBits(picture, frame, frame, picture_rect);
             LOG(INFO) << "To: " << window_rect;
           }
@@ -188,7 +209,7 @@ absl::Status Main(const core::Args& args) {
   }
 
   // FIXME: Allow MemoryRegion to own memory and properly free it?
-  munmap(const_cast<uint8_t*>(region.raw_ptr()), region.size());
+  munmap(const_cast<uint8_t*>(pict_data.raw_ptr()), pict_data.size());
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
   SDL_Quit();

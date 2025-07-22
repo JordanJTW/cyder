@@ -8,6 +8,7 @@
 #include <string>
 
 #include "emu/graphics/grafport_types.tdef.h"
+#include "emu/graphics/region.h"
 
 namespace cyder {
 namespace graphics {
@@ -45,6 +46,10 @@ class BitmapImage {
                int16_t end,
                uint8_t pattern,
                FillMode mode = FillMode::Copy);
+
+  void FillRegion(const region::OwnedRegion& region,
+                  const uint8_t pattern[8],
+                  FillMode mode = FillMode::Copy);
 
   // Draw a 1-pixel border of |pattern[0]| within |rect|
   // FIXME: Support various "pen" widths and account for clipping
