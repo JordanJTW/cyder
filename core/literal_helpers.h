@@ -27,3 +27,12 @@ constexpr std::uint16_t operator"" _u16(unsigned long long value) {
 constexpr std::uint32_t operator"" _u32(unsigned long long value) {
   return static_cast<std::uint32_t>(value);
 }
+constexpr std::int8_t operator"" _i8(unsigned long long value) {
+  return static_cast<std::int8_t>(value);
+}
+constexpr std::int16_t operator"" _i16(unsigned long long value) {
+  return static_cast<std::int16_t>(value);
+}
+constexpr std::int32_t operator"" _i32(unsigned long long value) {
+  return static_cast<std::int32_t>(value);
+}
