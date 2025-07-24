@@ -61,6 +61,7 @@ class WindowManager {
     None,
     Drag,
     Content,
+    Close,
   };
   RegionType GetWindowAt(const Point& mouse, Ptr& target_window) const;
 

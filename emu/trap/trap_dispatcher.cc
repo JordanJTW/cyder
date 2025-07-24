@@ -1813,6 +1813,8 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
           RETURN_IF_ERROR(
               memory::kSystemMemory.Write<Ptr>(the_window_var, target_window));
           return TrapReturn<int16_t>(3 /*inContent*/);
+        case WindowManager::RegionType::Close:
+          return TrapReturn<int16_t>(6 /*inGoAway*/);
         case WindowManager::RegionType::None:
           return TrapReturn<int16_t>(0 /*inDesk*/);
       }

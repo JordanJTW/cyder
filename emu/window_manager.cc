@@ -72,6 +72,12 @@ bool HasTitleBar(const WindowRecord& window_record) {
   }
 }
 
+Rect CalculateGoAwayRect(Rect title_rect) {
+  // A square on the left-most edge of title bar then inset.
+  title_rect.right = title_rect.left + kFrameTitleHeight;
+  return InsetRect(title_rect, 3, 3);
+}
+
 static WindowManager* s_instance;
 
 }  // namespace
@@ -371,6 +377,10 @@ WindowManager::RegionType WindowManager::GetWindowAt(const Point& mouse,
       auto title_rect = GetRegionRect(window_record.structure_region);
       title_rect.bottom = title_rect.top + kFrameTitleHeight;
 
+      // Must precede general check for title bar click below.
+      if (PointInRect(mouse, CalculateGoAwayRect(title_rect)))
+        return RegionType::Close;
+
       if (PointInRect(mouse, title_rect)) {
         target_window = current_window;
         return RegionType::Drag;
@@ -492,6 +502,12 @@ void DrawWindowFrame(const WindowRecord& window) {
       screen, MUST(ReadHandleToType<absl::string_view>(window.title_handle)),
       title_rect.left + kTitlePaddingWidth,
       title_rect.top + (RectHeight(title_bar_rect) - 8 /*8x8 fixed font*/) / 2);
+
+  if (window.has_close) {
+    Rect close_rect = CalculateGoAwayRect(title_bar_rect);
+    screen.FillRect(close_rect, kWhitePattern);
+    screen.FrameRect(close_rect, kBlackPattern);
+  }
 }
 
 void UpdateWindowRegions(WindowRecord& window, const MemoryManager& memory) {
