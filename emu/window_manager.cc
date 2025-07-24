@@ -7,7 +7,9 @@
 #include "emu/graphics/graphics_helpers.h"
 #include "emu/graphics/quickdraw.h"
 #include "emu/memory/memory_helpers.h"
+#include "emu/memory/memory_manager.h"
 #include "emu/memory/memory_map.h"
+#include "gen/global_names.h"
 
 using ::cyder::graphics::BitmapImage;
 using ::cyder::graphics::TempClipRect;
@@ -34,8 +36,8 @@ constexpr uint16_t kFrameWidth = 1u;
 
 // Return a clip region which represents the entire screen minus the menu bar
 // FIXME: Grab this from the WinMgr's GrafPort::clip_region (once we have one)?
-inline Rect CalculateDesktopRegion(const BitmapImage& screen) {
-  return NewRect(0, 20, screen.width(), screen.height() - 20);
+inline region::OwnedRegion CalculateDesktopRegion(const BitmapImage& screen) {
+  return region::NewRectRegion(0, 20, screen.width(), screen.height() - 20);
 }
 
 // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-191.html
@@ -77,7 +79,10 @@ static WindowManager* s_instance;
 WindowManager::WindowManager(EventManager& event_manager,
                              BitmapImage& screen,
                              MemoryManager& memory)
-    : event_manager_(event_manager), screen_(screen), memory_(memory) {
+    : event_manager_(event_manager),
+      screen_(screen),
+      memory_(memory),
+      desktop_region_(CalculateDesktopRegion(screen)) {
   s_instance = this;
 }
 
@@ -95,13 +100,22 @@ absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
     Ptr behind_window,
     uint32_t reference_constant) {
   // Returns a handle to a newly created Region defined by `rect`:
-  auto create_rect_region =
-      [&](Rect rect, const std::string& name) -> absl::StatusOr<Handle> {
-    Region region;
-    region.region_size = Region::fixed_size;
-    region.bounding_box = rect;
+  auto create_rect_region = [&](Rect rect, const std::string& name) -> Handle {
+    region::OwnedRegion rect_region = region::NewRectRegion(rect);
+    int16_t data_size = rect_region.owned_data.size() * sizeof(int16_t);
 
-    return TRY(memory_.NewHandleFor<Region>(region, name));
+    auto handle = memory_.AllocateHandle(Region::fixed_size + data_size, name);
+    core::MemoryRegion region_for_handle = memory_.GetRegionForHandle(handle);
+
+    CHECK_OK(region_for_handle.Write<int16_t>(/*offset=*/0, data_size));
+    CHECK_OK(
+        WriteType<Rect>(rect_region.rect, region_for_handle, /*offset=*/2));
+    size_t offset = Region::fixed_size;
+    for (int16_t& value : rect_region.owned_data) {
+      CHECK_OK(region_for_handle.Write<int16_t>(offset, value));
+      offset += sizeof(int16_t);
+    }
+    return handle;
   };
 
   auto create_title_handle = [&]() -> absl::StatusOr<Handle> {
@@ -127,11 +141,9 @@ absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
                                      -bounds_rect.left, -bounds_rect.top);
   port.port_rect = NormalizeRect(bounds_rect);
   // FIXME: This assumes the entire window is visible at creation
-  port.visible_region =
-      TRY(create_rect_region(port.port_rect, "VisibleRegion"));
+  port.visible_region = create_rect_region(port.port_rect, "VisibleRegion");
   // FIXME: This is _supposed_ to be `port_rect` but that breaks MacPaint...
-  port.clip_region =
-      TRY(create_rect_region(NewRect(0, 0, 512, 384), "ClipRegion"));
+  port.clip_region = create_rect_region(NewRect(0, 0, 512, 384), "ClipRegion");
 
   WindowRecord record;
   record.port = std::move(port);
@@ -144,17 +156,6 @@ absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
   record.title_handle = TRY(create_title_handle());
   record.title_width = title.size() * 8;  // Assumes 8x8 fixed-width font
 
-  auto create_empty_region = [&](std::string name) -> absl::StatusOr<Handle> {
-    return TRY(memory_.NewHandleFor<Region>(Region{}, std::move(name)));
-  };
-
-  record.content_region = TRY(create_empty_region("ContentRegion"));
-  record.structure_region = TRY(create_empty_region("StructRegion"));
-  // The update region is set to the entire window at creation to ensure that
-  // it is fully drawn in the first WindowUpdate event (cleared in BeginUpdate).
-  record.update_region =
-      TRY(create_rect_region(port.port_rect, "UpdateRegion"));
-
   // The resource ID of the window definition function is in the upper
   // 12 bits of the definition ID ('WDEF' ID 0 is the default function provided
   // by the OS). The optional variation code is placed in the lower 4 bits.
@@ -162,7 +163,20 @@ absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
 
   // This is obviously not a Handle and as such should only be accessed by us!
   record.window_definition_proc = window_definition_id & 0x000F;
-  UpdateWindowRegions(record, memory_);
+
+  Rect global_port_rect = OffsetRect(
+      port.port_rect, -port.port_bits.bounds.left, -port.port_bits.bounds.top);
+
+  record.content_region = create_rect_region(global_port_rect, "ContentRegion");
+  Rect struct_rect = InsetRect(global_port_rect, -kFrameWidth, -kFrameWidth);
+  if (HasTitleBar(record)) {
+    struct_rect.top -= kFrameTitleHeight;
+  }
+  record.structure_region =
+      create_rect_region(global_port_rect, "StructRegion");
+  // The update region is set to the entire window at creation to ensure that
+  // it is fully drawn in the first WindowUpdate event (cleared in BeginUpdate).
+  record.update_region = create_rect_region(port.port_rect, "UpdateRegion");
   return record;
 }
 
@@ -320,7 +334,7 @@ Point WindowManager::DragGrayRegion(const Region& region, const Point& start) {
     EventRecord record = event_manager_.GetNextEvent(event_mask);
     switch (record.what) {
       case kMouseMove: {
-        TempClipRect _(screen_, CalculateDesktopRegion(screen_));
+        TempClipRect _(screen_, region::ConvertRegion(desktop_region_));
 
         int16_t outline_rect_width = RectWidth(outline_rect_);
         int16_t outline_rect_height = RectHeight(outline_rect_);
@@ -337,7 +351,7 @@ Point WindowManager::DragGrayRegion(const Region& region, const Point& start) {
         break;
       }
       case kMouseUp: {
-        TempClipRect _(screen_, CalculateDesktopRegion(screen_));
+        TempClipRect _(screen_, region::ConvertRegion(desktop_region_));
 
         screen_.FrameRect(outline_rect_, kGreyPattern,
                           graphics::BitmapImage::FillMode::XOr);
@@ -396,7 +410,7 @@ Ptr WindowManager::GetFrontWindow() const {
 
 absl::Status WindowManager::ShowWindow(WindowPtr the_window) {
   return WithType<WindowRecord>(the_window, [&](WindowRecord& window) {
-    DrawWindowFrame(window, screen_);
+    DrawWindowFrame(window);
     event_manager_.QueueWindowUpdate(the_window);
     return absl::OkStatus();
   });
@@ -406,6 +420,7 @@ void WindowManager::InvalidateWindows() const {
   // Invalidate windows in reverse order per the painter's algorithm
   for (auto it = window_list_.rbegin(); it != window_list_.rend(); ++it) {
     CHECK_OK(WithType<WindowRecord>(*it, [](const WindowRecord& the_window) {
+      DrawWindowFrame(the_window);
       return WithHandleToType<Region>(
           the_window.update_region, [&](Region& update_region) {
             update_region.bounding_box = the_window.port.port_rect;
@@ -417,16 +432,16 @@ void WindowManager::InvalidateWindows() const {
 }
 
 void WindowManager::RepaintDesktopOverWindow(const WindowRecord& window) {
-  auto struct_region =
-      MUST(memory_.ReadTypeFromHandle<Region>(window.structure_region));
+  auto struct_region = ReadRegionFromHandle(window.structure_region);
+
   {
     // Clip to the part of the |struct_region| _within_ the desktop rect
-    auto clip_rect = IntersectRect(CalculateDesktopRegion(screen_),
-                                   struct_region.bounding_box);
+    auto clip_region = region::Intersect(region::ConvertRegion(desktop_region_),
+                                         struct_region);
     // Filling the full screen and clipping to the region ensures that the
     // pattern aligns with its surroundings (relative to the top-left corner
     // of the screen as opposed to |struct_region|).
-    TempClipRect _(screen_, clip_rect);
+    TempClipRect _(screen_, region::ConvertRegion(clip_region));
     screen_.FillRect(NewRect(0, 0, screen_.width(), screen_.height()),
                      kGreyPattern);
   }
@@ -438,14 +453,17 @@ Rect WindowManager::GetRegionRect(Handle handle) const {
   return region.bounding_box;
 }
 
-void DrawWindowFrame(const WindowRecord& window, BitmapImage& screen) {
-  TempClipRect _(screen, CalculateDesktopRegion(screen));
+void DrawWindowFrame(const WindowRecord& window) {
+  Ptr wm_port_ptr =
+      MUST(memory::kSystemMemory.Read<Handle>(GlobalVars::WMgrPort));
+  graphics::BitmapImage screen = graphics::PortImageFor(wm_port_ptr);
+
+  auto desktop_region = CalculateDesktopRegion(screen);
+  TempClipRect _(screen, region::ConvertRegion(desktop_region));
 
   auto struct_region = MUST(ReadHandleToType<Region>(window.structure_region));
 
-  // TODO: Re-enable drawing the white background after Cyder starts calling
-  //       DrawWindowFrame() at the right times and respecting the clip.
-  // screen.FillRect(struct_region.bounding_box, kWhitePattern);
+  screen.FillRect(struct_region.bounding_box, kWhitePattern);
   screen.FrameRect(struct_region.bounding_box, kBlackPattern);
 
   if (!HasTitleBar(window)) {
@@ -482,12 +500,28 @@ void UpdateWindowRegions(WindowRecord& window, const MemoryManager& memory) {
                  -window.port.port_bits.bounds.top);
 
   auto write_region_to_handle = [&](Handle handle, const Rect& rect) {
-    Region region;
-    region.region_size = 10;
-    region.bounding_box = rect;
-    auto status = memory.WriteTypeToHandle<Region>(region, handle);
-    CHECK(status.ok()) << "WriteTypeToHandle<Region> failed: "
-                       << std::move(status).message();
+    auto ptr = MemoryManager::the().GetPtrForHandle(handle);
+    auto current_region = MUST(ReadType<Region>(memory::kSystemMemory, ptr));
+
+    region::OwnedRegion rect_region = region::NewRectRegion(rect);
+    CHECK_EQ(current_region.region_size,
+             rect_region.owned_data.size() * sizeof(int16_t))
+        << "current_region: " << current_region
+        << " rect_region: " << rect_region;
+    ;
+    int16_t data_size = rect_region.owned_data.size() * sizeof(int16_t);
+
+    core::MemoryRegion region_for_handle =
+        MemoryManager::the().GetRegionForHandle(handle);
+
+    CHECK_OK(
+        WriteType<Rect>(rect_region.rect, region_for_handle, /*offset=*/2));
+    size_t offset = Region::fixed_size;
+    for (int16_t& value : rect_region.owned_data) {
+      CHECK_OK(region_for_handle.Write<int16_t>(offset, value));
+      offset += sizeof(int16_t);
+    }
+    CHECK_EQ(Region::fixed_size + data_size, offset);
   };
 
   write_region_to_handle(window.content_region, global_port_rect);

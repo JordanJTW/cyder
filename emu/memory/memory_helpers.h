@@ -39,4 +39,19 @@ absl::StatusOr<Type> ReadHandleToType(Handle handle) {
   return ReadType<Type>(memory::kSystemMemory, ptr);
 }
 
+inline region::Region ReadRegionFromHandle(Handle handle) {
+  core::MemoryRegion region_for_handle =
+      memory::MemoryManager::the().GetRegionForHandle(handle);
+
+  auto region = MUST(ReadType<Region>(region_for_handle, 0));
+  return {
+      .rect = region.bounding_box,
+      // NOTE: This differs from the documentation in that |region_size| is the
+      //       size of just the data (not including |Region::fixed_size|).
+      .data = MUST(memory::kSystemMemory.Create(
+          "region_data", region_for_handle.base_offset() + Region::fixed_size,
+          region.region_size)),
+  };
+}
+
 }  // namespace cyder

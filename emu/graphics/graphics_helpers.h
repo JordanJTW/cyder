@@ -81,6 +81,10 @@ inline bool IsZeroRect(const Rect& rect) {
   return rect.top == 0 && rect.bottom == 0 && rect.left == 0 && rect.right == 0;
 }
 
+inline bool IsEmptyRect(const Rect& rect) {
+  return (rect.bottom - rect.top) <= 0 || (rect.right - rect.left) <= 0;
+}
+
 // Return True if |parent| contains |child|, otherwise return False
 inline bool ContainsRect(const Rect& parent, const Rect& child) {
   return parent.top <= child.top && parent.left <= child.left &&

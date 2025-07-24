@@ -23,19 +23,20 @@ inline uint8_t RotateByteRight(uint8_t byte, uint16_t shift) {
 }
 
 struct RegionCursor {
-  void TryAdvanceScanline(int16_t y,
-                          std::vector<std::pair<int16_t, int16_t>>& output) {
-    if (region.owned_data.size() < index || region.owned_data[index] > y)
-      return;
+  void TryAdvanceScanline(int16_t y, BitmapImage::Scanline& output) {
+    while (index < region.owned_data.size()) {
+      if (region.owned_data[index] > y)
+        return;
 
-    ++index;  // Skip over the `y` value
-    int16_t count = region.owned_data[index++];
-    output.clear();
-    for (int16_t i = 0; i < count; i = i + 2) {
-      output.emplace_back(region.owned_data[index + i],
-                          region.owned_data[index + i + 1]);
+      ++index;  // Skip over the `y` value
+      int16_t count = region.owned_data[index++];
+      output.clear();
+      for (int16_t i = 0; i < count; i = i + 2) {
+        output.emplace_back(region.owned_data[index + i],
+                            region.owned_data[index + i + 1]);
+      }
+      index += count;
     }
-    index += count;
   }
 
   const region::OwnedRegion& region;
@@ -54,7 +55,7 @@ BitmapImage::BitmapImage(int width, int height)
       bitmap_storage_(absl::make_unique<uint8_t[]>(bitmap_size_)),
       bitmap_(bitmap_storage_.get()) {
   std::memset(bitmap_, 0, bitmap_size_);
-  clip_rect_ = NewRect(0, 0, width, height);
+  clip_region_ = region::NewRectRegion(0, 0, width_, height_);
 }
 
 BitmapImage::BitmapImage(BitMap bitmap, uint8_t* memory_ptr)
@@ -63,15 +64,16 @@ BitmapImage::BitmapImage(BitMap bitmap, uint8_t* memory_ptr)
       bitmap_size_(bitmap.row_bytes * height_),
       bitmap_storage_(nullptr),
       bitmap_(memory_ptr) {
-  clip_rect_ = NewRect(0, 0, width_, height_);
+  clip_region_ = region::NewRectRegion(0, 0, width_, height_);
   CHECK(bitmap.base_addr) << "Bad BitMap:  " << bitmap;
 }
 
 BitmapImage::~BitmapImage() = default;
 
-void BitmapImage::SetClipRect(const Rect& rect) {
-  clip_rect_ = IntersectRect(rect, {0, 0, static_cast<int16_t>(height_),
-                                    static_cast<int16_t>(width_)});
+void BitmapImage::SetClipRegion(const region::Region& region) {
+  auto screen_region = region::NewRectRegion(0, 0, width_, height_);
+  clip_region_ =
+      region::Intersect(region, region::ConvertRegion(screen_region));
 }
 
 void BitmapImage::FillRect(const Rect& rect,
@@ -81,10 +83,15 @@ void BitmapImage::FillRect(const Rect& rect,
   // be byte aligned so we rotate the byte right by the offset to compensate
   int16_t pattern_offset = std::max((int16_t)0, rect.left) % 8;
 
+  RegionCursor cursor(clip_region_);
+  Scanline scanline;
+
   int16_t height = RectHeight(rect);
   for (int16_t row = 0; row < height; ++row) {
+    cursor.TryAdvanceScanline(rect.top + row, scanline);
+
     uint8_t swatch = RotateByteRight(pattern[row % 8], pattern_offset);
-    FillRow(rect.top + row, rect.left, rect.right, swatch, mode);
+    FillRow(rect.top + row, rect.left, rect.right, scanline, swatch, mode);
   }
 }
 
@@ -137,25 +144,50 @@ void BitmapImage::FillEllipse(const Rect& rect, const uint8_t pattern[8]) {
 void BitmapImage::FillRow(int row,
                           int16_t start,
                           int16_t end,
+                          Scanline scanline,
                           uint8_t pattern,
                           FillMode mode) {
-  static const unsigned char kMask[] = {0b11111111, 0b01111111, 0b00111111,
-                                        0b00011111, 0b00001111, 0b00000111,
-                                        0b00000011, 0b00000001, 0b00000000};
-
   // Handle clipping for the shapes. If the requested |row| is outside of the
   // clip region then ignore it. Ensure |start| and |end| are bound to the
   // extents of the clip region and ignore negative sized rows.
-  if (row < clip_rect_.top || row >= clip_rect_.bottom) {
+  if (row < clip_region_.rect.top || row >= clip_region_.rect.bottom)
     return;
+
+  for (const auto& clip : scanline) {
+    int16_t clipped_start = std::max(start, clip.first);
+    int16_t clipped_end = std::min(end, clip.second);
+
+    if (clipped_start >= clipped_end)
+      continue;
+
+    _FillRow(row, clipped_start, clipped_end, pattern, mode);
   }
+}
 
-  start = std::max(start, clip_rect_.left);
-  end = std::min(end, clip_rect_.right);
-
-  if (start >= end) {
+void BitmapImage::FillRow(int row,
+                          int16_t start,
+                          int16_t end,
+                          uint8_t pattern,
+                          FillMode mode) {
+  // Handle clipping for the shapes. If the requested |row| is outside of the
+  // clip region then ignore it. Ensure |start| and |end| are bound to the
+  // extents of the clip region and ignore negative sized rows.
+  if (row < clip_region_.rect.top || row >= clip_region_.rect.bottom)
     return;
-  }
+
+  Scanline scanline;
+  RegionCursor(clip_region_).TryAdvanceScanline(row, scanline);
+  FillRow(row, start, end, scanline, pattern, mode);
+}
+
+void BitmapImage::_FillRow(int row,
+                           int16_t start,
+                           int16_t end,
+                           uint8_t pattern,
+                           FillMode mode) {
+  static const unsigned char kMask[] = {0b11111111, 0b01111111, 0b00111111,
+                                        0b00011111, 0b00001111, 0b00000111,
+                                        0b00000011, 0b00000001, 0b00000000};
 
   int start_byte = row * PixelWidthToBytes(width_) + (start / CHAR_BIT);
 
@@ -251,16 +283,16 @@ void BitmapImage::FillRegion(const region::OwnedRegion& region,
   // be byte aligned so we rotate the byte right by the offset to compensate
   int16_t pattern_offset = std::max(0_i16, region.rect.left) % 8;
 
-  int16_t height = RectHeight(region.rect);
-
   RegionCursor cursor(region);
-  std::vector<std::pair<int16_t, int16_t>> scanline;
+  Scanline scanline;
+
+  int16_t height = RectHeight(region.rect);
   for (int16_t row = 0; row < height; ++row) {
     cursor.TryAdvanceScanline(row, scanline);
 
     uint8_t swatch = RotateByteRight(pattern[row % 8], pattern_offset);
-    for (auto& [start, end] : scanline)
-      FillRow(row, start, end, swatch, mode);
+    // The |scanline| clip regions will only be drawn using the full |width|
+    FillRow(row, 0, width_, scanline, swatch, mode);
   }
 }
 
@@ -277,10 +309,10 @@ void BitmapImage::CopyBits(const uint8_t* src,
 
   // Calculate the number of pixels outside of |clip_rect_| on each side:
   Rect clip_offset;
-  clip_offset.top = std::max(0, clip_rect_.top - dst_rect.top);
-  clip_offset.bottom = std::max(0, dst_rect.bottom - clip_rect_.bottom);
-  clip_offset.left = std::max(0, clip_rect_.left - dst_rect.left);
-  clip_offset.right = std::max(0, dst_rect.right - clip_rect_.right);
+  clip_offset.top = std::max(0, clip_region_.rect.top - dst_rect.top);
+  clip_offset.bottom = std::max(0, dst_rect.bottom - clip_region_.rect.bottom);
+  clip_offset.left = std::max(0, clip_region_.rect.left - dst_rect.left);
+  clip_offset.right = std::max(0, dst_rect.right - clip_region_.rect.right);
 
   // Account for the portion of the bitmap outside of |clip_rect_|
   int16_t clipped_height = height - (clip_offset.top + clip_offset.bottom);
@@ -291,18 +323,37 @@ void BitmapImage::CopyBits(const uint8_t* src,
     return;
   }
 
+  RegionCursor cursor(clip_region_);
+  Scanline scanline;
+
   // TODO: What should happen if |src_rect| is outside of |src_dims|?
   int16_t src_width = RectWidth(src_dims);
   for (int row = 0; row < clipped_height; ++row) {
+    cursor.TryAdvanceScanline(row + dst_rect.top + clip_offset.top, scanline);
+
     int src_row_offset =
         PixelWidthToBytes(src_width) * (row + src_rect.top + clip_offset.top);
     int dst_row_offset =
         PixelWidthToBytes(width_) * (row + dst_rect.top + clip_offset.top);
 
-    bitarray_copy(src + src_row_offset,
-                  /*src_offset=*/src_rect.left + clip_offset.left,
-                  /*src_length=*/clipped_width, bitmap_ + dst_row_offset,
-                  /*dst_offset=*/dst_rect.left + clip_offset.left);
+    for (const auto& [start, end] : scanline) {
+      int16_t clipped_dst_start =
+          std::max(start, (int16_t)(dst_rect.left + clip_offset.left));
+      int16_t clipped_dst_end = std::min(
+          end, (int16_t)(dst_rect.left + clip_offset.left + clipped_width));
+
+      if (clipped_dst_start >= clipped_dst_end)
+        continue;
+
+      int16_t clipped_src_start =
+          src_rect.left + (clipped_dst_start - dst_rect.left);
+
+      bitarray_copy(src + src_row_offset,
+                    /*src_offset=*/clipped_src_start,
+                    /*src_length=*/clipped_dst_end - clipped_dst_start,
+                    bitmap_ + dst_row_offset,
+                    /*dst_offset=*/clipped_dst_start);
+    }
   }
 }
 
@@ -313,21 +364,29 @@ void BitmapImage::FrameRect(const Rect& rect,
   // be byte aligned so we rotate the byte right by the offset to compensate
   int16_t pattern_offset = std::max((int16_t)0, rect.left) % 8;
 
+  RegionCursor cursor(clip_region_);
+  Scanline scanline;
+
   constexpr uint16_t kWidth = 1u;
   // FIXME: Account for clipping, invalid |rect|s, and proper |pattern| support
   for (int row = rect.top; row < rect.top + kWidth; ++row) {
+    cursor.TryAdvanceScanline(row, scanline);
+
     uint8_t swatch = RotateByteRight(pattern[row % 8], pattern_offset);
-    FillRow(row, rect.left, rect.right, swatch, mode);
+    FillRow(row, rect.left, rect.right, scanline, swatch, mode);
+  }
+  for (int row = rect.top + kWidth; row < rect.bottom - kWidth; ++row) {
+    cursor.TryAdvanceScanline(row, scanline);
+
+    uint8_t swatch = RotateByteRight(pattern[row % 8], pattern_offset);
+    FillRow(row, rect.left, rect.left + kWidth, scanline, swatch, mode);
+    FillRow(row, rect.right - kWidth, rect.right, scanline, swatch, mode);
   }
   for (int row = rect.bottom - kWidth; row < rect.bottom; ++row) {
-    uint8_t swatch = RotateByteRight(pattern[row % 8], pattern_offset);
-    FillRow(row, rect.left, rect.right, swatch, mode);
-  }
+    cursor.TryAdvanceScanline(row, scanline);
 
-  for (int row = rect.top + kWidth; row < rect.bottom - kWidth; ++row) {
     uint8_t swatch = RotateByteRight(pattern[row % 8], pattern_offset);
-    FillRow(row, rect.left, rect.left + kWidth, swatch, mode);
-    FillRow(row, rect.right - kWidth, rect.right, swatch, mode);
+    FillRow(row, rect.left, rect.right, scanline, swatch, mode);
   }
 }
 

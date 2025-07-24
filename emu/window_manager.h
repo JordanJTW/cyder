@@ -84,13 +84,14 @@ class WindowManager {
   graphics::BitmapImage& screen_;
   memory::MemoryManager& memory_;
 
+  region::OwnedRegion desktop_region_;
   std::list<Ptr> window_list_;
 
   Rect outline_rect_;
 };
 
-void DrawWindowFrame(const WindowRecord& window, graphics::BitmapImage& screen);
 void UpdateWindowRegions(WindowRecord& record,
                          const memory::MemoryManager& memory);
+void DrawWindowFrame(const WindowRecord& window);
 
 }  // namespace cyder

@@ -68,10 +68,11 @@ absl::Status InPort(
                                graphics::BitmapImage& bitmap)> cb) {
   return WithPort([&cb](GrafPort& the_port) {
     graphics::BitmapImage image = graphics::ThePortImage();
-    auto clip_region = MUST(ReadHandleToType<Region>(the_port.clip_region));
-    graphics::TempClipRect _(image, OffsetRect(clip_region.bounding_box,
-                                               -the_port.port_bits.bounds.left,
-                                               -the_port.port_bits.bounds.top));
+    auto clip_region = ReadRegionFromHandle(the_port.clip_region);
+    auto global_clip_region =
+        region::Offset(clip_region, -the_port.port_bits.bounds.left,
+                       -the_port.port_bits.bounds.top);
+    graphics::TempClipRect _(image, region::ConvertRegion(global_clip_region));
     return cb(the_port, image);
   });
 }
@@ -640,18 +641,7 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       RETURN_IF_ERROR(WriteType<EventRecord>(
           std::move(event), memory::kSystemMemory, the_event_var));
 
-      if (event.what == kWindowUpdate) {
-        RETURN_IF_ERROR(
-            WithType<WindowRecord>(event.message, [&](WindowRecord& window) {
-              Ptr wm_port_ptr =
-                  TRY(memory::kSystemMemory.Read<Handle>(GlobalVars::WMgrPort));
-              graphics::BitmapImage image = graphics::PortImageFor(wm_port_ptr);
-              DrawWindowFrame(window, image);
-              return absl::OkStatus();
-            }));
-      }
-
-      return TrapReturn<bool>(event.what != 0);
+      return TrapReturn<bool>(event.what != kNullEvent);
     }
     // Link: http://0.0.0.0:8000/docs/mac/Toolbox/Toolbox-53.html
     case Trap::GetNextEvent: {
@@ -673,18 +663,7 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       RETURN_IF_ERROR(WriteType<EventRecord>(
           std::move(event), memory::kSystemMemory, the_event_var));
 
-      if (event.what == kWindowUpdate) {
-        RETURN_IF_ERROR(
-            WithType<WindowRecord>(event.message, [&](WindowRecord& window) {
-              Ptr wm_port_ptr =
-                  TRY(memory::kSystemMemory.Read<Handle>(GlobalVars::WMgrPort));
-              graphics::BitmapImage image = graphics::PortImageFor(wm_port_ptr);
-              DrawWindowFrame(window, image);
-              return absl::OkStatus();
-            }));
-      }
-
-      return TrapReturn<bool>(event.what != 0);
+      return TrapReturn<bool>(event.what != kNullEvent);
     }
     // Link: https://dev.os9.ca/techpubs/mac/Toolbox/Toolbox-77.html
     case Trap::GetKeys: {
@@ -1758,7 +1737,7 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
 
       window_storage = TRY(window_manager_.NewWindow(
           window_storage, resource.initial_rect, resource.title,
-          resource.is_visible != 0, resource.has_close != 0,
+          resource.is_visible, resource.has_close,
           resource.window_definition_id, behind_window,
           resource.reference_constant));
 
@@ -1789,7 +1768,7 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
                  << ", refCon: 0x" << reference_constant << ")";
 
       window_storage = TRY(window_manager_.NewWindow(
-          window_storage, bounds_rect, title, visible != 0, go_away_flag != 0,
+          window_storage, bounds_rect, title, visible, go_away_flag,
           window_definition_id, behind_window, reference_constant));
 
       // Focus (activate) and update the most recently created window
@@ -1955,12 +1934,7 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
       return WithType<WindowRecord>(the_window, [&](WindowRecord& window) {
         window.title_handle = handle;
         window.title_width = title.size() * 8;  // Assumes fixed-width 8x8 font
-
-        Ptr wm_port_ptr =
-            TRY(memory::kSystemMemory.Read<Handle>(GlobalVars::WMgrPort));
-        RETURN_IF_ERROR(port::SetThePort(wm_port_ptr));
-        graphics::BitmapImage image = graphics::ThePortImage();
-        DrawWindowFrame(window, image);
+        DrawWindowFrame(window);
         return absl::OkStatus();
       });
     }
