@@ -57,8 +57,7 @@ TEST(RegionTest, UnionRegion) {
   auto r1 = NewRectRegion(1, 1, 10, 5);
   auto r2 = NewRectRegion(3, 6, 4, 10);
 
-  OwnedRegion output = Union(ConvertRegion(r1, /*is_big_endian=*/false),
-                             ConvertRegion(r2, /*is_big_endian=*/false));
+  OwnedRegion output = Union(ConvertRegion(r1), ConvertRegion(r2));
 
   EXPECT_THAT(output.owned_data, ElementsAre(1, 2, 1, 11,  // y = 1, [1, 11)
                                              6, 2, 3, 7,   // y = 6, [3, 7)
@@ -70,20 +69,43 @@ TEST(RegionTest, IntersectRegion) {
   auto r1 = NewRectRegion(1, 1, 10, 5);
   auto r2 = NewRectRegion(3, 3, 4, 10);
 
-  OwnedRegion output = Intersect(ConvertRegion(r1, /*is_big_endian=*/false),
-                                 ConvertRegion(r2, /*is_big_endian=*/false));
+  OwnedRegion output = Intersect(ConvertRegion(r1), ConvertRegion(r2));
 
   EXPECT_THAT(output.owned_data, ElementsAre(3, 2, 3, 7,  // y = 3, [3, 7)
                                              6, 0         // y = 6, END
                                              ));
+
+  OwnedRegion r3;
+  r3.rect = {.top = 0, .left = 0, .bottom = 384, .right = 512};
+  r3.owned_data = {0, 2, 0, 512, 384, 0};
+
+  OwnedRegion r4;
+  r4.rect = {.top = 0, .left = 0, .bottom = 35, .right = 35};
+  r4.owned_data = {
+      0,  2, 0,  20,          // y = 0, [0, 20)
+      15, 2, 0,  35,          // y = 15, [0, 35)
+      20, 2, 15, 35,          // y = 20, [15, 35)
+      25, 4, 15, 25, 30, 35,  // y = 25, [15, 25), [30, 35)
+      30, 2, 15, 35,          // y = 30, [15, 35)
+      35, 0                   // y = 35, END
+  };
+
+  OwnedRegion output2 = Intersect(ConvertRegion(r3), ConvertRegion(r4));
+  EXPECT_THAT(output2.owned_data,
+              ElementsAre(0, 2, 0, 20,            // y = 0, [0, 20)
+                          15, 2, 0, 35,           // y = 15, [0, 35)
+                          20, 2, 15, 35,          // y = 20, [15, 35)
+                          25, 4, 15, 25, 30, 35,  // y = 25, [15, 25), [30, 35)
+                          30, 2, 15, 35,          // y = 30, [15, 35)
+                          35, 0                   // y = 35, END
+                          ));
 }
 
 TEST(RegionTest, SubtractRegion) {
   auto r1 = NewRectRegion(1, 1, 10, 10);
   auto r2 = NewRectRegion(3, 3, 4, 4);
 
-  OwnedRegion output = Subtract(ConvertRegion(r1, /*is_big_endian=*/false),
-                                ConvertRegion(r2, /*is_big_endian=*/false));
+  OwnedRegion output = Subtract(ConvertRegion(r1), ConvertRegion(r2));
 
   EXPECT_THAT(output.owned_data,
               ElementsAre(1, 2, 1, 11,        // y = 1, [1, 11)
@@ -91,6 +113,15 @@ TEST(RegionTest, SubtractRegion) {
                           7, 2, 1, 11,        // y = 7, [1, 11)
                           11, 0               // y = 11, END
                           ));
+}
+
+TEST(RegionTest, OffsetRegion) {
+  auto r1 = NewRectRegion(1, 1, 10, 10);
+  auto output = Offset(ConvertRegion(r1), 3, 6);
+
+  EXPECT_THAT(output.owned_data, ElementsAre(7, 2, 4, 14,  // y = 7 [4, 14)
+                                             17, 0         // y = 17, END
+                                             ));
 }
 
 }  // namespace region

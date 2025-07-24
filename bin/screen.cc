@@ -125,10 +125,16 @@ absl::Status Main(const core::Args& args) {
   auto region2 = NewRectRegion(15, 15, 20, 20);
   auto region3 = NewRectRegion(25, 25, 5, 5);
 
-  auto result = Union(ConvertRegion(region, /*is_big_endian=*/false),
-                      ConvertRegion(region2, /*is_big_endian=*/false));
-  auto final_result = Subtract(ConvertRegion(result, /*is_big_endian=*/false),
-                               ConvertRegion(region3, /*is_big_endian=*/false));
+  auto result = Union(ConvertRegion(region), ConvertRegion(region2));
+  auto final_result = Subtract(ConvertRegion(result), ConvertRegion(region3));
+
+  auto grid = NewRectRegion(0, 0, kScreenWidth, kScreenHeight);
+  for (int r = 0; r < 3; ++r) {
+    for (int c = 0; c < 3; ++c) {
+      auto hole = NewRectRegion(30 + (100 * c), 30 + (100 * r), 60, 60);
+      grid = Subtract(ConvertRegion(grid), ConvertRegion(hole));
+    }
+  }
 
   screen.FillRect(final_result.rect, kBlack);
   screen.FillRegion(final_result, kWhite);
@@ -185,8 +191,12 @@ absl::Status Main(const core::Args& args) {
             drag_rect(window_rect, event.motion.x, event.motion.y);
 
             screen.FillRect(fill_rect, kGrey);
-            screen.FillEllipse(window_rect, kWhite);
-            screen.CopyBits(picture, frame, frame, picture_rect);
+            {
+              cyder::graphics::TempClipRect _(screen, ConvertRegion(grid));
+              screen.FillRect(window_rect, kWhite);
+              screen.FillEllipse(window_rect, kBlack);
+              screen.CopyBits(picture, frame, frame, picture_rect);
+            }
           }
           break;
         case SDL_MOUSEBUTTONUP:
@@ -197,8 +207,11 @@ absl::Status Main(const core::Args& args) {
             screen.FillRect(window_rect, kWhite);
             screen.FillEllipse(window_rect, kBlack);
 
-            screen.FillRect(final_result.rect, kBlack);
-            screen.FillRegion(final_result, kWhite);
+            {
+              cyder::graphics::TempClipRect _(screen,
+                                              ConvertRegion(final_result));
+              screen.FillRect(NewRect(0, 0, 200, 200), kBlack);
+            }
             screen.CopyBits(picture, frame, frame, picture_rect);
             LOG(INFO) << "To: " << window_rect;
           }

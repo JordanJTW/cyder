@@ -31,11 +31,16 @@ std::vector<int16_t> Offset(core::MemoryRegion& value, int16_t offset);
 OwnedRegion Union(const Region& r1, const Region& r2);
 OwnedRegion Intersect(const Region& r1, const Region& r2);
 OwnedRegion Subtract(const Region& r1, const Region& r2);
+OwnedRegion Offset(const Region& r1, int16_t dx, int16_t dy);
 
 // Creates a new region representing a rectange at (x, y) with width and height
 OwnedRegion NewRectRegion(int16_t x, int16_t y, int16_t width, int16_t height);
+OwnedRegion NewRectRegion(const Rect& rect);
 
-Region ConvertRegion(OwnedRegion& region, bool is_big_endian = false);
+Region ConvertRegion(OwnedRegion& region);
+
+std::ostream& operator<<(std::ostream& os, const Region& obj);
+std::ostream& operator<<(std::ostream& os, const OwnedRegion obj);
 
 // NewRgn
 // OpenRgn

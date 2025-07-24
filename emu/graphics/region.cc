@@ -90,7 +90,6 @@ std::vector<int16_t> Intersect(const core::MemoryRegion& d1,
   core::MemoryReader r1(d1);
   core::MemoryReader r2(d2);
 
-  Range v1, v2;
   std::vector<int16_t> output;
   while (r1.HasNext() && r2.HasNext()) {
     auto v1 = MUST(r1.PeekType<Range>());
@@ -160,14 +159,18 @@ std::vector<int16_t> Subtract(const core::MemoryRegion& d1,
 }
 
 OwnedRegion NewRectRegion(int16_t x, int16_t y, int16_t width, int16_t height) {
+  return NewRectRegion(NewRect(x, y, width, height));
+}
+
+OwnedRegion NewRectRegion(const Rect& rect) {
   OwnedRegion result;
-  result.owned_data.push_back(y);
+  result.owned_data.push_back(rect.top);
   result.owned_data.push_back(2);
-  result.owned_data.push_back(x);
-  result.owned_data.push_back(x + width);
-  result.owned_data.push_back(y + height);
+  result.owned_data.push_back(rect.left);
+  result.owned_data.push_back(rect.right);
+  result.owned_data.push_back(rect.bottom);
   result.owned_data.push_back(0);
-  result.rect = NewRect(x, y, width, height);
+  result.rect = rect;
   return result;
 }
 
@@ -261,11 +264,45 @@ OwnedRegion Union(const Region& r1, const Region& r2) {
   return RegionOp(r1, r2, Union);
 }
 
-Region ConvertRegion(OwnedRegion& region, bool is_big_endian) {
-  return {.rect = region.rect,
-          .data = core::MemoryRegion(
-              reinterpret_cast<uint8_t*>(region.owned_data.data()),
-              region.owned_data.size() * sizeof(int16_t), is_big_endian)};
+OwnedRegion Offset(const Region& r1, int16_t dx, int16_t dy) {
+  OwnedRegion output;
+  output.rect = OffsetRect(r1.rect, dx, dy);
+
+  core::MemoryReader reader(r1.data);
+  while (reader.HasNext()) {
+    int16_t y = MUST(reader.Next<int16_t>());
+    int16_t count = MUST(reader.Next<int16_t>());
+    auto offset_data =
+        Offset(MUST(reader.NextRegion("line", count * sizeof(int16_t))), dx);
+
+    output.owned_data.push_back(y + dy);
+    output.owned_data.push_back(count);
+    output.owned_data.insert(output.owned_data.end(), offset_data.begin(),
+                             offset_data.end());
+  }
+  return output;
+}
+
+Region ConvertRegion(OwnedRegion& region) {
+  return {
+      .rect = region.rect,
+      .data = core::MemoryRegion(
+          reinterpret_cast<uint8_t*>(region.owned_data.data()),
+          region.owned_data.size() * sizeof(int16_t), /*is_big_endian=*/false)};
+}
+
+std::ostream& operator<<(std::ostream& os, const Region& obj) {
+  std::stringstream ss;
+  for (size_t i = 0; i < obj.data.size(); i = i + 2) {
+    ss << MUST(obj.data.Read<int16_t>(i)) << ", ";
+  }
+  return os << "Region rect: " << obj.rect << " data: " << ss.str();
+}
+
+std::ostream& operator<<(std::ostream& os, const OwnedRegion obj) {
+  return os << "OwnedRegion rect: " << obj.rect << " data: "
+            << absl::StrJoin(obj.owned_data.begin(), obj.owned_data.end(),
+                             ", ");
 }
 
 }  // namespace region
