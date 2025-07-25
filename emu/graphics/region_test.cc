@@ -115,6 +115,18 @@ TEST(RegionTest, SubtractRegion) {
                           ));
 }
 
+TEST(RegionTest, SubtractRegion_Empty) {
+  auto r1 = NewRectRegion(40, 40, 100, 80);
+  auto r2 = NewRectRegion(0, 20, 512, 364);
+
+  OwnedRegion output = Subtract(ConvertRegion(r1), ConvertRegion(r2));
+
+  EXPECT_THAT(output.owned_data,
+              ElementsAre(40, 2, 40, 140,  // y = 40, [40, 140)
+                          120, 0           // y = 120, END
+                          ));
+}
+
 TEST(RegionTest, OffsetRegion) {
   auto r1 = NewRectRegion(1, 1, 10, 10);
   auto output = Offset(ConvertRegion(r1), 3, 6);

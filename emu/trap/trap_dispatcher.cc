@@ -69,10 +69,7 @@ absl::Status InPort(
   return WithPort([&cb](GrafPort& the_port) {
     graphics::BitmapImage image = graphics::ThePortImage();
     auto clip_region = ReadRegionFromHandle(the_port.clip_region);
-    auto global_clip_region =
-        region::Offset(clip_region, -the_port.port_bits.bounds.left,
-                       -the_port.port_bits.bounds.top);
-    graphics::TempClipRect _(image, region::ConvertRegion(global_clip_region));
+    graphics::TempClipRect _(image, clip_region);
     return cb(the_port, image);
   });
 }
@@ -983,6 +980,8 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
     // Link: http://0.0.0.0:8000/docs/mac/QuickDraw/QuickDraw-98.html
     case Trap::PaintRect: {
       auto rect = PopRef<Rect>();
+      LOG_TRAP() << "PaintRect(rect: " << rect << ")";
+
       return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
         image.FillRect(port::LocalToGlobal(port, rect), port.pen_pattern.bytes);
         return absl::OkStatus();

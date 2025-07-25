@@ -251,6 +251,8 @@ OwnedRegion RegionOp(const Region& r1, const Region& r2, OpFunction* op) {
     }
     rect.bottom = currentY;
   }
+  if (output.empty())
+    rect = {0, 0, 0, 0};
   return {.rect = std::move(rect), .owned_data = std::move(output)};
 }
 
@@ -289,6 +291,10 @@ Region ConvertRegion(OwnedRegion& region) {
       .data = core::MemoryRegion(
           reinterpret_cast<uint8_t*>(region.owned_data.data()),
           region.owned_data.size() * sizeof(int16_t), /*is_big_endian=*/false)};
+}
+
+Region OwnedRegion::ref() {
+  return ConvertRegion(*this);
 }
 
 std::ostream& operator<<(std::ostream& os, const Region& obj) {

@@ -16,6 +16,8 @@ struct Region {
 struct OwnedRegion {
   Rect rect;
   std::vector<int16_t> owned_data;
+
+  Region ref();
 };
 
 // Boolean set operations that process a single row of ranges.

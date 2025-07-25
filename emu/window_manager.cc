@@ -82,6 +82,9 @@ static WindowManager* s_instance;
 
 }  // namespace
 
+void DrawWindowFrame(const WindowRecord& window,
+                     const region::Region& struct_region);
+
 WindowManager::WindowManager(EventManager& event_manager,
                              BitmapImage& screen,
                              MemoryManager& memory)
@@ -124,13 +127,6 @@ absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
     return handle;
   };
 
-  auto create_title_handle = [&]() -> absl::StatusOr<Handle> {
-    auto handle = memory_.AllocateHandle(title.size() + 1, "WindowTitle");
-    auto memory = memory_.GetRegionForHandle(handle);
-    RETURN_IF_ERROR(WriteType<absl::string_view>(title, memory, /*offset=*/0));
-    return handle;
-  };
-
   auto globals = TRY(port::GetQDGlobals());
 
   // FIXME: Fill in the rest of the WindowRecord (including GrafPort!)
@@ -148,8 +144,14 @@ absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
   port.port_rect = NormalizeRect(bounds_rect);
   // FIXME: This assumes the entire window is visible at creation
   port.visible_region = create_rect_region(port.port_rect, "VisibleRegion");
-  // FIXME: This is _supposed_ to be `port_rect` but that breaks MacPaint...
-  port.clip_region = create_rect_region(NewRect(0, 0, 512, 384), "ClipRegion");
+  port.clip_region = create_rect_region(port.port_rect, "ClipRegion");
+
+  auto create_title_handle = [&]() -> Handle {
+    auto handle = memory_.AllocateHandle(title.size() + 1, "WindowTitle");
+    auto memory = memory_.GetRegionForHandle(handle);
+    CHECK_OK(WriteType<absl::string_view>(title, memory, /*offset=*/0));
+    return handle;
+  };
 
   WindowRecord record;
   record.port = std::move(port);
@@ -159,7 +161,7 @@ absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
   record.is_visible = is_visible;
   record.has_close = has_close;
   record.reference_constant = reference_constant;
-  record.title_handle = TRY(create_title_handle());
+  record.title_handle = create_title_handle();
   record.title_width = title.size() * 8;  // Assumes 8x8 fixed-width font
 
   // The resource ID of the window definition function is in the upper
@@ -170,16 +172,6 @@ absl::StatusOr<WindowRecord> WindowManager::NewWindowRecord(
   // This is obviously not a Handle and as such should only be accessed by us!
   record.window_definition_proc = window_definition_id & 0x000F;
 
-  Rect global_port_rect = OffsetRect(
-      port.port_rect, -port.port_bits.bounds.left, -port.port_bits.bounds.top);
-
-  record.content_region = create_rect_region(global_port_rect, "ContentRegion");
-  Rect struct_rect = InsetRect(global_port_rect, -kFrameWidth, -kFrameWidth);
-  if (HasTitleBar(record)) {
-    struct_rect.top -= kFrameTitleHeight;
-  }
-  record.structure_region =
-      create_rect_region(global_port_rect, "StructRegion");
   // The update region is set to the entire window at creation to ensure that
   // it is fully drawn in the first WindowUpdate event (cleared in BeginUpdate).
   record.update_region = create_rect_region(port.port_rect, "UpdateRegion");
@@ -228,8 +220,11 @@ absl::StatusOr<Ptr> WindowManager::NewWindow(Ptr window_storage,
       port::SetThePort(window_storage + WindowRecordFields::port.offset));
 
   // If `behind_window` is NULL then window remains at the end of window list.
-  if (behind_window != 0)
+  if (behind_window != 0 || window_list_.size() == 1) {
     SelectWindow(window_storage);
+  } else {
+    InvalidateWindows();
+  }
   return window_storage;
 }
 
@@ -281,12 +276,8 @@ void WindowManager::MoveWindow(Ptr window_ptr,
     default:
       NOTREACHED() << "Unknown WindowManager::MoveType";
   }
-  UpdateWindowRegions(window_record, memory_);
 
-  auto status =
-      WriteType<WindowRecord>(window_record, kSystemMemory, window_ptr);
-  CHECK(status.ok()) << "Failed to WriteType<WindowRecord>: "
-                     << std::move(status).message();
+  CHECK_OK(WriteType<WindowRecord>(window_record, kSystemMemory, window_ptr));
 
   // 3. If the value of the front parameter is TRUE and the window is not
   //    active, MoveWindow makes it active by calling SelectWindow.
@@ -420,22 +411,68 @@ Ptr WindowManager::GetFrontWindow() const {
 
 absl::Status WindowManager::ShowWindow(WindowPtr the_window) {
   return WithType<WindowRecord>(the_window, [&](WindowRecord& window) {
-    DrawWindowFrame(window);
+    // DrawWindowFrame(window);
     event_manager_.QueueWindowUpdate(the_window);
     return absl::OkStatus();
   });
 }
 
+void UpdateContentAndStructureRegions(WindowRecord& the_window) {
+  // The |content_region| and |structure_region|s are in global coordinates.
+  const Rect content_rect = OffsetRect(the_window.port.port_rect,
+                                       -the_window.port.port_bits.bounds.left,
+                                       -the_window.port.port_bits.bounds.top);
+
+  Rect structure_rect = InsetRect(content_rect, -kFrameWidth, -kFrameWidth);
+  if (HasTitleBar(the_window))
+    structure_rect.top -= kFrameTitleHeight;
+
+  the_window.content_region =
+      AllocateHandleToRegion(region::NewRectRegion(content_rect));
+  the_window.structure_region =
+      AllocateHandleToRegion(region::NewRectRegion(structure_rect));
+}
+
 void WindowManager::InvalidateWindows() const {
+  auto overlay_region = region::NewRectRegion(0, 0, screen_.width(), 20);
   // Invalidate windows in reverse order per the painter's algorithm
-  for (auto it = window_list_.rbegin(); it != window_list_.rend(); ++it) {
-    CHECK_OK(WithType<WindowRecord>(*it, [](const WindowRecord& the_window) {
-      DrawWindowFrame(the_window);
-      return WithHandleToType<Region>(
-          the_window.update_region, [&](Region& update_region) {
-            update_region.bounding_box = the_window.port.port_rect;
-            return absl::OkStatus();
-          });
+  for (auto it = window_list_.begin(); it != window_list_.end(); ++it) {
+    CHECK_OK(WithType<WindowRecord>(*it, [&](WindowRecord& the_window) {
+      UpdateContentAndStructureRegions(the_window);
+
+      // GLOBAL
+      auto current_visible =
+          ReadRegionFromHandle(the_window.port.visible_region);
+
+      // GLOBAL
+      auto updated_visible =
+          region::Subtract(ReadRegionFromHandle(the_window.content_region),
+                           overlay_region.ref());
+
+      // GLOBAL
+      auto dirty_region = Subtract(updated_visible.ref(), current_visible);
+
+      // GLOBAL
+      auto update_region = region::Union(
+          ReadRegionFromHandle(the_window.update_region), dirty_region.ref());
+
+      update_region =
+          region::Intersect(update_region.ref(), updated_visible.ref());
+
+      // GLOBAL
+      auto clipped_struct_region =
+          region::Subtract(ReadRegionFromHandle(the_window.structure_region),
+                           overlay_region.ref());
+
+      // GLOBAL
+      overlay_region =
+          region::Union(overlay_region.ref(),
+                        ReadRegionFromHandle(the_window.structure_region));
+
+      the_window.port.visible_region = AllocateHandleToRegion(updated_visible);
+      the_window.update_region = AllocateHandleToRegion(update_region);
+      DrawWindowFrame(the_window, region::ConvertRegion(clipped_struct_region));
+      return absl::OkStatus();
     }));
     event_manager_.QueueWindowUpdate(*it);
   }
@@ -464,23 +501,29 @@ Rect WindowManager::GetRegionRect(Handle handle) const {
 }
 
 void DrawWindowFrame(const WindowRecord& window) {
+  auto struct_region = ReadRegionFromHandle(window.structure_region);
+  DrawWindowFrame(window, struct_region);
+}
+
+void DrawWindowFrame(const WindowRecord& window,
+                     const region::Region& clip_region) {
   Ptr wm_port_ptr =
       MUST(memory::kSystemMemory.Read<Handle>(GlobalVars::WMgrPort));
+
   graphics::BitmapImage screen = graphics::PortImageFor(wm_port_ptr);
 
-  auto desktop_region = CalculateDesktopRegion(screen);
-  TempClipRect _(screen, region::ConvertRegion(desktop_region));
+  TempClipRect _(screen, clip_region);
 
-  auto struct_region = MUST(ReadHandleToType<Region>(window.structure_region));
+  auto struct_region = ReadRegionFromHandle(window.structure_region);
 
-  screen.FillRect(struct_region.bounding_box, kWhitePattern);
-  screen.FrameRect(struct_region.bounding_box, kBlackPattern);
+  screen.FillRect(struct_region.rect, kWhitePattern);
+  screen.FrameRect(struct_region.rect, kBlackPattern);
 
   if (!HasTitleBar(window)) {
     return;
   }
 
-  auto title_bar_rect = struct_region.bounding_box;
+  auto title_bar_rect = struct_region.rect;
   title_bar_rect.bottom = title_bar_rect.top + kFrameTitleHeight;
 
   screen.FrameRect(title_bar_rect, kBlackPattern);
@@ -540,7 +583,7 @@ void UpdateWindowRegions(WindowRecord& window, const MemoryManager& memory) {
     CHECK_EQ(Region::fixed_size + data_size, offset);
   };
 
-  write_region_to_handle(window.content_region, global_port_rect);
+  // write_region_to_handle(window.content_region, global_port_rect);
 
   Rect struct_rect = InsetRect(global_port_rect, -kFrameWidth, -kFrameWidth);
   if (HasTitleBar(window)) {

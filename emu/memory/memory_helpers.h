@@ -6,6 +6,7 @@
 #include <functional>
 
 #include "absl/status/status.h"
+#include "emu/memory/memory_manager.h"
 #include "emu/memory/memory_map.h"
 #include "gen/typegen/generated_types.tdef.h"
 
@@ -54,4 +55,21 @@ inline region::Region ReadRegionFromHandle(Handle handle) {
   };
 }
 
+inline Handle AllocateHandleToRegion(const region::OwnedRegion& region) {
+  int16_t data_size = region.owned_data.size() * sizeof(int16_t);
+
+  auto handle = memory::MemoryManager::the().AllocateHandle(
+      Region::fixed_size + data_size, "Region");
+  core::MemoryRegion region_for_handle =
+      memory::MemoryManager::the().GetRegionForHandle(handle);
+
+  CHECK_OK(region_for_handle.Write<int16_t>(/*offset=*/0, data_size));
+  CHECK_OK(WriteType<Rect>(region.rect, region_for_handle, /*offset=*/2));
+  size_t offset = Region::fixed_size;
+  for (const int16_t& value : region.owned_data) {
+    CHECK_OK(region_for_handle.Write<int16_t>(offset, value));
+    offset += sizeof(int16_t);
+  }
+  return handle;
+}
 }  // namespace cyder
