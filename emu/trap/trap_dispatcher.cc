@@ -2124,12 +2124,12 @@ absl::Status TrapDispatcherImpl::DispatchNativeToolboxTrap(uint16_t trap) {
               text_ptr,
           length);
 
-      // Only a 8x8 bitmap font is currently supported so assume 8px wide chars
-      auto length_px = text.size() * 8;
       // Alignment Constants Link:
       //   http://0.0.0.0:8000/docs/mac/Text/Text-125.html#MARKER-9-577
 
       return InPort([&](const GrafPort& port, graphics::BitmapImage& image) {
+        size_t length_px = GetFont(port.text_font).GetStringWidth(text);
+
         switch (align) {
           case 1: {  // teCenter
             int offset_x = (RectWidth(box) - length_px) / 2;
