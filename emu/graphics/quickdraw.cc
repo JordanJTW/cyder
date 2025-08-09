@@ -95,11 +95,12 @@ void InitPort(GrafPort& port) {
   port.port_bits = globals.screen_bits;
   port.port_rect = port.port_bits.bounds;
 
-  port.clip_region =
-      AllocateHandleToRegion(region::NewRectRegion({.left = INT16_MIN,
-                                                    .top = INT16_MIN,
-                                                    .right = INT16_MAX,
-                                                    .bottom = INT16_MAX}));
+  port.clip_region = AllocateHandleToRegion(region::NewRectRegion({
+      .top = INT16_MIN,
+      .left = INT16_MIN,
+      .bottom = INT16_MAX,
+      .right = INT16_MAX,
+  }));
   port.visible_region =
       AllocateHandleToRegion(region::NewRectRegion(port.port_rect));
 }
