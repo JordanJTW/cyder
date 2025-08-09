@@ -23,6 +23,8 @@ inline uint8_t RotateByteRight(uint8_t byte, uint16_t shift) {
 }
 
 struct RegionCursor {
+  RegionCursor(const region::OwnedRegion& region) : region(region) {}
+
   void TryAdvanceScanline(int16_t y, BitmapImage::Scanline& output) {
     while (index < region.owned_data.size()) {
       if (region.owned_data[index] > y)

@@ -3,6 +3,10 @@
 
 #include <SDL.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #ifdef __LINUX__
 #include <signal.h>
 #endif  // __LINUX__
@@ -229,6 +233,76 @@ void run_emulator_thread(std::atomic<bool>& is_running) {
   }
 }
 
+bool main_loop(SDL_Renderer* renderer,
+               SDL_Window* window,
+               BitmapImage& screen,
+               EventManager& event_manager) {
+  if (renderer != nullptr) {
+    SDL_Texture* texture =
+        SDL_CreateTextureFromSurface(renderer, MakeSurface(screen));
+    CHECK(texture) << "Failed to create texture: " << SDL_GetError();
+
+    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+    SDL_RenderPresent(renderer);
+    SDL_DestroyTexture(texture);
+  }
+
+  SDL_Event event;
+  while (SDL_PollEvent(&event)) {
+    switch (event.type) {
+      case SDL_KEYDOWN:
+        if (event.key.keysym.sym == SDLK_F2) {
+          SaveScreenshot(screen);
+        } else if (event.key.keysym.sym == SDLK_F10) {
+          cyder::Debugger::Instance().Break();
+        } else {
+          event_manager.QueueKeyDown();
+        }
+        break;
+      case SDL_MOUSEBUTTONDOWN:
+        if (window) {
+          SDL_SetWindowGrab(window, SDL_TRUE);
+        }
+        event_manager.QueueMouseDown(event.button.x / kScaleFactor,
+                                     event.button.y / kScaleFactor);
+        break;
+      case SDL_MOUSEMOTION:
+        event_manager.OnMouseMove(event.motion.x / kScaleFactor,
+                                  event.motion.y / kScaleFactor);
+        break;
+      case SDL_MOUSEBUTTONUP:
+        if (window) {
+          SDL_SetWindowGrab(window, SDL_FALSE);
+        }
+        event_manager.QueueMouseUp(event.button.x / kScaleFactor,
+                                   event.button.y / kScaleFactor);
+        break;
+      case SDL_QUIT:
+#ifdef __EMSCRIPTEN__
+        emscripten_cancel_main_loop();
+#endif
+        return false;  // Exit the main loop.
+    }
+  }
+  if (!(absl::GetFlag(FLAGS_headless) || absl::GetFlag(FLAGS_debugger))) {
+    // PrintFrameTiming();
+  }
+  return true;  // Continue the main loop.
+}
+
+struct MainLoopArgs {
+  SDL_Renderer* renderer;
+  SDL_Window* window;
+  BitmapImage* screen;
+  EventManager* event_manager;
+};
+
+void run_main_loop(void* args) {
+  MainLoopArgs* main_loop_args = static_cast<MainLoopArgs*>(args);
+  main_loop(main_loop_args->renderer, main_loop_args->window,
+            *main_loop_args->screen, *main_loop_args->event_manager);
+}
+
 absl::Status Main(const core::Args& args) {
   auto file = TRY(ResourceFile::Load(TRY(args.GetArg(1, "FILENAME"))));
 
@@ -309,55 +383,14 @@ absl::Status Main(const core::Args& args) {
   std::thread emulator_thread(run_emulator_thread,
                               std::ref(is_emulator_running));
 
-  SDL_Event event;
-  bool should_exit = false;
-  while (!should_exit) {
-    if (renderer != nullptr) {
-      SDL_Texture* texture =
-          SDL_CreateTextureFromSurface(renderer, MakeSurface(screen));
-      CHECK(texture) << "Failed to create texture: " << SDL_GetError();
-
-      SDL_RenderCopy(renderer, texture, nullptr, nullptr);
-      SDL_RenderPresent(renderer);
-      SDL_DestroyTexture(texture);
-    }
-
-    while (SDL_PollEvent(&event)) {
-      switch (event.type) {
-        case SDL_KEYDOWN:
-          if (event.key.keysym.sym == SDLK_F2) {
-            SaveScreenshot(screen);
-          } else {
-            event_manager.QueueKeyDown();
-          }
-          break;
-        case SDL_MOUSEBUTTONDOWN:
-          if (window) {
-            SDL_SetWindowGrab(window, SDL_TRUE);
-          }
-          event_manager.QueueMouseDown(event.button.x / kScaleFactor,
-                                       event.button.y / kScaleFactor);
-          break;
-        case SDL_MOUSEMOTION:
-          event_manager.OnMouseMove(event.motion.x / kScaleFactor,
-                                    event.motion.y / kScaleFactor);
-          break;
-        case SDL_MOUSEBUTTONUP:
-          if (window) {
-            SDL_SetWindowGrab(window, SDL_FALSE);
-          }
-          event_manager.QueueMouseUp(event.button.x / kScaleFactor,
-                                     event.button.y / kScaleFactor);
-          break;
-        case SDL_QUIT:
-          should_exit = true;
-          break;
-      }
-    }
-    if (!(absl::GetFlag(FLAGS_headless) || absl::GetFlag(FLAGS_debugger))) {
-      PrintFrameTiming();
-    }
-  }
+#ifdef __EMSCRIPTEN__
+  MainLoopArgs main_loop_args{renderer, window, &screen, &event_manager};
+  emscripten_set_main_loop_arg(run_main_loop, &main_loop_args, 0, 1);
+#else
+  while (main_loop(renderer, window, screen, event_manager)) {
+    SDL_Delay(0);
+  };
+#endif
 
   if (!absl::GetFlag(FLAGS_headless)) {
     SDL_DestroyRenderer(renderer);
@@ -366,8 +399,10 @@ absl::Status Main(const core::Args& args) {
 
   // Prepare the emulator thread to shutdown.
   is_emulator_running.store(false);
+#ifndef __EMSCRIPTEN__
   // Send SIGINT to interrupt any console I/O the thread may be blocked on.
   pthread_kill(emulator_thread.native_handle(), SIGINT);
+#endif  // __EMSCRIPTEN__
   // Shutdown the EventManager to notify any CondVars it may be blocked on.
   event_manager.Shutdown();
   // Attempt to join the thread.

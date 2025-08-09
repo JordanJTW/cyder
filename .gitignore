@@ -1,5 +1,6 @@
 .vscode
 build/
+embuild/
 env/
 
 __pycache__

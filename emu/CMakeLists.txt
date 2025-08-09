@@ -1,9 +1,6 @@
 include(../cmake/gtest.cmake)
 include(../gen/typegen/typegen.cmake)
 
-find_package(SDL2 REQUIRED)
-include_directories(${SDL2_INCLUDE_DIRS})
-
 add_subdirectory(controls)
 add_subdirectory(debug)
 add_subdirectory(dialog)

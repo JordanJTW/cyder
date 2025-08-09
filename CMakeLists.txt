@@ -22,6 +22,23 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 enable_testing()
 
+if(EMSCRIPTEN)
+  string(APPEND CMAKE_CXX_FLAGS " -s USE_SDL=2")
+  string(APPEND CMAKE_CXX_FLAGS " -s USE_PTHREADS=1")
+  # Abseil triggers noisy warnings about deprecated builtins in Emscripten.
+  string(APPEND CMAKE_CXX_FLAGS " -Wno-deprecated-builtins")
+
+  string(APPEND CMAKE_EXE_LINKER_FLAGS " -s USE_SDL=2")
+  string(APPEND CMAKE_EXE_LINKER_FLAGS " -s FORCE_FILESYSTEM=1")
+  string(APPEND CMAKE_EXE_LINKER_FLAGS " -s PTHREAD_POOL_SIZE=1") # Thread used for emulator
+  string(APPEND CMAKE_EXE_LINKER_FLAGS " -s EXPORTED_RUNTIME_METHODS='[\"callMain\"]'")
+  string(APPEND CMAKE_EXE_LINKER_FLAGS " -s MODULARIZE=1")
+  string(APPEND CMAKE_EXE_LINKER_FLAGS " -s EXPORT_NAME=\"Cyder\"")
+else() # Emscripten includes its own SDL2 but all other platforms need to find it
+  find_package(SDL2 REQUIRED)
+  include_directories(${SDL2_INCLUDE_DIRS})
+endif()
+
 set(ABSL_PROPAGATE_CXX_STD ON)
 add_subdirectory(third_party/abseil-cpp)
 include_directories(third_party/abseil-cpp)

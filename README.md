@@ -81,6 +81,28 @@ make
 
 </details>
 
+<details><summary>With Emscripten (Web)</summary>
+
+### Download Emscripten
+Instructions to get Emscripten and set it up are found [here](https://emscripten.org/docs/getting_started/downloads.html).
+
+```console
+# Create fresh build directory for Emscripten
+mkdir embuild && cd $_
+emcmake cmake ..
+
+# Build `emu`
+emmake -j16 emu
+
+# Copy the HTML next to the generated JS/WASM
+cp ../html/index.html exe/
+
+# Run with Emscripten
+emrun exe/index.html --browser chrome
+```
+
+</details>
+
 ## Resource Forks
 
 Mac OS applications are stored with two *forks*: 1) the data fork which stores unstructured data and 2) the resource fork which stores structured data (details such as icon bitmaps, the shapes of windows, definitions of menus and their contents, and **application code**). 

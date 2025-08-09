@@ -15,9 +15,6 @@ target_link_libraries(rsrcdump CORE_LIB MAIN_LIB MUSASHI_LIB RSRC_LIB
   TYPEGEN_PRELUDE)
 target_link_libraries(rsrcdump absl::flags absl::statusor)
 
-find_package(SDL2 REQUIRED)
-include_directories(${SDL2_INCLUDE_DIRS})
-
 add_executable(screen screen.cc)
 target_link_libraries(
   screen
