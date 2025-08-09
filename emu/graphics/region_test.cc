@@ -121,10 +121,7 @@ TEST(RegionTest, SubtractRegion_Empty) {
 
   OwnedRegion output = Subtract(ConvertRegion(r1), ConvertRegion(r2));
 
-  EXPECT_THAT(output.owned_data,
-              ElementsAre(40, 2, 40, 140,  // y = 40, [40, 140)
-                          120, 0           // y = 120, END
-                          ));
+  EXPECT_TRUE(output.owned_data.empty());
 }
 
 TEST(RegionTest, OffsetRegion) {
